@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TimeLens Phase 2 - Advanced Time Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root[data-theme="dark"] {
+            --bg-color: #050505;
+            --panel-bg: rgba(28, 28, 30, 0.7);
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-main: #f5f5f7;
+            --text-muted: #86868b;
+            --accent-blue: #007aff;
+            --accent-blue-glow: rgba(0, 122, 255, 0.4);
+            --accent-green: #30d158;
+            --accent-orange: #ff9f0a;
+            --accent-indigo: #5e5ce6;
+            --accent-purple: #bf5af2;
+            --card-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+
+        :root[data-theme="light"] {
+            --bg-color: #f5f5f7;
+            --panel-bg: rgba(255, 255, 255, 0.7);
+            --glass-bg: rgba(0, 0, 0, 0.02);
+            --border-color: rgba(0, 0, 0, 0.08);
+            --text-main: #1d1d1f;
+            --text-muted: #86868b;
+            --accent-blue: #0071e3;
+            --accent-blue-glow: rgba(0, 113, 227, 0.2);
+            --accent-green: #28cd41;
+            --accent-orange: #f56300;
+            --accent-indigo: #5856d6;
+            --accent-purple: #af52de;
+            --card-shadow: 0 8px 32px rgba(0,0,0,0.05);
+        }
+
+        :root {
+            --font-family: 'Inter', -apple-system, system-ui, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; transition: background-color 0.3s, color 0.3s, border-color 0.3s; }
+
+        body {
+            font-family: var(--font-family); background-color: var(--bg-color);
+            color: var(--text-main); height: 100vh; overflow: hidden;
+            display: flex; flex-direction: column;
+            background-image: radial-gradient(circle at 20% 30%, rgba(94, 92, 230, 0.05) 0%, transparent 40%),
+                              radial-gradient(circle at 80% 70%, rgba(0, 122, 255, 0.05) 0%, transparent 40%);
+        }
+
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1rem 2rem; background: var(--panel-bg); backdrop-filter: blur(30px);
+            border-bottom: 1px solid var(--border-color); z-index: 100;
+        }
+
+        .logo-area { display: flex; align-items: center; gap: 0.75rem; font-size: 1.2rem; font-weight: 700; }
+        .logo-icon { color: var(--accent-blue); filter: drop-shadow(0 0 8px var(--accent-blue-glow)); }
+
+        .nav-controls { display: flex; background: rgba(0, 0, 0, 0.05); border-radius: 12px; padding: 3px; border: 1px solid var(--border-color); }
+        .nav-btn { padding: 0.5rem 1.25rem; font-size: 0.85rem; font-weight: 500; border-radius: 9px; cursor: pointer; transition: all 0.3s; color: var(--text-muted); border: none; background: transparent; }
+        .nav-btn.active { background: var(--panel-bg); color: var(--text-main); box-shadow: var(--card-shadow); }
+
+        main { display: flex; flex: 1; overflow: hidden; position: relative; }
+
+        .view-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; padding: 2rem; overflow-y: auto;
+            transition: transform 0.4s cubic-bezier(0.3, 1, 0.3, 1), opacity 0.4s cubic-bezier(0.3, 1, 0.3, 1);
+            background: var(--bg-color);
+        }
+
+        .main-view { opacity: 0; visibility: hidden; transform: translateX(-5%) scale(0.98); z-index: 10; }
+        .main-view.active { opacity: 1; visibility: visible; transform: translateX(0) scale(1); }
+        .main-view.slide-left { transform: translateX(-10%) scale(0.95); opacity: 0.2; pointer-events: none; }
+
+        .detail-view { opacity: 0; visibility: hidden; transform: translateX(100%); z-index: 20; background: var(--panel-bg); backdrop-filter: blur(20px); border-left: 1px solid var(--border-color); }
+        .detail-view.active { opacity: 1; visibility: visible; transform: translateX(0); }
+        .detail-view.slide-left { transform: translateX(-10%) scale(0.95); opacity: 0.2; pointer-events: none; }
+
+        .screenshot-view { opacity: 0; visibility: hidden; transform: translateX(100%); z-index: 30; background: var(--panel-bg); backdrop-filter: blur(30px); border-left: 1px solid var(--border-color); }
+        .screenshot-view.active { opacity: 1; visibility: visible; transform: translateX(0); }
+
+        .dashboard-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; max-width: 1400px; margin: 0 auto; width: 100%; }
+        
+        .span-1 { grid-column: span 1; }
+        .span-3 { grid-column: span 3; }
+
+        .metric-card {
+            background: var(--glass-bg); border: 1px solid var(--border-color); border-radius: 20px;
+            padding: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; backdrop-filter: blur(10px); transition: all 0.2s; position: relative;
+        }
+        .metric-card.clickable { cursor: pointer; }
+        .metric-card.clickable:hover { background: rgba(255,255,255,0.08); border-color: var(--accent-blue); transform: translateY(-2px); }
+
+        .metric-label { font-size: 0.85rem; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center; }
+        .metric-value { font-size: 1.8rem; font-weight: 700; font-family: var(--font-mono); display: flex; align-items: baseline; gap: 0.4rem; }
+        
+        .stat-block { display: flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-weight: 500; }
+        .stat-block i { color: var(--text-muted); font-size: 0.8rem; }
+        .stat-number { color: var(--text-main); font-weight: 600; }
+        .stat-unit { font-size: 0.65rem; opacity: 0.5; font-family: var(--font-family); margin-left: -2px; }
+
+        .glass-panel { background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 24px; padding: 2rem; backdrop-filter: blur(20px); box-shadow: var(--card-shadow); }
+        .panel-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem; }
+        .panel-title { font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+
+        .app-row {
+            display: flex; flex-direction: column; padding: 1rem; background: rgba(0,0,0,0.02);
+            border-radius: 14px; margin-bottom: 0.75rem; border: 1px solid transparent; transition: all 0.2s; cursor: pointer;
+        }
+        .app-row:hover { background: rgba(0,0,0,0.04); border-color: var(--border-color); transform: translateX(4px); }
+        .app-main-info { display: flex; align-items: center; width: 100%; }
+        .app-icon { width: 40px; height: 40px; border-radius: 10px; background: #2c2c2e; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; margin-right: 1.25rem; }
+        .app-info { flex: 1; overflow: hidden; }
+        .app-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 0.5rem; }
+        .app-meta { font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem; }
+        .app-stats { text-align: right; margin-left: 1rem; }
+        .app-duration { font-family: var(--font-mono); font-weight: 600; font-size: 0.9rem; }
+        .app-percent { font-size: 0.75rem; color: var(--accent-blue); margin-top: 0.25rem; }
+
+        /* Micro-Timeline */
+        .micro-timeline { width: 100%; height: 4px; background: rgba(0,0,0,0.05); border-radius: 2px; margin-top: 0.8rem; position: relative; overflow: hidden; }
+        .micro-pulse { position: absolute; height: 100%; background: var(--accent-blue); opacity: 0.6; border-radius: 2px; }
+
+        .chart-layout { display: flex; height: 200px; width: 100%; margin-top: 1rem; }
+        .y-axis { display: flex; flex-direction: column; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted); padding-right: 0.5rem; text-align: right; width: 45px; border-right: 1px dashed var(--border-color); margin-right: 8px; font-family: var(--font-mono); }
+        .activity-chart { flex: 1; display: flex; align-items: flex-end; gap: 3px; }
+        .bar-wrapper { flex: 1; height: 100%; display: flex; flex-direction: column-reverse; border-radius: 4px 4px 0 0; overflow: hidden; background: rgba(255,255,255,0.02); transition: all 0.3s; }
+        .bar-wrapper:hover { background: rgba(255,255,255,0.1); transform: scaleY(1.05); }
+        .segment { 
+            width: 100%; 
+            transition: height 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            background: linear-gradient(to top, var(--accent-blue), #64d2ff);
+            box-shadow: 0 0 15px rgba(0, 122, 255, 0.3);
+        }
+
+        .status-tag { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
+        .tag-active { background: rgba(0, 122, 255, 0.15); color: var(--accent-blue); border: 1px solid rgba(0, 122, 255, 0.3); }
+        .tag-small { font-size: 0.65rem; padding: 2px 8px; font-weight: normal; background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid var(--border-color); border-radius: 12px; }
+
+        .log-item { background: var(--glass-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.2rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: all 0.2s; margin-bottom: 0.8rem;}
+        .log-item:hover { background: rgba(255,255,255,0.05); border-color: var(--accent-blue); transform: translateX(5px); }
+        .log-content { flex: 1; }
+        .log-title { font-size: 0.95rem; font-weight: 500; margin-bottom: 0.4rem; color: var(--text-main); }
+        .log-subtitle { font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono); display: flex; align-items: center; gap: 0.8rem; }
+        .log-value { display: flex; flex-direction: column; align-items: flex-end; gap: 0.3rem; }
+        .progress-bar { width: 120px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--accent-blue); }
+
+        .screenshot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 1rem; }
+        .shot-card { background: #1c1c1e; border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; transition: all 0.2s; cursor: pointer; }
+        .shot-card:hover { border-color: var(--accent-blue); transform: scale(1.02); }
+        .shot-img-placeholder { height: 160px; background: url('https://images.unsplash.com/photo-1618401471353-b98afee0b2eb?q=80&w=600&auto=format&fit=crop') center/cover; position: relative; }
+        
+        /* Image Preview Overlay */
+        .preview-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(25px);
+            z-index: 1000; display: none; align-items: center; justify-content: center;
+            opacity: 0; transition: opacity 0.3s ease;
+        }
+        .preview-overlay.active { display: flex; opacity: 1; }
+        .preview-content {
+            position: relative; max-width: 90vw; max-height: 80vh;
+            transform: scale(0.95); transition: transform 0.4s cubic-bezier(0.2, 1, 0.2, 1);
+        }
+        .preview-overlay.active .preview-content { transform: scale(1); }
+        .preview-img { width: 100%; height: auto; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.8); border: 1px solid var(--border-color); }
+        
+        .preview-actions {
+            position: absolute; bottom: -80px; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 1rem; background: var(--panel-bg); padding: 0.8rem 1.5rem;
+            border-radius: 20px; border: 1px solid var(--border-color); backdrop-filter: blur(15px);
+        }
+        .action-btn { background: transparent; border: none; color: var(--text-main); cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; padding: 0.4rem 0.8rem; border-radius: 8px; transition: background 0.2s; }
+        .action-btn:hover { background: rgba(255,255,255,0.05); }
+
+        .shot-meta { padding: 1rem; }
+        .shot-time { font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent-green); margin-bottom: 0.3rem; }
+        .shot-desc { font-size: 0.85rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .detail-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; max-width: 1200px; margin-left: auto; margin-right: auto; width: 100%; }
+        .back-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-main); padding: 0.6rem 1.2rem; border-radius: 10px; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s; }
+        .back-btn:hover { background: rgba(255,255,255,0.1); }
+        
+        footer { padding: 1rem 2rem; font-size: 0.75rem; color: var(--text-muted); border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; background: rgba(5,5,5,0.8); backdrop-filter: blur(20px); z-index: 100; position: relative; }
+
+        .dev-layout { display: flex; gap: 1.5rem; height: calc(100vh - 180px); max-width: 1500px; margin: 0 auto; width: 100%; }
+        .timeline-panel { width: 360px; background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 20px; display: flex; flex-direction: column; flex-shrink: 0; overflow: hidden; backdrop-filter: blur(20px); }
+        .filter-pill { padding: 4px 14px; border-radius: 20px; border: 1px solid var(--border-color); font-size: 0.75rem; color: var(--text-muted); cursor: pointer; transition: all 0.2s; background: rgba(255,255,255,0.02); }
+        .filter-pill.active { background: rgba(0, 122, 255, 0.15); color: var(--accent-blue); border-color: rgba(0, 122, 255, 0.4); }
+
+        .timeline-line { position: absolute; left: 31px; top: 1.5rem; bottom: 1.5rem; width: 2px; background: rgba(255,255,255,0.05); }
+        .timeline-node { position: relative; margin-bottom: 1.8rem; padding-left: 3rem; }
+        .node-dot { position: absolute; left: 3px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--bg-color); border: 2px solid var(--text-muted); z-index: 2; transition: all 0.3s; }
+        .node-dot.active { border-color: var(--accent-blue); background: var(--accent-blue); box-shadow: 0 0 10px var(--accent-blue-glow); }
+        .node-time { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+        .node-card { background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem; transition: all 0.2s; cursor: pointer; }
+        .node-card.active { border-color: rgba(0, 122, 255, 0.4); background: rgba(0, 122, 255, 0.05); box-shadow: 0 4px 20px rgba(0, 122, 255, 0.1); }
+        .node-app { font-size: 0.8rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--text-main); }
+        .node-title { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; }
+
+        .film-thumb { width: 160px; height: 100%; background: #1c1c1e url('https://images.unsplash.com/photo-1618401471353-b98afee0b2eb?q=80&w=400&auto=format&fit=crop') center/cover; border-radius: 8px; border: 2px solid transparent; flex-shrink: 0; position: relative; cursor: pointer; transition: all 0.2s; opacity: 0.5; }
+        .film-thumb.active { border-color: var(--accent-blue); opacity: 1; }
+
+        .dev-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-main); font-family: var(--font-mono); font-size: 0.8rem; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+        .dev-btn-outline { border-color: rgba(0, 122, 255, 0.4); color: var(--accent-blue); background: rgba(0, 122, 255, 0.05); }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-area">
+            <i class="fa-solid fa-compass-drafting logo-icon"></i>
+            TimeLens <span style="font-weight: 300; opacity: 0.5; font-size: 0.8rem; margin-left: 4px;">Advanced</span>
+        </div>
+        <nav class="nav-controls">
+            <button class="nav-btn active" onclick="switchMainTab('overview')">数据概览</button>
+            <button class="nav-btn" onclick="switchMainTab('dev')">开发者视界</button>
+        </nav>
+        <div style="font-size: 0.8rem; display: flex; align-items: center; gap: 1rem;">
+            <button class="dev-btn" onclick="toggleTheme()" style="padding: 0.4rem 0.8rem; display: flex; align-items: center; gap: 0.5rem;">
+                <i id="theme-icon" class="fa-solid fa-moon"></i> <span id="theme-text">Dark</span>
+            </button>
+            <span style="color: var(--accent-green); display: flex; align-items: center; gap: 0.4rem;">
+                <span style="width: 6px; height: 6px; border-radius: 50%; background: var(--accent-green); box-shadow: 0 0 8px var(--accent-green);"></span> 系统已就绪
+            </span>
+        </div>
+    </header>
+
+    <main>
+        <div id="tab-overview" class="view-layer main-view active">
+            <div class="dashboard-grid">
+                
+                <div class="metric-card span-1 clickable" onclick="openLevel2('all-apps')">
+                    <span class="metric-label">今日活动 <i class="fa-solid fa-chevron-right" style="opacity:0.5"></i></span>
+                    <span class="metric-value">12 <span style="font-size:0.8rem;font-weight:normal;color:var(--text-muted);font-family:var(--font-family);">应用</span></span>
+                    
+                    <div style="margin-top: 0.6rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 0.8rem; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">窗口与标签页切换</span>
+                        <div class="stat-block">
+                            <i class="fa-solid fa-layer-group"></i>
+                            <span class="stat-number">156</span>
+                            <span class="stat-unit">次</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="metric-card span-1">
+                    <span class="metric-label">活跃时长 <i class="fa-solid fa-wand-magic-sparkles" style="opacity:0.3; margin-left: auto;"></i></span>
+                    <span class="metric-value">6h 42m</span>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.6rem; padding-top: 0.6rem; border-top: 1px solid rgba(255,255,255,0.05);">
+                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted);">
+                            <span style="display: flex; align-items: center; gap: 4px;"><i class="fa-solid fa-rocket" style="color: var(--accent-blue); font-size: 8px;"></i> 深度生产</span>
+                            <span style="font-family: var(--font-mono);">3.5h</span>
+                        </div>
+                        <div style="width: 100%; height: 3px; background: rgba(0,0,0,0.1); border-radius: 1.5px; overflow: hidden;">
+                            <div style="width: 65%; height: 100%; background: var(--accent-blue);"></div>
+                        </div>
+
+                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted);">
+                            <span style="display: flex; align-items: center; gap: 4px;"><i class="fa-solid fa-magnifying-glass" style="color: var(--accent-orange); font-size: 8px;"></i> 知识获取</span>
+                            <span style="font-family: var(--font-mono);">2.1h</span>
+                        </div>
+                        <div style="width: 100%; height: 3px; background: rgba(0,0,0,0.1); border-radius: 1.5px; overflow: hidden;">
+                            <div style="width: 40%; height: 100%; background: var(--accent-orange);"></div>
+                        </div>
+
+                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted);">
+                            <span style="display: flex; align-items: center; gap: 4px;"><i class="fa-solid fa-comments" style="color: var(--accent-green); font-size: 8px;"></i> 协同办公</span>
+                            <span style="font-family: var(--font-mono);">0.8h</span>
+                        </div>
+                        <div style="width: 100%; height: 3px; background: rgba(0,0,0,0.1); border-radius: 1.5px; overflow: hidden;">
+                            <div style="width: 15%; height: 100%; background: var(--accent-green);"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="metric-card span-1">
+                    <span class="metric-label">综合评估与交互 <i class="fa-solid fa-circle-info" style="opacity:0.3; margin-left:auto;"></i></span>
+                    <div style="margin-top: 0.2rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                        <span class="status-tag tag-active">💻 一直在工作</span>
+                    </div>
+                    
+                    <div style="margin-top: auto; display: flex; gap: 0.8rem; background: rgba(0, 122, 255, 0.05); border: 1px solid rgba(0, 122, 255, 0.1); border-radius: 12px; padding: 0.6rem 0.8rem;">
+                        <div class="stat-block" style="flex: 1;">
+                            <i class="fa-solid fa-keyboard" style="color: var(--accent-blue);"></i>
+                            <span class="stat-number" style="font-size: 1rem;">3,850</span>
+                            <span class="stat-unit">Key</span>
+                        </div>
+                        <div style="width: 1px; background: rgba(255,255,255,0.1);"></div>
+                        <div class="stat-block" style="flex: 1;">
+                            <i class="fa-solid fa-mouse" style="color: var(--accent-blue);"></i>
+                            <span class="stat-number" style="font-size: 1rem;">1,240</span>
+                            <span class="stat-unit">Click</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="metric-card span-1">
+                    <span class="metric-label">无效挂机与离座清洗 <i class="fa-solid fa-broom" style="opacity:0.3; margin-left:auto;"></i></span>
+                    <span class="metric-value">1h 15m</span>
+                    <span class="metric-trend" style="color: var(--accent-green); margin-top: 0.4rem;">已自动过滤静置与未交互时长</span>
+                </div>
+
+                <!-- Left Column: Core Apps (3/4 Width - Red Box) -->
+                <div class="glass-panel span-3" style="display: flex; flex-direction: column; height: 500px;">
+                    <div class="panel-header">
+                        <div class="panel-title">核心应用追踪 (Top Apps)</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted); cursor: pointer;"><i class="fa-solid fa-expand"></i></div>
+                    </div>
+                    <div style="flex: 1; overflow-y: auto; padding-right: 0.8rem; scrollbar-width: thin;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="app-row" onclick="openLevel2('vscode')">
+                                <div class="app-main-info">
+                                    <div class="app-icon" style="color: #007aff;"><i class="fa-solid fa-code"></i></div>
+                                    <div class="app-info">
+                                        <div class="app-name">Visual Studio Code <span class="tag-small">开发</span></div>
+                                        <div class="app-meta"><span>32 个活动窗口</span></div>
+                                    </div>
+                                    <div class="app-stats">
+                                        <div class="app-duration">2h 45m</div>
+                                        <div class="app-percent">41%</div>
+                                    </div>
+                                </div>
+                                <div class="micro-timeline">
+                                    <div class="micro-pulse" style="left: 37.5%; width: 15%;"></div>
+                                    <div class="micro-pulse" style="left: 58%; width: 20%;"></div>
+                                </div>
+                            </div>
+                            <div class="app-row" onclick="openLevel2('chrome')">
+                                <div class="app-main-info">
+                                    <div class="app-icon" style="color: #ff9f0a;"><i class="fa-brands fa-chrome"></i></div>
+                                    <div class="app-info">
+                                        <div class="app-name">Google Chrome <span class="tag-small">检索</span></div>
+                                        <div class="app-meta"><span>14 个网页标签</span></div>
+                                    </div>
+                                    <div class="app-stats">
+                                        <div class="app-duration">1h 58m</div>
+                                        <div class="app-percent">29%</div>
+                                    </div>
+                                </div>
+                                <div class="micro-timeline">
+                                    <div class="micro-pulse" style="left: 40%; width: 10%; background: var(--accent-orange);"></div>
+                                    <div class="micro-pulse" style="left: 65%; width: 12%; background: var(--accent-orange);"></div>
+                                </div>
+                            </div>
+                            <div class="app-row" onclick="openLevel2('wechat')">
+                                <div class="app-main-info">
+                                    <div class="app-icon" style="color: #30d158;"><i class="fa-brands fa-weixin"></i></div>
+                                    <div class="app-info">
+                                        <div class="app-name">微信 (WeChat) <span class="tag-small">通讯</span></div>
+                                        <div class="app-meta"><span>5 个核心会话</span></div>
+                                    </div>
+                                    <div class="app-stats">
+                                        <div class="app-duration">42m</div>
+                                        <div class="app-percent">10%</div>
+                                    </div>
+                                </div>
+                                <div class="micro-timeline">
+                                    <div class="micro-pulse" style="left: 38%; width: 5%; background: var(--accent-green);"></div>
+                                    <div class="micro-pulse" style="left: 70%; width: 4%; background: var(--accent-green);"></div>
+                                </div>
+                            </div>
+                            <div class="app-row" onclick="openLevel2('notion')">
+                                <div class="app-main-info">
+                                    <div class="app-icon" style="color: #bf5af2;"><i class="fa-solid fa-book"></i></div>
+                                    <div class="app-info">
+                                        <div class="app-name">Notion <span class="tag-small">文档</span></div>
+                                        <div class="app-meta"><span>3 篇文档在编</span></div>
+                                    </div>
+                                    <div class="app-stats">
+                                        <div class="app-duration">35m</div>
+                                        <div class="app-percent">8%</div>
+                                    </div>
+                                </div>
+                                <div class="micro-timeline">
+                                    <div class="micro-pulse" style="left: 45%; width: 8%; background: var(--accent-purple);"></div>
+                                </div>
+                            </div>
+                            <div class="app-row">
+                                <div class="app-main-info">
+                                    <div class="app-icon" style="color: #ff3b30;"><i class="fa-solid fa-terminal"></i></div>
+                                    <div class="app-info">
+                                        <div class="app-name">Terminal <span class="tag-small">系统</span></div>
+                                        <div class="app-meta"><span>底层命令行</span></div>
+                                    </div>
+                                    <div class="app-stats">
+                                        <div class="app-duration">12m</div>
+                                        <div class="app-percent">2%</div>
+                                    </div>
+                                </div>
+                                <div class="micro-timeline"><div class="micro-pulse" style="left: 10%; width: 2%; background: #ff3b30;"></div></div>
+                            </div>
+                            <div class="app-row">
+                                <div class="app-icon" style="color: #5e5ce6;"><i class="fa-solid fa-envelope"></i></div>
+                                <div class="app-info">
+                                    <div class="app-name">Mail <span class="tag-small">沟通</span></div>
+                                    <div class="app-meta"><span>处理邮件</span></div>
+                                </div>
+                                <div class="app-stats">
+                                    <div class="app-duration">10m</div>
+                                    <div class="app-percent">1%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Stacked Charts (1/4 Width - Green Boxes) -->
+                <div class="span-1" style="display: flex; flex-direction: column; gap: 1.5rem; height: 500px;">
+                    <!-- Top: Activity Distribution -->
+                    <div class="glass-panel" style="flex: 1; display: flex; flex-direction: column; padding: 1.2rem;">
+                        <div class="panel-header" style="margin-bottom: 0.5rem;">
+                            <div class="panel-title" style="font-size: 0.85rem;"><i class="fa-solid fa-chart-simple" style="color: var(--accent-indigo);"></i> 活跃分布</div>
+                        </div>
+                        <div class="chart-layout" style="height: 100px; margin-top: 0.5rem;">
+                            <div class="y-axis" style="width: 30px; font-size: 0.55rem;">
+                                <span>60</span>
+                                <span>0</span>
+                            </div>
+                            <div class="activity-chart" id="overviewChart" style="gap: 2px;"></div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 0.4rem; font-size: 0.6rem; color: var(--text-muted); font-family: var(--font-mono);">
+                            <span>00</span><span>12</span><span>24</span>
+                        </div>
+                    </div>
+
+                    <!-- Bottom: Time Ratio -->
+                    <div class="glass-panel" style="flex: 1; padding: 1.2rem; display: flex; flex-direction: column;">
+                        <div class="panel-title" style="font-size: 0.85rem; margin-bottom: 0.8rem;"><i class="fa-solid fa-chart-pie" style="color: var(--accent-purple);"></i> 时间占比</div>
+                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 0.8rem;">
+                            <div style="width: 85px; height: 85px; border-radius: 50%; background: conic-gradient(var(--accent-blue) 0% 41%, var(--accent-orange) 41% 70%, var(--accent-green) 70% 80%, var(--accent-purple) 80% 88%, #3a3a3c 88% 100%); position: relative;">
+                                <div style="position: absolute; inset: 15px; background: var(--panel-bg); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                    <span style="font-size: 0.75rem; font-weight: 700; color: var(--accent-blue);">78%</span>
+                                </div>
+                            </div>
+                            <div style="width: 100%; display: flex; flex-direction: column; gap: 0.4rem;">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.65rem;">
+                                    <span><i class="fa-solid fa-circle" style="font-size: 5px; color: var(--accent-blue); margin-right: 4px;"></i> VS Code</span>
+                                    <span>41%</span>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.65rem;">
+                                    <span><i class="fa-solid fa-circle" style="font-size: 5px; color: var(--accent-orange); margin-right: 4px;"></i> Chrome</span>
+                                    <span>29%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-dev" class="view-layer main-view" style="padding-top: 1rem;">
+            <div class="dev-layout">
+                <div class="timeline-panel">
+                    <div style="padding: 1.5rem 1.5rem 1rem 1.5rem; border-bottom: 1px solid var(--border-color);">
+                        <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">实时行为时序 (Flat Timeline)</h3>
+                        <div style="display: flex; flex-direction: column; gap: 0.8rem;">
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <span style="font-size: 0.8rem; color: var(--text-muted); width: 35px;">App</span>
+                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                    <span class="filter-pill active">全部</span>
+                                    <span class="filter-pill">VS Code</span>
+                                    <span class="filter-pill">Chrome</span>
+                                    <span class="filter-pill">WeChat</span>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 1rem;">
+                                <span style="font-size: 0.8rem; color: var(--text-muted); width: 35px;">Intent</span>
+                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                    <span class="filter-pill active">全部</span>
+                                    <span class="filter-pill">编码</span>
+                                    <span class="filter-pill">检索</span>
+                                    <span class="filter-pill">AI</span>
+                                    <span class="filter-pill">文档</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="flex: 1; overflow-y: auto; padding: 1.5rem; position: relative;">
+                        <div class="timeline-line"></div>
+                        <div class="timeline-node">
+                            <div class="node-dot active"></div>
+                            <div class="node-time">09:34:17 · 0s</div>
+                            <div class="node-card active">
+                                <div class="node-app">timelens</div>
+                                <div class="node-title">TimeLens — Developer Dashboard</div>
+                            </div>
+                        </div>
+                        <div class="timeline-node">
+                            <div class="node-dot"></div>
+                            <div class="node-time">09:34:08 · 8s</div>
+                            <div class="node-card">
+                                <div class="node-app" style="display:flex; align-items:center; gap:6px;"><i class="fa-brands fa-chrome" style="color: var(--accent-orange);"></i> Google Chrome</div>
+                                <div class="node-title">TimeLens Phase 2 - Advanced Time Intelligence - Google Chrome</div>
+                                <div style="margin-top: 0.6rem;"><span class="tag-small">Research</span></div>
+                            </div>
+                        </div>
+                        <div class="timeline-node">
+                            <div class="node-dot"></div>
+                            <div class="node-time">09:34:02 · 6s</div>
+                            <div class="node-card">
+                                <div class="node-app">timelens</div>
+                                <div class="node-title">TimeLens — Developer Dashboard</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+    
+                <div style="flex: 1; display: flex; flex-direction: column; gap: 1.5rem; overflow: hidden; max-width: 1000px;">
+                    <div class="glass-panel" style="flex: 1; padding: 0; display: flex; flex-direction: column; position: relative; overflow: hidden; border-radius: 20px;">
+                        <div style="padding: 1.2rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.4);">
+                            <h3 style="font-size: 1.1rem;">智能截屏留存 (Smart Screenshots)</h3>
+                            <span style="font-family: var(--font-mono); font-size: 0.75rem; color: #ff3b30; border: 1px solid rgba(255,59,48,0.3); padding: 4px 8px; border-radius: 6px; background: rgba(255,59,48,0.1); letter-spacing: 1px;">DEV MODE: RAW CAPTURES</span>
+                        </div>
+                        <div style="flex: 1; position: relative; background: #08080a; display: flex; align-items: center; justify-content: center; padding: 1.5rem;">
+                            <div style="position: absolute; top: 2.5rem; left: 2.5rem; z-index: 10; background: rgba(255,59,48,0.2); border: 1px solid #ff3b30; color: #ff3b30; padding: 0.3rem 0.8rem; border-radius: 8px; font-size: 0.75rem; font-weight: bold; display: flex; align-items: center; gap: 0.5rem;">
+                                <div style="width: 8px; height: 8px; border-radius: 50%; background: #ff3b30; box-shadow: 0 0 8px #ff3b30;"></div> REC
+                            </div>
+                            <div style="width: 100%; height: 100%; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: url('https://images.unsplash.com/photo-1618401471353-b98afee0b2eb?q=80&w=2000&auto=format&fit=crop') center/cover; position: relative; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.6);">
+                                <div style="position: absolute; bottom: 0; left: 0; width: 100%; padding: 1.5rem; background: linear-gradient(transparent, rgba(0,0,0,0.9));">
+                                    <div style="font-size: 1.3rem; font-weight: 600; margin-bottom: 0.4rem;">TimeLens — Developer Dashboard</div>
+                                    <div style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted);">09:34:17 · timelens · [1920x1080] · 45KB</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+    
+                    <div class="glass-panel" style="height: 160px; padding: 1.2rem 1.5rem; display: flex; flex-direction: column; border-radius: 20px;">
+                        <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.8rem;">上下文快照流回溯</div>
+                        <div style="display: flex; gap: 1rem; overflow-x: auto; flex: 1;">
+                            <div class="film-thumb active"></div>
+                            <div class="film-thumb"></div>
+                            <div class="film-thumb"></div>
+                            <div class="film-thumb"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="max-width: 1500px; margin: 1.5rem auto 0; width: 100%; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+                <div style="color: var(--accent-green); font-size: 0.85rem; display: flex; align-items: center; gap: 0.8rem;">
+                    <i class="fa-solid fa-shield-halved"></i> 100% 本地沙盒保障，断网可用
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button class="dev-btn"><i class="fa-solid fa-folder-open"></i> ~/.timelens/data/shots/</button>
+                    <button class="dev-btn dev-btn-outline">手动截屏</button>
+                    <button class="dev-btn dev-btn-outline">直通黑盒底层</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="layer-level2" class="view-layer detail-view">
+            <div class="detail-header">
+                <button class="back-btn" onclick="backToLevel1()"><i class="fa-solid fa-arrow-left"></i> 返回概览</button>
+                <div>
+                    <h2 id="l2-title" style="font-size: 1.4rem;">详情</h2>
+                </div>
+            </div>
+            <div class="glass-panel" style="max-width: 1200px; margin: 0 auto; width: 100%;">
+                <div id="l2-content" style="display: flex; flex-direction: column;"></div>
+            </div>
+        </div>
+
+        <div id="layer-level3" class="view-layer screenshot-view">
+            <div class="detail-header">
+                <button class="back-btn" onclick="backToLevel2()"><i class="fa-solid fa-arrow-left"></i> 返回列表</button>
+                <h2 id="l3-title" style="font-size: 1.4rem;">活动切片</h2>
+            </div>
+            <div style="max-width: 1200px; margin: 0 auto; width: 100%;">
+                <div id="l3-content" class="screenshot-grid"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Image Preview Overlay -->
+    <div id="preview-overlay" class="preview-overlay" onclick="closePreview()">
+        <div class="preview-content" onclick="event.stopPropagation()">
+            <img src="https://images.unsplash.com/photo-1618401471353-b98afee0b2eb?q=80&w=2000&auto=format&fit=crop" class="preview-img" alt="Preview">
+            <div style="position: absolute; top: 1.5rem; left: 1.5rem; background: rgba(0,0,0,0.5); padding: 0.6rem 1rem; border-radius: 12px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);">
+                <div id="preview-meta-title" style="font-weight: 600; font-size: 0.95rem; margin-bottom: 0.2rem;">File Title</div>
+                <div id="preview-meta-time" style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--accent-green);">10:24:12 AM</div>
+            </div>
+            <div class="preview-actions">
+                <button class="action-btn"><i class="fa-solid fa-copy"></i> 复制</button>
+                <button class="action-btn"><i class="fa-solid fa-folder-open"></i> 位置</button>
+                <button class="action-btn"><i class="fa-solid fa-trash" style="color: #ff453a;"></i> 删除</button>
+                <div style="width: 1px; background: var(--border-color); height: 20px; align-self: center;"></div>
+                <button class="action-btn" onclick="closePreview()"><i class="fa-solid fa-xmark"></i> 关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchMainTab(tabId) {
+            document.querySelectorAll('.main-view').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+            document.querySelector(`.nav-btn[onclick="switchMainTab('${tabId}')"]`).classList.add('active');
+            document.getElementById('layer-level2').classList.remove('active');
+            document.getElementById('layer-level3').classList.remove('active');
+        }
+
+        function toggleTheme() {
+            const root = document.documentElement;
+            const currentTheme = root.getAttribute('data-theme') || 'dark';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', newTheme);
+            
+            const themeIcon = document.getElementById('theme-icon');
+            const themeText = document.getElementById('theme-text');
+            
+            if (newTheme === 'light') {
+                themeIcon.className = 'fa-solid fa-sun';
+                themeText.innerText = 'Light';
+            } else {
+                themeIcon.className = 'fa-solid fa-moon';
+                themeText.innerText = 'Dark';
+            }
+        }
+        
+        // Set default theme
+        document.documentElement.setAttribute('data-theme', 'dark');
+
+        const drilldownData = {
+            'all-apps': {
+                title: '今日活跃应用 (12 个)', total: '6h 42m',
+                items: [
+                    { id: 'app_vscode',    name: 'VS Code 编辑器',   meta: '深度生产 · 41% · 3 个文件活跃', val: '2h 45m', pct: 100, color: 'var(--accent-blue)' },
+                    { id: 'app_chrome',    name: 'Google Chrome',    meta: '知识获取 · 29% · 3 个标签活跃', val: '1h 58m', pct: 72,  color: 'var(--accent-orange)' },
+                    { id: 'app_wechat',    name: '微信 (WeChat)',     meta: '协同办公 · 10% · 5 个核心会话', val: '42m',    pct: 26,  color: 'var(--accent-green)' },
+                    { id: 'app_notion',    name: 'Notion',            meta: '记录沉淀 · 8% · 3 篇文档在编', val: '35m',    pct: 21,  color: 'var(--accent-purple)' },
+                    { id: 'app_terminal',  name: 'Terminal',          meta: '深度生产 · 2% · 底层命令行',   val: '12m',    pct: 7,   color: '#ff3b30' },
+                    { id: 'app_mail',      name: 'Mail',              meta: '协同办公 · 1% · 处理邮件',     val: '10m',    pct: 6,   color: 'var(--accent-indigo)' }
+                ]
+            },
+            'vscode': {
+                title: 'VS Code 编辑器活跃情况', total: '2h 45m',
+                items: [
+                    { id: 'vs_1', name: 'TimeLens/src-tauri/src/tracker/mod.rs', meta: 'Rust 逻辑开发 · 32 次切换', val: '1h 20m', pct: 90, color: 'var(--accent-blue)' },
+                    { id: 'vs_2', name: 'TimeLens/src/pages/Dashboard.tsx', meta: 'React UI 组件 · 12 次切换', val: '45m', pct: 50, color: 'var(--accent-blue)' },
+                    { id: 'vs_3', name: 'TimeLens/PRD_二期.md', meta: '产品文档校对 · 5 次切换', val: '15m', pct: 20, color: 'var(--accent-blue)' }
+                ]
+            },
+            'chrome': {
+                title: 'Google Chrome 浏览明细', total: '1h 58m',
+                items: [
+                    { id: 'ch_1', name: 'React 19 Official Docs', meta: '技术查阅 · 14 次跳转', val: '52m', pct: 80, color: 'var(--accent-orange)' },
+                    { id: 'ch_2', name: 'StackOverflow - Tauri v2 tray icon', meta: '问题搜索 · 8 次跳转', val: '30m', pct: 40, color: 'var(--accent-orange)' },
+                    { id: 'ch_3', name: 'GitHub - tauri-apps/tauri', meta: '源码参考 · 3 次跳转', val: '22m', pct: 30, color: 'var(--accent-orange)' }
+                ]
+            },
+            'wechat': {
+                title: '微信 (WeChat) 沟通分析', total: '42m',
+                items: [
+                    { id: 'wc_1', name: '产品设计讨论群 (5)', meta: '群聊协作 · 85 条消息', val: '28m', pct: 70, color: 'var(--accent-green)' },
+                    { id: 'wc_2', name: '文件传输助手', meta: '资料交换 · 12 个文件', val: '8m', pct: 20, color: 'var(--accent-green)' },
+                    { id: 'wc_3', name: '技术总监 - 老王', meta: '私聊确认 · 15 条消息', val: '6m', pct: 10, color: 'var(--accent-green)' }
+                ]
+            }
+        };
+
+        function openLevel2(appKey) {
+            const data = drilldownData[appKey] || { title: '应用详情', items: [] };
+            document.getElementById('l2-title').innerText = data.title;
+            const contentDiv = document.getElementById('l2-content');
+            contentDiv.innerHTML = '';
+            data.items.forEach(item => {
+                contentDiv.innerHTML += `
+                    <div class="log-item" onclick="openLevel3('${item.id}', '${item.name}')">
+                        <div class="log-content"><div class="log-title">${item.name}</div><div class="log-subtitle">${item.meta}</div></div>
+                        <div class="log-value"><span style="font-family:var(--font-mono);font-weight:600;">${item.val}</span></div>
+                        <i class="fa-solid fa-chevron-right" style="margin-left:1.5rem;opacity:0.5;"></i>
+                    </div>`;
+            });
+            document.getElementById('tab-overview').classList.add('slide-left');
+            document.getElementById('layer-level2').classList.add('active');
+        }
+
+        function backToLevel1() {
+            document.getElementById('layer-level2').classList.remove('active');
+            document.getElementById('tab-overview').classList.remove('slide-left');
+        }
+
+        function openLevel3(itemId, itemName) {
+            document.getElementById('l3-title').innerText = itemName;
+            const contentDiv = document.getElementById('l3-content');
+            contentDiv.innerHTML = '';
+            const times = ["10:24:12", "10:24:45", "10:25:10", "10:25:38", "10:26:05", "10:26:42"];
+            times.forEach((time, i) => {
+                contentDiv.innerHTML += `
+                    <div class="shot-card" onclick="openPreview('${time}', '${itemName}')">
+                        <div class="shot-img-placeholder"></div>
+                        <div class="shot-meta"><div class="shot-time">${time} AM</div><div class="shot-desc">快照捕获 · 45KB</div></div>
+                    </div>`;
+            });
+            document.getElementById('layer-level2').classList.add('slide-left');
+            document.getElementById('layer-level3').classList.add('active');
+        }
+
+        function openPreview(time, title) {
+            const overlay = document.getElementById('preview-overlay');
+            document.getElementById('preview-meta-time').innerText = time;
+            document.getElementById('preview-meta-title').innerText = title;
+            overlay.style.display = 'flex';
+            setTimeout(() => overlay.classList.add('active'), 10);
+        }
+
+        function closePreview() {
+            const overlay = document.getElementById('preview-overlay');
+            overlay.classList.remove('active');
+            setTimeout(() => overlay.style.display = 'none', 300);
+        }
+
+        // Add ESC key support
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closePreview();
+        });
+
+        function backToLevel2() {
+            document.getElementById('layer-level3').classList.remove('active');
+            document.getElementById('layer-level2').classList.remove('slide-left');
+        }
+
+        const chart = document.getElementById('overviewChart');
+        for (let i = 0; i < 24; i++) {
+            const wrapper = document.createElement('div'); wrapper.className = 'bar-wrapper';
+            let h = (i >= 9 && i <= 17) ? Math.random() * 60 + 20 : Math.random() * 20;
+            const s = document.createElement('div'); s.className='segment'; s.style.height=h+'%'; s.style.background='var(--accent-blue)';
+            wrapper.appendChild(s);
+            chart.appendChild(wrapper);
+        }
+    </script>
+</body>
+</html>

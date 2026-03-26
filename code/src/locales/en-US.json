@@ -1,0 +1,93 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "timeline": "Timeline",
+    "settings": "Settings",
+    "subtitle": "AI Time Tracker"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "startTracking": "Start Tracking",
+    "stopTracking": "Stop Tracking",
+    "timeDistribution": "Time Distribution",
+    "aiInsights": "AI Insights"
+  },
+  "timeline": {
+    "title": "Timeline",
+    "subtitle": "Today's activity — {{count}} events, {{time}} tracked",
+    "refresh": "Refresh",
+    "noEvents": "No events recorded today.",
+    "startHint": "Start tracking to see your timeline."
+  },
+  "overview": {
+    "totalTracked": "Total Tracked",
+    "appSwitches": "App Switches",
+    "appsUsed": "Apps Used",
+    "productivity": "Productivity",
+    "tracking": "● Tracking",
+    "paused": "Paused",
+    "eventsRecorded": "events recorded",
+    "uniqueApps": "unique apps",
+    "aiScore": "AI score",
+    "runAnalysis": "Run analysis"
+  },
+  "distribution": {
+    "noData": "No data yet. Start tracking to see distribution.",
+    "duration": "Duration"
+  },
+  "insights": {
+    "noInsights": "Run AI analysis to get personalized insights.",
+    "generate": "Generate Insights",
+    "analyzing": "Analyzing...",
+    "preview": "Preview Report",
+    "pushFeishu": "Push to Feishu"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Configure your TimeLens experience",
+    "save": "Save",
+    "saved": "✓ Saved",
+    "testConnection": "Test Connection",
+    "testing": "Testing...",
+    "connected": "✓ Connected",
+    "failed": "✗ Failed",
+    "tracking": {
+      "title": "Tracking",
+      "windowTracking": "Window Tracking",
+      "windowTrackingDesc": "Track active windows every 5 seconds"
+    },
+    "ai": {
+      "title": "AI Analysis",
+      "provider": "AI Provider",
+      "providerDesc": "Select the AI service for analysis",
+      "claude": "Claude (Anthropic)",
+      "deepseek": "DeepSeek",
+      "qwen": "Qwen (Alibaba)",
+      "claudeKey": "Claude API Key",
+      "claudeKeyDesc": "Your Anthropic API key for AI-powered activity analysis",
+      "claudeKeyPlaceholder": "sk-ant-...",
+      "deepseekKey": "DeepSeek API Key",
+      "deepseekKeyDesc": "Your DeepSeek API key",
+      "deepseekKeyPlaceholder": "sk-...",
+      "qwenKey": "Qwen API Key",
+      "qwenKeyDesc": "Your Alibaba Cloud DashScope API key",
+      "qwenKeyPlaceholder": "sk-..."
+    },
+    "feishu": {
+      "title": "Feishu Integration",
+      "webhookUrl": "Feishu Webhook URL",
+      "webhookUrlDesc": "Webhook URL to send daily reports to your Feishu channel",
+      "webhookUrlPlaceholder": "https://open.feishu.cn/open-apis/bot/v2/hook/..."
+    },
+    "language": {
+      "title": "Language / 语言",
+      "zh": "简体中文",
+      "en": "English"
+    },
+    "permissions": {
+      "title": "macOS Permissions",
+      "screenRecordingRequired": "Screen Recording Required",
+      "screenRecordingDesc": "TimeLens needs Screen Recording permission to track active windows. Go to System Preferences → Privacy & Security → Screen Recording."
+    }
+  }
+}

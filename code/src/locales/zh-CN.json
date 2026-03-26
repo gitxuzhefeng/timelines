@@ -1,0 +1,93 @@
+{
+  "nav": {
+    "dashboard": "仪表盘",
+    "timeline": "时间线",
+    "settings": "设置",
+    "subtitle": "AI 时间追踪"
+  },
+  "dashboard": {
+    "title": "仪表盘",
+    "startTracking": "开始追踪",
+    "stopTracking": "停止追踪",
+    "timeDistribution": "时间分布",
+    "aiInsights": "AI 洞察"
+  },
+  "timeline": {
+    "title": "时间线",
+    "subtitle": "今日活动 — {{count}} 条记录，{{time}} 已追踪",
+    "refresh": "刷新",
+    "noEvents": "今日暂无记录。",
+    "startHint": "开始追踪以查看时间线。"
+  },
+  "overview": {
+    "totalTracked": "总追踪时间",
+    "appSwitches": "应用切换",
+    "appsUsed": "使用应用",
+    "productivity": "生产力",
+    "tracking": "● 追踪中",
+    "paused": "已暂停",
+    "eventsRecorded": "条活动",
+    "uniqueApps": "个应用",
+    "aiScore": "AI 评分",
+    "runAnalysis": "运行分析"
+  },
+  "distribution": {
+    "noData": "暂无数据。开始追踪以查看分布。",
+    "duration": "时长"
+  },
+  "insights": {
+    "noInsights": "运行 AI 分析以获取个性化洞察。",
+    "generate": "生成洞察",
+    "analyzing": "分析中...",
+    "preview": "本地预览",
+    "pushFeishu": "推送飞书"
+  },
+  "settings": {
+    "title": "设置",
+    "subtitle": "配置您的 TimeLens 体验",
+    "save": "保存",
+    "saved": "✓ 已保存",
+    "testConnection": "测试连接",
+    "testing": "测试中...",
+    "connected": "✓ 连接成功",
+    "failed": "✗ 连接失败",
+    "tracking": {
+      "title": "追踪",
+      "windowTracking": "窗口追踪",
+      "windowTrackingDesc": "每 5 秒追踪活跃窗口"
+    },
+    "ai": {
+      "title": "AI 分析",
+      "provider": "AI 服务商",
+      "providerDesc": "选择用于分析的 AI 服务",
+      "claude": "Claude (Anthropic)",
+      "deepseek": "DeepSeek",
+      "qwen": "通义千问 (Qwen)",
+      "claudeKey": "Claude API Key",
+      "claudeKeyDesc": "您的 Anthropic API Key，用于 AI 活动分析",
+      "claudeKeyPlaceholder": "sk-ant-...",
+      "deepseekKey": "DeepSeek API Key",
+      "deepseekKeyDesc": "您的 DeepSeek API Key",
+      "deepseekKeyPlaceholder": "sk-...",
+      "qwenKey": "通义千问 API Key",
+      "qwenKeyDesc": "您的阿里云 DashScope API Key",
+      "qwenKeyPlaceholder": "sk-..."
+    },
+    "feishu": {
+      "title": "飞书集成",
+      "webhookUrl": "飞书 Webhook URL",
+      "webhookUrlDesc": "用于将每日报告发送到飞书频道的 Webhook URL",
+      "webhookUrlPlaceholder": "https://open.feishu.cn/open-apis/bot/v2/hook/..."
+    },
+    "language": {
+      "title": "语言 / Language",
+      "zh": "简体中文",
+      "en": "English"
+    },
+    "permissions": {
+      "title": "macOS 权限",
+      "screenRecordingRequired": "需要录屏权限",
+      "screenRecordingDesc": "TimeLens 需要录屏权限以追踪活跃窗口。请前往 系统偏好设置 → 隐私与安全性 → 屏幕录制。"
+    }
+  }
+}

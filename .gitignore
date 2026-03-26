@@ -1,0 +1,46 @@
+# ========== code/ 前端与 Tauri ==========
+# Node / pnpm 依赖（勿提交）
+code/node_modules/
+
+# Vite 构建产物
+code/dist/
+
+# Tauri / Rust：编译产物与缓存（体积大、可重建）
+code/src-tauri/target/
+
+# Tauri 生成文件（构建时由 CLI 再生成，可按团队习惯改）
+code/src-tauri/gen/
+
+# ========== 通用依赖与工具缓存 ==========
+.pnpm-store/
+.npm/
+.yarn/
+*.tgz
+
+# ========== 日志与环境 ==========
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+.env.*
+!.env.example
+
+# ========== 系统与编辑器 ==========
+.DS_Store
+**/.DS_Store
+Thumbs.db
+.idea/
+*.swp
+*.swo
+*~
+
+# ========== 测试与覆盖率 ==========
+coverage/
+.nyc_output/
+*.lcov
+
+# ========== 其他 ==========
+*.local
+code/.claude/
