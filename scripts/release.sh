@@ -202,7 +202,8 @@ run "cd \"${REPO_ROOT}\" && npm run test"
 # --- Step 3: tauri build ---
 echo ""
 echo "━━ Step 3/8 Tauri Release 构建（npm run tauri build）━━"
-run "cd \"${REPO_ROOT}\" && npm run tauri build"
+# 部分环境会设置 CI=1，Tauri CLI 2 要求 --ci 为 true/false，会误解析失败，故构建时去掉 CI。
+run "cd \"${REPO_ROOT}\" && env -u CI npm run tauri build"
 
 # --- Step 4: DMG ---
 echo ""
