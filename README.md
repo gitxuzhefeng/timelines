@@ -16,7 +16,7 @@
 
 ---
 
-> **AI 驱动的个人时间透视镜** —— 在 macOS 上自动、被动地记录你的电脑使用行为，用客观数据看清时间真正流向了哪里。（Windows 端采集与打包已合入主干，详见 `docs/windows兼容项目/`。）
+> **AI 驱动的个人时间透视镜** —— 在 macOS 上自动、被动地记录你的电脑使用行为，用客观数据看清时间真正流向了哪里。（Windows 端采集与打包已合入主干，上手与版本要求见 [docs/windows兼容项目/Windows上手.md](docs/windows兼容项目/Windows上手.md)。）
 
 每天面对屏幕八小时，却说不清这八小时里究竟发生了什么？TimeLens 用**零手动打卡**的采集方式，把窗口、应用与情境截图连成可追溯的时间线，让主观感受与真实行为对齐。
 
@@ -84,7 +84,7 @@
 
 ## 快速开始（开发者）
 
-**前置条件**：Node.js、Rust 工具链、macOS 下 Tauri 所需系统依赖（参见 [Tauri 官方文档](https://v2.tauri.app/start/prerequisites/)）。
+**前置条件**：Node.js、Rust 工具链、各平台 Tauri 系统依赖（macOS 见官方文档；**Windows 见 [Windows 上手](docs/windows兼容项目/Windows上手.md)**；总览见 [Tauri 前置条件](https://v2.tauri.app/start/prerequisites/)）。
 
 ```bash
 # 仓库根目录：安装依赖并启动开发模式
@@ -102,7 +102,7 @@ npm run tauri dev
 | `npm test` | 运行 Rust 侧测试 |
 | `npm run release` | 发布构建（见 `scripts/release.sh`） |
 
-安装包与分发流程可参考：[docs/DMG打包指南.md](docs/DMG打包指南.md)。
+安装包与分发流程可参考：[docs/DMG打包指南.md](docs/DMG打包指南.md)（macOS）、[docs/windows兼容项目/Windows上手.md](docs/windows兼容项目/Windows上手.md) 与 [绿色版打包说明](docs/windows兼容项目/绿色版打包说明.md)（Windows）。
 
 ---
 
@@ -114,6 +114,7 @@ npm run tauri dev
 | [TimeLens_用户使用手册.md](docs/TimeLens_用户使用手册.md) | 上手与日常使用 |
 | [M9_验收与测试.md](docs/M9_验收与测试.md) | 验收与测试说明 |
 | [TimeLens_产品迭代规范.md](docs/TimeLens_产品迭代规范.md) | 迭代阶段闸门、文档矩阵、接口与测试交付标准 |
+| [windows兼容项目/Windows上手.md](docs/windows兼容项目/Windows上手.md) | Windows 环境版本、开发/构建/绿色版与常见问题 |
 
 ---
 
