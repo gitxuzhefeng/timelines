@@ -30,12 +30,15 @@ impl DataPaths {
 
     pub fn ensure_dirs(&self) -> Result<(), std::io::Error> {
         use std::fs;
-        use std::os::unix::fs::PermissionsExt;
         fs::create_dir_all(&self.data_dir)?;
         fs::create_dir_all(&self.shots_dir)?;
-        let mode = fs::Permissions::from_mode(0o700);
-        let _ = fs::set_permissions(&self.root, mode.clone());
-        let _ = fs::set_permissions(&self.data_dir, mode);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = fs::Permissions::from_mode(0o700);
+            let _ = fs::set_permissions(&self.root, mode.clone());
+            let _ = fs::set_permissions(&self.data_dir, mode);
+        }
         Ok(())
     }
 }

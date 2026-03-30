@@ -13,9 +13,17 @@ static URL_IN_TITLE: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 pub fn should_redact_bundle(bundle_id: &str) -> bool {
-    BLACKLIST_BUNDLE
+    if BLACKLIST_BUNDLE
         .iter()
         .any(|b| bundle_id.eq_ignore_ascii_case(b))
+    {
+        return true;
+    }
+    let lower = bundle_id.to_lowercase();
+    lower.contains("1password")
+        || lower.contains("keychain")
+        || lower.contains("credentialui")
+        || lower.contains("credwiz")
 }
 
 pub fn redact_title(title: &str) -> String {
@@ -49,9 +57,11 @@ pub fn extract_url_and_path(title: &str) -> (Option<String>, Option<String>) {
     let url = URL_IN_TITLE
         .captures(title)
         .and_then(|c| c.get(1).map(|m| trim_url_params(m.as_str())));
-    let path_hint = if title.contains('/') && (title.contains(".rs") || title.contains(".ts")) {
+    let path_hint = if (title.contains('/') || title.contains('\\'))
+        && (title.contains(".rs") || title.contains(".ts"))
+    {
         static FILEISH: LazyLock<Regex> = LazyLock::new(|| {
-            Regex::new(r"([\w./~-]+\.(?:rs|ts|tsx|js|json|md|py))\b").expect("regex")
+            Regex::new(r"([\w./\\~-]+\.(?:rs|ts|tsx|js|json|md|py))\b").expect("regex")
         });
         FILEISH
             .captures(title)
@@ -98,5 +108,12 @@ mod tests {
     fn should_redact_keychain_bundle() {
         assert!(should_redact_bundle("com.apple.keychainaccess"));
         assert!(!should_redact_bundle("com.timelens.app"));
+    }
+
+    #[test]
+    fn should_redact_windows_exe_path_hints() {
+        assert!(should_redact_bundle(
+            r"C:\Program Files\1Password\1Password.exe"
+        ));
     }
 }

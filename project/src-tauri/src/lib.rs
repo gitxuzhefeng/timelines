@@ -86,7 +86,7 @@ pub fn run() {
             let running = Arc::new(AtomicBool::new(true));
             let is_afk = Arc::new(AtomicBool::new(false));
             let screen_ok = Arc::new(AtomicBool::new(false));
-            #[cfg(target_os = "macos")]
+            #[cfg(any(target_os = "macos", target_os = "windows"))]
             {
                 screen_ok.store(
                     core::acquisition::screen_capture_refresh_access(),
@@ -106,7 +106,7 @@ pub fn run() {
                 current_session.clone(),
                 is_afk.clone(),
             );
-            #[cfg(target_os = "macos")]
+            #[cfg(any(target_os = "macos", target_os = "windows"))]
             core::collection::capture::spawn_capture_thread(
                 cap_rx,
                 writer.clone(),
@@ -116,11 +116,11 @@ pub fn run() {
                 screen_ok.clone(),
                 handle.clone(),
             );
-            #[cfg(not(target_os = "macos"))]
+            #[cfg(not(any(target_os = "macos", target_os = "windows")))]
             std::thread::spawn(move || {
                 while cap_rx.recv().is_ok() {}
             });
-            #[cfg(target_os = "macos")]
+            #[cfg(any(target_os = "macos", target_os = "windows"))]
             core::collection::tracker::spawn_tracker_thread(
                 handle.clone(),
                 agg_tx,
@@ -146,7 +146,7 @@ pub fn run() {
                 capture_tx: cap_tx,
             }));
             app.manage(state);
-            #[cfg(all(desktop, target_os = "macos"))]
+            #[cfg(all(desktop, any(target_os = "macos", target_os = "windows")))]
             if let Some(win) = app.get_webview_window("main") {
                 win.on_window_event(move |e| {
                     if matches!(e, tauri::WindowEvent::Focused(true)) {
@@ -163,13 +163,11 @@ pub fn run() {
                 let _ = wh.emit("writer_stats_updated", wm_emit.snapshot(0));
             });
             let ps = core::models::PermissionStatus {
-                accessibility_granted: cfg!(target_os = "macos")
-                    && core::acquisition::ax_trusted(),
-                screen_recording_granted: cfg!(target_os = "macos")
-                    && core::acquisition::screen_capture_granted(),
+                accessibility_granted: core::acquisition::ax_trusted(),
+                screen_recording_granted: core::acquisition::screen_capture_granted(),
             };
             let _ = handle.emit("permissions_required", ps);
-            #[cfg(all(desktop, target_os = "macos"))]
+            #[cfg(all(desktop, any(target_os = "macos", target_os = "windows")))]
             {
                 use tauri::menu::{Menu, MenuItem};
                 use tauri::tray::TrayIconBuilder;

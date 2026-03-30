@@ -36,6 +36,44 @@ fn capture_scale_and_quality(sig: &CaptureSignal) -> (u32, f32) {
     }
 }
 
+fn grab_screen_image() -> Result<DynamicImage, String> {
+    #[cfg(target_os = "macos")]
+    {
+        let tmp = std::env::temp_dir().join(format!("tl_cap_{}.png", Uuid::new_v4()));
+        let status = Command::new("/usr/sbin/screencapture")
+            .args(["-x", "-t", "png", "-D", "1"])
+            .arg(&tmp)
+            .status();
+        if status.map(|s| !s.success()).unwrap_or(true) {
+            return Err("screencapture failed".into());
+        }
+        if !tmp.exists() {
+            return Err("screencapture produced no file".into());
+        }
+        let img = image::open(&tmp).map_err(|e| e.to_string())?;
+        let _ = fs::remove_file(&tmp);
+        Ok(img)
+    }
+    #[cfg(target_os = "windows")]
+    {
+        use screenshots::Screen;
+        let screens = Screen::all().map_err(|e| e.to_string())?;
+        let screen = screens
+            .first()
+            .ok_or_else(|| "no display".to_string())?;
+        let captured = screen.capture().map_err(|e| e.to_string())?;
+        let (w, h) = (captured.width(), captured.height());
+        let raw = captured.into_raw();
+        let rgba = image::RgbaImage::from_raw(w, h, raw)
+            .ok_or_else(|| "invalid RGBA buffer from screen capture".to_string())?;
+        Ok(DynamicImage::ImageRgba8(rgba))
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        Err("screen capture unsupported on this platform".into())
+    }
+}
+
 fn scale_to_max_width(img: DynamicImage, max_w: u32) -> DynamicImage {
     let (w, h) = img.dimensions();
     if w <= max_w {
@@ -110,28 +148,13 @@ pub fn spawn_capture_thread(
                 continue;
             };
             wait_session(read_conn.as_ref(), &sid);
-            let tmp = std::env::temp_dir().join(format!("tl_cap_{}.png", Uuid::new_v4()));
-            let status = Command::new("/usr/sbin/screencapture")
-                .args(["-x", "-t", "png", "-D", "1"])
-                .arg(&tmp)
-                .status();
-            if status.map(|s| !s.success()).unwrap_or(true) {
-                warn!("screencapture failed");
-                continue;
-            }
-            if !tmp.exists() {
-                warn!("screencapture produced no file");
-                continue;
-            }
-            let img = match image::open(&tmp) {
+            let img = match grab_screen_image() {
                 Ok(i) => i,
                 Err(e) => {
-                    warn!("decode png: {e}");
-                    let _ = fs::remove_file(&tmp);
+                    warn!("screen grab: {e}");
                     continue;
                 }
             };
-            let _ = fs::remove_file(&tmp);
             let (max_w, webp_q) = capture_scale_and_quality(&sig);
             let scaled = scale_to_max_width(img, max_w);
             let (sw, sh) = scaled.dimensions();

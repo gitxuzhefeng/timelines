@@ -23,13 +23,13 @@
       "csp": null,
       "assetProtocol": {
         "enable": true,
-        "scope": ["$HOME/.timelens/**"]
+        "scope": ["$HOME/.timelens/**", "$USERPROFILE/.timelens/**"]
       }
     }
   },
   "bundle": {
     "active": true,
-    "targets": ["dmg"],
+    "targets": ["dmg", "nsis"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

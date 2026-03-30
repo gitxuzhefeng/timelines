@@ -28,6 +28,7 @@ yarn-error.log*
 !.env.example
 
 # ========== 系统与编辑器 ==========
+.cursor/
 .DS_Store
 **/.DS_Store
 Thumbs.db
