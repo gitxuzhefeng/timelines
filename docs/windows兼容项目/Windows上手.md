@@ -155,6 +155,7 @@ project\src-tauri\target\release\bundle\
 | **SmartScreen 已阻止** | 点「更多信息」→「仍要运行」。未签名二进制在公网分发时较常见；企业环境可后续做代码签名。 |
 | **界面白屏（Win10）** | 优先安装 §2.4 的 WebView2 Evergreen，重启应用。 |
 | **构建报错找不到 link.exe / Windows SDK** | 回到 §2.3，确认 C++ 桌面开发工作负载已装全，并**重启终端**。 |
+| **截图文件已有，主界面预览空白** | 已修复：WebView2 要求预览地址使用 `http://timelens.localhost/snapshot/{id}`，不能使用 `timelens://…` 作为 `<img src>`。请拉取最新代码；若仍异常，在开发者工具 Network 中查看该请求是否 200。 |
 
 ---
 

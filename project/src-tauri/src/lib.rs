@@ -11,6 +11,9 @@ use tauri::{Emitter, Manager};
 
 pub struct AppState(pub Arc<AppStateInner>);
 
+/// 为截图 WebP 提供 `timelens://localhost/snapshot/{id}` 响应（按 id 查库读盘）。
+/// 注意：WebView2 / Android 上 `<img>` 等子资源须使用 `http://timelens.localhost/snapshot/{id}`，
+/// 由 wry 还原为上述 scheme 后再进入本 handler（见 wry `custom_protocol_workaround`）。
 fn timelens_uri_response<R: tauri::Runtime>(
     ctx: tauri::UriSchemeContext<'_, R>,
     request: tauri::http::Request<Vec<u8>>,

@@ -72,6 +72,23 @@ export interface WriterStats {
   channelPendingEstimate: number;
 }
 
+/**
+ * 截图预览 URL（对应 Rust `register_uri_scheme_protocol("timelens", …)`）。
+ *
+ * WebView2（Windows）与 Android WebView 对非标准 URL Scheme 有限制：子资源请求（如 `<img src>`）
+ * 不会走 `timelens://…`，必须使用 wry 的 workaround URL `http://{scheme}.localhost/…`，
+ * 由运行时拦截并还原为 `timelens://localhost/…` 再交给自定义协议处理器。
+ * @see https://github.com/tauri-apps/wry/blob/dev/src/custom_protocol_workaround.rs
+ */
+function usesCustomProtocolLocalhostWorkaround(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /Windows NT|Android/i.test(navigator.userAgent);
+}
+
 export function snapshotTimelensUrl(snapshotId: string): string {
-  return `timelens://localhost/snapshot/${snapshotId}`;
+  const path = `snapshot/${snapshotId}`;
+  if (usesCustomProtocolLocalhostWorkaround()) {
+    return `http://timelens.localhost/${path}`;
+  }
+  return `timelens://localhost/${path}`;
 }
