@@ -1,17 +1,17 @@
-# ========== code/ 前端与 Tauri ==========
-# Node / pnpm 依赖（勿提交）
+# ========== 应用目录 project/（Tauri + Vite）==========
+project/node_modules/
+project/dist/
+project/src-tauri/target/
+project/src-tauri/gen/
+
+# ========== 历史路径 code/（已废弃，保留规则以免误提交）==========
 code/node_modules/
-
-# Vite 构建产物
 code/dist/
-
-# Tauri / Rust：编译产物与缓存（体积大、可重建）
 code/src-tauri/target/
-
-# Tauri 生成文件（构建时由 CLI 再生成，可按团队习惯改）
 code/src-tauri/gen/
 
 # ========== 通用依赖与工具缓存 ==========
+.vite/
 .pnpm-store/
 .npm/
 .yarn/

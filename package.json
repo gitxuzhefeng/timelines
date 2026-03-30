@@ -1,0 +1,13 @@
+{
+  "name": "timelens-repo",
+  "private": true,
+  "description": "仓库根目录：应用代码在 project/，在此可快捷执行 npm scripts",
+  "scripts": {
+    "dev": "npm run dev --prefix project",
+    "build": "npm run build --prefix project",
+    "preview": "npm run preview --prefix project",
+    "tauri": "npm run tauri --prefix project",
+    "test": "npm run test --prefix project",
+    "release": "bash scripts/release.sh"
+  }
+}

@@ -1,0 +1,249 @@
+mod api;
+mod core;
+
+use std::borrow::Cow;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, RwLock};
+
+use parking_lot::Mutex;
+use tauri::http::{header, status::StatusCode, Response};
+use tauri::{Emitter, Manager};
+
+pub struct AppState(pub Arc<AppStateInner>);
+
+fn timelens_uri_response<R: tauri::Runtime>(
+    ctx: tauri::UriSchemeContext<'_, R>,
+    request: tauri::http::Request<Vec<u8>>,
+) -> Response<Cow<'static, [u8]>> {
+    let nf = || {
+        Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
+            .body(Cow::from(&b"not found"[..]))
+            .unwrap()
+    };
+    let path = request.uri().path();
+    let id = path
+        .strip_prefix("/snapshot/")
+        .map(|s| s.trim_matches('/'))
+        .filter(|s| !s.is_empty());
+    let Some(id) = id else {
+        return nf();
+    };
+    let Some(state) = ctx.app_handle().try_state::<AppState>() else {
+        return nf();
+    };
+    let fp: rusqlite::Result<String> = state.0.read_conn.lock().query_row(
+        "SELECT file_path FROM snapshots WHERE id = ?1",
+        [id],
+        |r| r.get(0),
+    );
+    let Ok(fp) = fp else {
+        return nf();
+    };
+    if fp.is_empty() {
+        return nf();
+    }
+    match std::fs::read(&fp) {
+        Ok(data) => Response::builder()
+            .status(StatusCode::OK)
+            .header(header::CONTENT_TYPE, "image/webp")
+            .body(Cow::from(data))
+            .unwrap(),
+        Err(_) => nf(),
+    }
+}
+
+pub struct AppStateInner {
+    pub paths: core::storage::DataPaths,
+    pub read_conn: Arc<Mutex<rusqlite::Connection>>,
+    pub writer: core::writer::WriterHandle,
+    pub writer_metrics: Arc<core::writer::WriterMetrics>,
+    pub tracking: Arc<AtomicBool>,
+    pub running: Arc<AtomicBool>,
+    pub is_afk: Arc<AtomicBool>,
+    pub screen_ok: Arc<AtomicBool>,
+    pub current_session: Arc<RwLock<Option<String>>>,
+    pub capture_tx: crossbeam_channel::Sender<core::models::CaptureSignal>,
+}
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+
+    tauri::Builder::default()
+        .register_uri_scheme_protocol("timelens", timelens_uri_response)
+        .setup(|app| {
+            let paths = core::storage::DataPaths::new().map_err(|e| format!("{e}"))?;
+            paths.ensure_dirs().map_err(|e| format!("{e}"))?;
+            let wconn =
+                core::storage::db::open_write(&paths.db_path).map_err(|e| format!("{e}"))?;
+            let metrics = Arc::new(core::writer::WriterMetrics::default());
+            let writer = core::writer::spawn_writer_thread(wconn, metrics.clone());
+            let read_conn =
+                core::storage::db::open_read(&paths.db_path).map_err(|e| format!("{e}"))?;
+            let tracking = Arc::new(AtomicBool::new(false));
+            let running = Arc::new(AtomicBool::new(true));
+            let is_afk = Arc::new(AtomicBool::new(false));
+            let screen_ok = Arc::new(AtomicBool::new(false));
+            #[cfg(target_os = "macos")]
+            {
+                screen_ok.store(
+                    core::acquisition::screen_capture_refresh_access(),
+                    Ordering::Relaxed,
+                );
+            }
+            let current_session = Arc::new(RwLock::new(None));
+            let (agg_tx, agg_rx) = std::sync::mpsc::channel::<core::models::AggregationCmd>();
+            let (cap_tx, cap_rx) =
+                crossbeam_channel::bounded::<core::models::CaptureSignal>(64);
+            let handle = app.handle().clone();
+            core::aggregation::spawn_aggregation_thread(
+                handle.clone(),
+                agg_rx,
+                writer.clone(),
+                read_conn.clone(),
+                current_session.clone(),
+                is_afk.clone(),
+            );
+            #[cfg(target_os = "macos")]
+            core::collection::capture::spawn_capture_thread(
+                cap_rx,
+                writer.clone(),
+                read_conn.clone(),
+                paths.clone(),
+                is_afk.clone(),
+                screen_ok.clone(),
+                handle.clone(),
+            );
+            #[cfg(not(target_os = "macos"))]
+            std::thread::spawn(move || {
+                while cap_rx.recv().is_ok() {}
+            });
+            #[cfg(target_os = "macos")]
+            core::collection::tracker::spawn_tracker_thread(
+                handle.clone(),
+                agg_tx,
+                cap_tx.clone(),
+                writer.clone(),
+                tracking.clone(),
+                running.clone(),
+                is_afk.clone(),
+                current_session.clone(),
+            );
+            let screen_ok_on_focus = screen_ok.clone();
+            let wm_emit = metrics.clone();
+            let state = AppState(Arc::new(AppStateInner {
+                paths,
+                read_conn,
+                writer,
+                writer_metrics: metrics,
+                tracking,
+                running,
+                is_afk,
+                screen_ok,
+                current_session,
+                capture_tx: cap_tx,
+            }));
+            app.manage(state);
+            #[cfg(all(desktop, target_os = "macos"))]
+            if let Some(win) = app.get_webview_window("main") {
+                win.on_window_event(move |e| {
+                    if matches!(e, tauri::WindowEvent::Focused(true)) {
+                        screen_ok_on_focus.store(
+                            core::acquisition::screen_capture_refresh_access(),
+                            Ordering::Relaxed,
+                        );
+                    }
+                });
+            }
+            let wh = handle.clone();
+            std::thread::spawn(move || loop {
+                std::thread::sleep(std::time::Duration::from_secs(10));
+                let _ = wh.emit("writer_stats_updated", wm_emit.snapshot(0));
+            });
+            let ps = core::models::PermissionStatus {
+                accessibility_granted: cfg!(target_os = "macos")
+                    && core::acquisition::ax_trusted(),
+                screen_recording_granted: cfg!(target_os = "macos")
+                    && core::acquisition::screen_capture_granted(),
+            };
+            let _ = handle.emit("permissions_required", ps);
+            #[cfg(all(desktop, target_os = "macos"))]
+            {
+                use tauri::menu::{Menu, MenuItem};
+                use tauri::tray::TrayIconBuilder;
+                let h = app.handle();
+                let show = MenuItem::with_id(h, "show", "打开主窗口", true, None::<&str>)?;
+                let start = MenuItem::with_id(h, "start", "开始采集", true, None::<&str>)?;
+                let stop = MenuItem::with_id(h, "stop", "停止采集", true, None::<&str>)?;
+                let quit = MenuItem::with_id(h, "quit", "退出", true, None::<&str>)?;
+                let menu = Menu::with_items(h, &[&show, &start, &stop, &quit])?;
+                let mut tray = TrayIconBuilder::with_id("timelens_tray")
+                    .menu(&menu)
+                    .show_menu_on_left_click(true)
+                    .tooltip("TimeLens");
+                if let Some(icon) = h.default_window_icon() {
+                    tray = tray.icon(icon.clone());
+                }
+                let _tray_icon = tray
+                    .on_menu_event(move |app, event| {
+                        let id = event.id.as_ref();
+                        match id {
+                            "show" => {
+                                if let Some(w) = app.get_webview_window("main") {
+                                    let _ = w.show();
+                                    let _ = w.set_focus();
+                                }
+                            }
+                            "start" => {
+                                if let Some(s) = app.try_state::<AppState>() {
+                                    s.0.tracking.store(true, Ordering::Relaxed);
+                                    let _ = app.emit(
+                                        "tracking_state_changed",
+                                        serde_json::json!({ "isRunning": true }),
+                                    );
+                                }
+                            }
+                            "stop" => {
+                                if let Some(s) = app.try_state::<AppState>() {
+                                    s.0.tracking.store(false, Ordering::Relaxed);
+                                    let _ = app.emit(
+                                        "tracking_state_changed",
+                                        serde_json::json!({ "isRunning": false }),
+                                    );
+                                }
+                            }
+                            "quit" => app.exit(0),
+                            _ => {}
+                        }
+                    })
+                    .build(h)?;
+                std::mem::forget(_tray_icon);
+            }
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            api::start_tracking,
+            api::stop_tracking,
+            api::is_tracking,
+            api::restart_tracking,
+            api::trigger_screenshot,
+            api::check_permissions,
+            api::open_accessibility_settings,
+            api::open_screen_recording_settings,
+            api::get_sessions,
+            api::get_session_snapshots,
+            api::get_activity_stats,
+            api::get_all_app_meta,
+            api::get_app_switches,
+            api::get_storage_stats,
+            api::open_data_dir,
+            api::get_raw_events_recent,
+            api::get_writer_stats,
+            api::run_retention_cleanup,
+            api::checkpoint_wal,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}

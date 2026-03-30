@@ -1,0 +1,252 @@
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PermissionStatus {
+    pub accessibility_granted: bool,
+    pub screen_recording_granted: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WindowSession {
+    pub id: String,
+    pub start_ms: i64,
+    pub end_ms: i64,
+    pub duration_ms: i64,
+    pub app_name: String,
+    pub bundle_id: Option<String>,
+    pub window_title: String,
+    pub extracted_url: Option<String>,
+    pub extracted_file_path: Option<String>,
+    pub intent: Option<String>,
+    pub raw_event_count: i64,
+    pub is_active: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Snapshot {
+    pub id: String,
+    pub session_id: String,
+    pub file_path: String,
+    pub captured_at_ms: i64,
+    pub file_size_bytes: i64,
+    pub trigger_type: String,
+    pub resolution: Option<String>,
+    pub format: String,
+    pub perceptual_hash: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SnapshotPayload {
+    pub snapshot: Snapshot,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppMeta {
+    pub app_name: String,
+    pub bundle_id: Option<String>,
+    pub icon_base64: Option<String>,
+    pub category: Option<String>,
+    pub first_seen_ms: Option<i64>,
+    pub last_seen_ms: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppSwitch {
+    pub id: String,
+    pub timestamp_ms: i64,
+    pub from_app: String,
+    pub from_bundle_id: Option<String>,
+    pub from_window_title: Option<String>,
+    pub to_app: String,
+    pub to_bundle_id: Option<String>,
+    pub to_window_title: Option<String>,
+    pub from_session_duration_ms: i64,
+    pub switch_type: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RawEvent {
+    pub id: String,
+    pub timestamp_ms: i64,
+    pub app_name: String,
+    pub bundle_id: Option<String>,
+    pub window_title: String,
+    pub extracted_url: Option<String>,
+    pub extracted_file_path: Option<String>,
+    pub idle_seconds: f64,
+    pub is_fullscreen: bool,
+    pub is_audio_playing: bool,
+    pub state_hash: i64,
+    pub trigger_type: String,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActivityStats {
+    pub date: String,
+    pub session_count: i64,
+    pub snapshot_count: i64,
+    pub switch_count: i64,
+    pub raw_event_count: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StorageStats {
+    pub db_size_bytes: u64,
+    pub shots_size_bytes: u64,
+    pub raw_event_count: i64,
+    pub session_count: i64,
+    pub snapshot_count: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WriterStats {
+    pub total_batches: u64,
+    pub total_events: u64,
+    pub avg_batch_size: f64,
+    pub avg_latency_ms: f64,
+    pub last_batch_events: u32,
+    pub last_batch_ms: u64,
+    pub channel_pending_estimate: u32,
+}
+
+#[derive(Debug, Clone)]
+pub struct RawEventRow {
+    pub id: String,
+    pub timestamp_ms: i64,
+    pub app_name: String,
+    pub bundle_id: Option<String>,
+    pub window_title: String,
+    pub extracted_url: Option<String>,
+    pub extracted_file_path: Option<String>,
+    pub idle_seconds: f64,
+    pub is_fullscreen: i64,
+    pub is_audio_playing: i64,
+    pub state_hash: i64,
+    pub trigger_type: String,
+    pub created_at: i64,
+}
+
+#[derive(Debug, Clone)]
+pub struct AppSwitchRow {
+    pub id: String,
+    pub timestamp_ms: i64,
+    pub from_app: String,
+    pub from_bundle_id: Option<String>,
+    pub from_window_title: Option<String>,
+    pub to_app: String,
+    pub to_bundle_id: Option<String>,
+    pub to_window_title: Option<String>,
+    pub from_session_duration_ms: i64,
+    pub switch_type: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct SnapshotRow {
+    pub id: String,
+    pub session_id: String,
+    pub file_path: String,
+    pub captured_at_ms: i64,
+    pub file_size_bytes: i64,
+    pub trigger_type: String,
+    pub resolution: Option<String>,
+    pub format: String,
+    pub perceptual_hash: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub enum SessionUpdateOp {
+    Insert {
+        id: String,
+        start_ms: i64,
+        end_ms: i64,
+        duration_ms: i64,
+        app_name: String,
+        bundle_id: Option<String>,
+        window_title: String,
+        extracted_url: Option<String>,
+        extracted_file_path: Option<String>,
+        intent: Option<String>,
+        raw_event_count: i64,
+        is_active: i64,
+    },
+    Close {
+        id: String,
+        end_ms: i64,
+        duration_ms: i64,
+    },
+    DeactivateAll,
+    BumpRawCount {
+        id: String,
+        end_ms: i64,
+        duration_ms: i64,
+        delta: i64,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum WriteEvent {
+    RawEvent(RawEventRow),
+    AppSwitch(AppSwitchRow),
+    Snapshot(SnapshotRow),
+    SessionUpdate(SessionUpdateOp),
+    /// Delete old raw rows; clear snapshot file paths after deleting files on disk.
+    Retention {
+        raw_cutoff_ms: i64,
+        snapshot_cutoff_ms: i64,
+    },
+    WalCheckpoint,
+    Shutdown,
+}
+
+#[derive(Debug, Clone)]
+pub struct CaptureSignal {
+    pub priority: CapturePriority,
+    pub session_id: Option<String>,
+    pub trigger_type: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CapturePriority {
+    High,
+    Low,
+}
+
+#[derive(Debug, Clone)]
+pub enum AggregationCmd {
+    Shutdown,
+    /// New foreground state after privacy filter (each tick when not AFK).
+    Tick {
+        timestamp_ms: i64,
+        app_name: String,
+        bundle_id: Option<String>,
+        window_title: String,
+        extracted_url: Option<String>,
+        extracted_file_path: Option<String>,
+        trigger_type: String,
+        state_hash: i64,
+    },
+    EnterAfk {
+        timestamp_ms: i64,
+        idle_seconds: f64,
+    },
+    ExitAfk {
+        timestamp_ms: i64,
+        app_name: String,
+        bundle_id: Option<String>,
+        window_title: String,
+        extracted_url: Option<String>,
+        extracted_file_path: Option<String>,
+        state_hash: i64,
+    },
+}
