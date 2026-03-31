@@ -143,6 +143,12 @@
       border: 1px solid var(--stroke);
     }
     .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+    a.btn {
+      text-decoration: none;
+      display: inline-block;
+      box-sizing: border-box;
+      text-align: center;
+    }
 
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(24px); }
@@ -543,6 +549,55 @@
       font-weight: 600;
     }
 
+    /* Download / contact */
+    #download .download-panel {
+      margin-top: 1.5rem;
+      display: grid;
+      gap: 1.25rem;
+      grid-template-columns: 1fr 1fr;
+      align-items: start;
+    }
+    @media (max-width: 768px) {
+      #download .download-panel { grid-template-columns: 1fr; }
+    }
+    .download-card {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--stroke);
+      border-radius: 14px;
+      padding: 1.35rem 1.5rem;
+    }
+    .download-card h3 {
+      font-size: 0.95rem;
+      margin-bottom: 0.65rem;
+      color: var(--text);
+    }
+    .download-card p {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.55;
+      margin-bottom: 1rem;
+    }
+    .download-card .btn { margin-top: 0.25rem; }
+    .download-card a.mono {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: var(--accent);
+      word-break: break-all;
+    }
+    .download-card .qr {
+      max-width: 200px;
+      width: 100%;
+      height: auto;
+      border-radius: 10px;
+      border: 1px solid var(--stroke);
+      margin-top: 0.5rem;
+    }
+    .download-card .qr-cap {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 0.35rem;
+    }
+
     [data-reveal] {
       opacity: 0;
       transform: translateY(28px);
@@ -567,7 +622,14 @@
         被动采集窗口、截图与输入行为学信号，在本地结构化沉淀为可追溯的数据底座；为多模态 AI 解读与自然语言日报备好「原材料」——让你看清时间真实流向，而非主观错觉。
       </p>
       <div class="hero-cta">
-        <button type="button" class="btn btn-primary" onclick="document.getElementById('pipeline').scrollIntoView({behavior:'smooth'})">探索数据管道</button>
+        <a
+          class="btn btn-primary"
+          href="https://github.com/gitxuzhefeng/timelines/releases/tag/v0.1.0"
+          target="_blank"
+          rel="noopener noreferrer"
+        >GitHub 下载 v0.1.0</a>
+        <a class="btn btn-ghost" href="#download">索取安装包（邮件 / 微信）</a>
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('pipeline').scrollIntoView({behavior:'smooth'})">探索数据管道</button>
         <button type="button" class="btn btn-ghost" onclick="document.getElementById('ai').scrollIntoView({behavior:'smooth'})">感受 AI 洞察</button>
       </div>
 
@@ -743,6 +805,48 @@
           <p style="margin-top:1rem;font-size:0.82rem;color:var(--muted);">
             衍生指标（心流 / 挣扎 / 搬运 / 疲劳）由一期聚合字段计算，供二期模型与规则层联合消费——底座越厚，叙事越准。
           </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" id="download" data-reveal>
+      <div class="section-head">
+        <p class="section-kicker">Download</p>
+        <h2>获取 TimeLens</h2>
+        <p class="section-desc">
+          当前版本 <strong style="color:var(--accent);">v0.1.0</strong>：可自行从 GitHub Release 下载 macOS / Windows 安装包，或通过邮件、微信联系索取安装包与内测说明。
+        </p>
+      </div>
+      <div class="download-panel">
+        <div class="download-card">
+          <h3>方式一 · GitHub 自行下载</h3>
+          <p>在 Release 页面的 Assets 中选择对应系统的安装包（如 DMG、EXE）。</p>
+          <a
+            class="btn btn-primary"
+            href="https://github.com/gitxuzhefeng/timelines/releases/tag/v0.1.0"
+            target="_blank"
+            rel="noopener noreferrer"
+          >打开 v0.1.0 发布页</a>
+          <p style="margin-top:1rem;margin-bottom:0;">
+            <a class="mono" href="https://github.com/gitxuzhefeng/timelines" target="_blank" rel="noopener noreferrer">github.com/gitxuzhefeng/timelines</a>
+          </p>
+        </div>
+        <div class="download-card">
+          <h3>方式二 · 联系索取安装包</h3>
+          <p>需要直接发送安装包、或下载有疑问时，发邮件说明系统环境，或微信扫码添加。</p>
+          <a
+            class="btn btn-ghost"
+            href="mailto:xuzhefenglove@qq.com?subject=TimeLens%20%E5%AE%89%E8%A3%85%E5%8C%85%E7%B4%A2%E5%8F%96"
+          >xuzhefenglove@qq.com</a>
+          <a
+            class="btn btn-ghost"
+            style="margin-top:0.65rem;"
+            href="mailto:xuzhefeng222@gmail.com?subject=TimeLens%20%E5%AE%89%E8%A3%85%E5%8C%85%E7%B4%A2%E5%8F%96"
+          >xuzhefeng222@gmail.com</a>
+          <div>
+            <img class="qr" src="我的微信二维码.JPG" width="200" height="200" alt="微信二维码，扫码添加" />
+            <p class="qr-cap">微信扫码添加 · 徐浙锋</p>
+          </div>
         </div>
       </div>
     </section>

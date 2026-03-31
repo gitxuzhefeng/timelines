@@ -1,7 +1,8 @@
 {
   "name": "timelens-repo",
   "private": true,
-  "description": "仓库根目录：应用代码在 project/，在此可快捷执行 npm scripts",
+  "description": "TimeLens：本地优先的 macOS/Windows 桌面时间透视 — 被动窗口与应用采集、智能截图、会话聚合（Tauri + React）。应用代码在 project/。",
+  "homepage": "https://timelens-pi.vercel.app/",
   "scripts": {
     "dev": "npm run dev --prefix project",
     "build": "npm run build --prefix project",

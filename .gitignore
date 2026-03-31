@@ -45,3 +45,17 @@ coverage/
 # ========== 其他 ==========
 *.local
 code/.claude/
+
+# ========== 不宜进入公开仓库的资源 ==========
+# 个人微信二维码（种子页/联系用；仅本机保留该文件，或改用自己的托管图床 URL）
+demo/我的微信二维码.JPG
+# 安装包与大型压缩包（请用 GitHub Releases 或网盘分发，避免把二进制塞进 Git）
+*.dmg
+*.exe
+*.msi
+*.rar
+# 签名与证书
+*.p12
+*.mobileprovision
+*.pem
+*.key

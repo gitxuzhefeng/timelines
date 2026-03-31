@@ -1,5 +1,7 @@
 # TimeLens · 时间透视镜
 
+**一句话**：TimeLens 是一款**本地优先**的桌面应用，在 **macOS / Windows** 上**被动采集**前台窗口与应用使用、配合**智能截图**做情境回溯，把碎片时间还原成可复盘的工作会话，数据默认留在本机。
+
 <div align="center">
 
 [![GitHub Repo stars](https://img.shields.io/github/stars/gitxuzhefeng/timelines?style=social&label=Star)](https://github.com/gitxuzhefeng/timelines)
@@ -131,6 +133,20 @@ npm run tauri dev
 ## 许可证
 
 本项目以 [MIT License](LICENSE) 开源。
+
+---
+
+## GitHub 仓库页设置（开源 / 可发现性）
+
+在仓库 **Settings → General** 或主页 **⚙️ About** 中建议填写（需你在网页上操作，无法单靠提交自动生效）：
+
+| 项 | 建议填写 |
+|----|----------|
+| **Website** | <https://timelens-pi.vercel.app/> |
+| **Description**（英文一句，便于检索） | `Local-first Tauri desktop app: passive window & app tracking, smart screenshots, session timeline — macOS & Windows. Data stays on device.` |
+| **Topics**（标签，复制到 About 的 topics） | `tauri` `rust` `react` `typescript` `vite` `productivity` `time-tracking` `screen-capture` `local-first` `macos` `windows` `desktop-app` `sqlite` |
+
+**说明**：`demo/我的微信二维码.JPG` 已列入根目录 `.gitignore`，避免个人二维码进入公开 Git；本地或 CI 部署种子页时，请自行在该路径放置图片，或把 HTML 中的图片改为你的托管链接。
 
 ---
 
