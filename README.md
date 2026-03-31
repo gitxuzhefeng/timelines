@@ -123,7 +123,7 @@ npm run tauri dev
 ## 路线图（摘要）
 
 - **一期（当前）**：多维采集、会话模型、基础看板与验证能力。  
-- **二期**：多模态 AI 解读、自然语言日报、更强下钻可视化。  
+- **二期**：以**日终复盘报告**为核心（本地分析 + 可选 AI 叙事 + 最小可用 UI）；深度 UI 属三期；详见 `prd/PRD_二期_智能洞察.md` v3.1。  
 - **三期**：可选云同步与 GitHub / Notion 等工具链联动。
 
 详见功能介绍文档中的路线图章节。对外讲解时可配合 [产品宣传页](https://timelens-pi.vercel.app/) 中的图示与叙事。
@@ -146,7 +146,7 @@ npm run tauri dev
 | **Description**（英文一句，便于检索） | `Local-first Tauri desktop app: passive window & app tracking, smart screenshots, session timeline — macOS & Windows. Data stays on device.` |
 | **Topics**（标签，复制到 About 的 topics） | `tauri` `rust` `react` `typescript` `vite` `productivity` `time-tracking` `screen-capture` `local-first` `macos` `windows` `desktop-app` `sqlite` |
 
-**说明**：`demo/我的微信二维码.JPG` 已列入根目录 `.gitignore`，避免个人二维码进入公开 Git；本地或 CI 部署种子页时，请自行在该路径放置图片，或把 HTML 中的图片改为你的托管链接。
+**说明**：`demo/我的微信二维码.JPG` 已列入根目录 `.gitignore`，避免个人二维码进入公开 Git；本地或 CI 部署 `demo/` 到 Vercel 时，请自行在该路径放置图片，或把 `timelens-product-showcase.html` 中内测区块的图片改为你的托管链接。
 
 ---
 

@@ -11,7 +11,7 @@
 **方式一 · GitHub 自行下载**（macOS / Windows 安装包在 Release Assets 中）：  
 <https://github.com/gitxuzhefeng/timelines/releases/tag/v0.1.0>
 
-**方式二 · 联系索取安装包**：发邮件至 **xuzhefenglove@qq.com** 或 **xuzhefeng222@gmail.com**（主题可写「TimeLens 安装包索取」），或扫描内测下载页中的微信二维码添加。二维码图片需自行放在 `demo/我的微信二维码.JPG`（该文件已 `.gitignore`，不会进入公开仓库；公开克隆后请本地补放或改用图床 URL）。
+**方式二 · 联系索取安装包**：发邮件至 **xuzhefenglove@qq.com** 或 **xuzhefeng222@gmail.com**（主题可写「TimeLens 安装包索取」），或在产品宣传页 **#seed 内测区块** 扫微信二维码添加。二维码图片需自行放在 `demo/我的微信二维码.JPG`（该文件已 `.gitignore`；公开克隆后请本地补放或改用图床 URL）。
 
 **版本**：`v0.1.0` · **仓库**：<https://github.com/gitxuzhefeng/timelines>
 
@@ -33,7 +33,7 @@
 ## 联系方式与反馈
 
 - **邮箱**：xuzhefenglove@qq.com · xuzhefeng222@gmail.com  
-- **微信**：见 `demo/timelens-seed-download.html` 或 `demo/我的微信二维码.JPG`（与展示页 `timelens-product-showcase.html` 中「获取 TimeLens」区块一致）。  
+- **微信**：见产品宣传页内 **#seed 内测区块**（`demo/timelens-product-showcase.html` 线上：<https://timelens-pi.vercel.app/#seed>），或本机 `demo/我的微信二维码.JPG`（已 `.gitignore`）。  
 - **反馈时请带上**：系统（macOS 版本或 Windows 版本）、安装包版本号、问题发生的大致时间线与截图（可打码）。
 
 **我们希望你在用过几天后回答这三件事**（可发消息或问卷）：  

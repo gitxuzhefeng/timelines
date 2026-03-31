@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TimeLens 二期 · 本地实况（无 AI）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="timelens-phase2-theme.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+  <style>
+    .live-meta {
+      font-size: 0.72rem;
+      color: var(--muted);
+      font-family: var(--mono);
+      word-break: break-all;
+      margin: 0.75rem 0 0;
+    }
+    .lens-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin: 1rem 0 0.25rem;
+    }
+    .lens-chip {
+      font-size: 0.72rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(0,0,0,0.25);
+      color: var(--muted);
+      cursor: pointer;
+      font-family: var(--sans);
+    }
+    .lens-chip:hover { color: var(--ink); border-color: var(--muted); }
+    .lens-chip.on {
+      border-color: var(--accent);
+      color: #f0a090;
+      background: var(--accent-soft);
+    }
+    .lens-hint {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+    .swim-wrap {
+      position: relative;
+      height: 56px;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid var(--line);
+      margin-top: 0.5rem;
+    }
+    .swim-wrap .axis {
+      position: absolute;
+      left: 0; right: 0; bottom: 0; height: 1px;
+      background: var(--line);
+    }
+    .swim-seg {
+      position: absolute;
+      bottom: 2px;
+      height: 36px;
+      border-radius: 4px;
+      min-width: 3px;
+      opacity: 0.92;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.4);
+    }
+    .swim-empty {
+      padding: 1rem;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    .film-row {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 0.5rem 0;
+      margin-top: 0.35rem;
+    }
+    .film-cell {
+      flex: 0 0 auto;
+      width: 52px;
+      height: 40px;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: linear-gradient(135deg, #2a2622, #1a1816);
+      font-size: 0.58rem;
+      color: var(--muted);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      line-height: 1.2;
+    }
+    .film-cell .fold {
+      color: var(--amber);
+      font-weight: 700;
+      margin-top: 2px;
+    }
+    .narratives { list-style: none; margin-top: 0.5rem; }
+    .narratives li {
+      position: relative;
+      padding-left: 0.9rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.88rem;
+      color: #d8d2c8;
+    }
+    .narratives li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.5em;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+    .narratives strong { color: var(--ink); }
+    .degrade {
+      font-size: 0.78rem;
+      color: var(--muted);
+      padding: 0.65rem 0.75rem;
+      border-radius: 8px;
+      border: 1px dashed var(--line);
+      margin-top: 0.5rem;
+    }
+    .chart-box { position: relative; height: 200px; margin-top: 0.5rem; }
+    .chart-box.tall { height: 240px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+    .err-box {
+      padding: 1rem;
+      border-radius: 10px;
+      background: rgba(160, 50, 50, 0.12);
+      border: 1px solid rgba(180, 80, 80, 0.35);
+      color: #e8b4b4;
+      font-size: 0.88rem;
+    }
+    .section-priority { order: var(--p, 10); }
+    .p2-sections { display: flex; flex-direction: column; }
+    .demo-bar {
+      font-size: 0.78rem;
+      color: #c9a227;
+      background: rgba(201, 162, 39, 0.12);
+      border: 1px solid rgba(201, 162, 39, 0.35);
+      border-radius: 10px;
+      padding: 0.65rem 0.85rem;
+      margin: 0.75rem 0 0;
+      line-height: 1.45;
+    }
+    .demo-bar code { font-size: 0.7rem; color: #d4c4a0; }
+    .lens-panel {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1rem 1.1rem;
+      margin-top: 1rem;
+      background: linear-gradient(145deg, rgba(61, 155, 139, 0.08), rgba(0,0,0,0.2));
+    }
+    .lens-panel h3 {
+      font-family: var(--display);
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+      color: var(--ink);
+    }
+    .lens-panel .lens-q {
+      font-size: 0.84rem;
+      color: #c9c2b8;
+      margin-bottom: 0.75rem;
+      line-height: 1.5;
+    }
+    .lens-panel .sub {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--teal);
+      margin: 0.65rem 0 0.35rem;
+    }
+    .lens-panel ul.implicit {
+      margin: 0;
+      padding-left: 1.1rem;
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+    .feat-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+    .feat-chip {
+      font-size: 0.72rem;
+      padding: 0.3rem 0.55rem;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: rgba(0,0,0,0.25);
+      color: #c9c2b8;
+      cursor: pointer;
+      font-family: var(--sans);
+    }
+    .feat-chip:hover { border-color: var(--accent); color: var(--ink); }
+    .mock-tag {
+      font-size: 0.58rem;
+      font-weight: 700;
+      vertical-align: middle;
+      margin-left: 0.35rem;
+      padding: 0.12rem 0.35rem;
+      border-radius: 4px;
+      background: rgba(201, 162, 39, 0.2);
+      color: #e8d089;
+      letter-spacing: 0.06em;
+    }
+    .toolbar label.mock-lab {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+      cursor: pointer;
+      user-select: none;
+    }
+    .toolbar label.mock-lab input { accent-color: var(--teal); }
+    /* 避免主题里 p2-window overflow:hidden 裁切长页面 */
+    .p2-window { overflow: visible; }
+    #main { min-height: 120px; }
+  </style>
+</head>
+<body>
+  <div class="p2-outer">
+    <nav class="p2-nav" aria-label="导航">
+      <span class="p2-nav-brand">Phase 2</span>
+      <a href="timelens-phase2-index.html">索引</a>
+      <span style="color:var(--line)">·</span>
+      <span class="p2-nav-here">本地实况</span>
+      <span style="color:var(--line)">·</span>
+      <a href="timelens-nonai-insights.html">非 AI 总览</a>
+    </nav>
+
+    <div class="p2-window">
+      <div class="p2-titlebar">
+        <div class="p2-dots"><span></span><span></span><span></span></div>
+        <div class="p2-titlebar-title">TimeLens · 二期主壳 · 本地事实（PRD v2.0）</div>
+      </div>
+      <div class="p2-body">
+        <div class="p2-badge-row">
+          <span class="p2-badge hot">无 LLM · 零默认出站</span>
+          <span class="p2-badge safe">~/.timelens/data/db.sqlite</span>
+        </div>
+        <h1 class="p2-h1">可见 · 可找回 · 可叙述 · 可校准</h1>
+        <p class="p2-lead">
+          同一套本地库，多用户视角（Lens）：每种视角对应<strong>不同的隐性诉求</strong>与<strong>产品承接能力</strong>；区块顺序随 Lens 重排。
+        </p>
+        <div class="lens-row" id="lens-row" aria-label="Lens 预设"></div>
+        <p class="lens-hint" id="lens-hint"></p>
+        <p class="live-meta" id="live-meta">连接中…</p>
+        <div class="toolbar">
+          <button type="button" class="p2-btn" id="btn-refresh">重新拉取</button>
+          <button type="button" class="p2-btn p2-btn-ghost" id="btn-md">导出《日终复盘》Markdown</button>
+          <label class="mock-lab"><input type="checkbox" id="chk-mock-five" checked /> 叠加二期五维演示数据（模拟采集）</label>
+        </div>
+        <div class="demo-bar" id="demo-bar" hidden></div>
+        <div class="lens-panel" id="lens-insight-panel" hidden></div>
+
+        <div id="main"></div>
+      </div>
+    </div>
+    <p class="p2-page-foot">需运行 python3 demo/timelens-insights-server.py · 默认端口 18888（可用 TIMELENS_INSIGHTS_PORT 覆盖）</p>
+  </div>
+
+  <script>
+    const LENS_ORDER = {
+      developer: ["lane", "film", "recap", "viz", "switches", "input", "clipboard", "notify", "week", "calib"],
+      freelance: ["recap", "viz", "lane", "week", "switches", "input", "clipboard", "notify", "film", "calib"],
+      pm: ["notify", "switches", "lane", "recap", "viz", "week", "input", "clipboard", "film", "calib"],
+      creator: ["lane", "clipboard", "switches", "input", "film", "recap", "notify", "viz", "week", "calib"],
+      interruptible: ["notify", "switches", "film", "lane", "recap", "input", "clipboard", "viz", "week", "calib"],
+      slow_review: ["week", "recap", "viz", "lane", "input", "switches", "clipboard", "notify", "film", "calib"],
+    };
+
+    /** 多视角：显性追问 + 隐性需求 + 产品功能锚点（与 PRD §1.3 / 场景对齐） */
+    const LENS_DETAILS = {
+      developer: {
+        headline: "开发者",
+        question: "我今天有多少时间在真正写代码，多少在查资料、被 IM 撕碎？",
+        implicit: [
+          "需要看见「深度块」与「碎片切换」的事实，而不是笼统的自责。",
+          "希望一键回到上次长会话（IDE/终端），而不是在浏览器标签里迷路。",
+          "需要把输入节奏与时段对齐，判断是疲劳还是单纯被打断。",
+        ],
+        features: [
+          { anchor: "lane", label: "会话泳道", hint: "IDE / 终端 / 浏览器结构" },
+          { anchor: "switches", label: "切换 Top 边", hint: "场景 A：谁在扯注意力" },
+          { anchor: "input", label: "输入节奏档位", hint: "场景 C：与电量等并列事实" },
+          { anchor: "film", label: "截图胶片", hint: "场景 E：可找回" },
+          { anchor: "recap", label: "日终复盘导出", hint: "模板化事实叙述" },
+        ],
+      },
+      freelance: {
+        headline: "自由职业",
+        question: "哪些时间对客户可说明、可计费？有没有被无效切换吃掉？",
+        implicit: [
+          "要把「可交付时段」从杂务里剥离出来，形成自我证据链。",
+          "担心低估沟通、高估编码——需要同库多模块互证。",
+        ],
+        features: [
+          { anchor: "recap", label: "复盘与导出", hint: "Markdown 对客户/自己" },
+          { anchor: "week", label: "周对比", hint: "结构是否变轻/变重" },
+          { anchor: "lane", label: "会话泳道", hint: "项目感知的时长分布" },
+          { anchor: "clipboard", label: "剪贴板路径", hint: "信息是否在 App 间空转" },
+          { anchor: "viz", label: "按日/小时结构", hint: "账单友好聚合" },
+        ],
+      },
+      pm: {
+        headline: "协调者 / PM",
+        question: "是谁通过通知和 IM 把我的注意力切得最碎？",
+        implicit: [
+          "需要「打断贡献」排行，而不是只有笼统很忙。",
+          "要把通讯类占比与切换链对齐，对齐会议与现实打断。",
+        ],
+        features: [
+          { anchor: "notify", label: "通知打断表", hint: "场景 B：谁拽你走" },
+          { anchor: "switches", label: "切换图谱", hint: "与通知互证" },
+          { anchor: "lane", label: "时间轴泳道", hint: "碎片段可视化" },
+          { anchor: "week", label: "周对比", hint: "协调成本是否上升" },
+        ],
+      },
+      creator: {
+        headline: "创作者",
+        question: "调研（浏览器）和产出（设计工具）的比例是否失衡？",
+        implicit: [
+          "需要看见浏览器 ↔ Figma/Sketch 的「信息搬家」路径。",
+          "希望区分沉浸式产出时段与发散调研时段。",
+        ],
+        features: [
+          { anchor: "clipboard", label: "剪贴板流向", hint: "素材如何从网页进工具" },
+          { anchor: "lane", label: "会话泳道", hint: "工具链时长结构" },
+          { anchor: "input", label: "输入节奏", hint: "产出期 vs 摸鱼期" },
+          { anchor: "film", label: "截图对齐", hint: "回看当时画面" },
+        ],
+      },
+      interruptible: {
+        headline: "易打断 / 接茬",
+        question: "刚才卡在哪、最短路径回到上下文？",
+        implicit: [
+          "需要「打断前后锚点」：通知前在哪个 App、之后跳去哪。",
+          "胶片条 + 会话比纯文字更能唤醒记忆。",
+        ],
+        features: [
+          { anchor: "film", label: "截图胶片", hint: "哈希折叠、关键帧" },
+          { anchor: "notify", label: "通知记录", hint: "与切换并列" },
+          { anchor: "switches", label: "切换边", hint: "回跳路径" },
+          { anchor: "lane", label: "泳道锚点", hint: "时段定位" },
+        ],
+      },
+      slow_review: {
+        headline: "慢复盘",
+        question: "几周下来，大类占比和切换结构变了吗？",
+        implicit: [
+          "需要同口径周对比，而不是感觉「这周更累」。",
+          "趋势与意图/应用大类一起看，找结构性变化。",
+        ],
+        features: [
+          { anchor: "week", label: "周对比", hint: "场景 D：Δ 与阈值模板" },
+          { anchor: "viz", label: "分布图", hint: "小时与应用 Top" },
+          { anchor: "recap", label: "事实摘要", hint: "固定章节" },
+          { anchor: "lane", label: "泳道", hint: "长块是否变少" },
+        ],
+      },
+    };
+
+    function buildMockInputHourly() {
+      return Array.from({ length: 24 }, (_, h) => {
+        let kpm = 18,
+          samples = 5,
+          dr = 0.04,
+          tier = "静息";
+        if (h >= 9 && h <= 11) {
+          kpm = 158;
+          samples = 44;
+          dr = 0.07;
+          tier = "中等";
+        } else if (h >= 14 && h <= 18) {
+          kpm = 205;
+          samples = 58;
+          dr = 0.1;
+          tier = "高节奏";
+        } else if (h >= 12 && h <= 13) {
+          kpm = 55;
+          samples = 20;
+          dr = 0.03;
+          tier = "低节奏";
+        }
+        return { hour: h, avg_kpm: kpm, avg_delete_ratio: dr, samples, tier_label: tier };
+      });
+    }
+
+    function buildMockAmbientHourly() {
+      return Array.from({ length: 24 }, (_, h) => {
+        if (h < 7 || h > 23)
+          return { hour: h, avg_battery: null, external_display_ratio: null, dnd_ratio: null, samples: 0 };
+        const samples = 2 + (h % 5);
+        const bat = Math.max(0.22, 0.9 - Math.max(0, h - 9) * 0.05);
+        const ext = h >= 10 && h <= 19 ? 1 : h >= 9 ? 0.5 : 0;
+        const dnd = h <= 7 || h >= 23 ? 0.75 : h >= 22 ? 0.4 : 0.08;
+        return {
+          hour: h,
+          avg_battery: Math.round(bat * 1000) / 1000,
+          external_display_ratio: ext,
+          dnd_ratio: dnd,
+          samples,
+        };
+      });
+    }
+
+    const MOCK_NOTIFICATIONS = [
+      { source_app: "Slack", count: 31, share_pct: 28.2, avg_response_delay_ms: 7800, caused_switch_count: 14, caused_switch_pct: 45.2 },
+      { source_app: "微信", count: 24, share_pct: 21.8, avg_response_delay_ms: 12000, caused_switch_count: 8, caused_switch_pct: 33.3 },
+      { source_app: "Mail", count: 17, share_pct: 15.5, avg_response_delay_ms: 21000, caused_switch_count: 5, caused_switch_pct: 29.4 },
+      { source_app: "Calendar", count: 12, share_pct: 10.9, avg_response_delay_ms: 45000, caused_switch_count: 3, caused_switch_pct: 25.0 },
+      { source_app: "Messages", count: 9, share_pct: 8.2, avg_response_delay_ms: 6500, caused_switch_count: 2, caused_switch_pct: 22.2 },
+      { source_app: "其他", count: 17, share_pct: 15.4, avg_response_delay_ms: 15000, caused_switch_count: 4, caused_switch_pct: 23.5 },
+    ];
+
+    const MOCK_CLIPBOARD = [
+      { from_app: "Safari", to_app: "Xcode", count: 19 },
+      { from_app: "Xcode", to_app: "Terminal", count: 24 },
+      { from_app: "Notion", to_app: "Mail", count: 8 },
+      { from_app: "Figma", to_app: "Safari", count: 14 },
+      { from_app: "Slack", to_app: "Xcode", count: 11 },
+    ];
+
+    const MOCK_SWITCHES = [
+      { from_app: "Xcode", to_app: "Safari", count: 42 },
+      { from_app: "Safari", to_app: "Xcode", count: 38 },
+      { from_app: "Xcode", to_app: "Slack", count: 29 },
+      { from_app: "Slack", to_app: "Xcode", count: 27 },
+      { from_app: "Terminal", to_app: "Xcode", count: 22 },
+      { from_app: "Xcode", to_app: "Terminal", count: 21 },
+    ];
+
+    const MOCK_WOW = {
+      available: true,
+      prev7_label: "2026-03-10 → 2026-03-16",
+      last7_label: "2026-03-17 → 2026-03-23",
+      prev7_tracked_ms: Math.round(38.2 * 3600000),
+      last7_tracked_ms: Math.round(41.6 * 3600000),
+      delta_ms: Math.round(3.4 * 3600000),
+      delta_pct: 8.9,
+    };
+
+    function buildMockSwimlane() {
+      const blocks = [
+        ["Xcode", "TimeLens / SessionStore.swift"],
+        ["Safari", "developer.apple.com — Activity"],
+        ["Xcode", "AggregationPipeline.swift"],
+        ["Slack", "#engineering — standup thread"],
+        ["Xcode", "Tests / session_fold.rs"],
+        ["Terminal", "cargo test -p timelens"],
+        ["Safari", "SQLite WAL 行为"],
+        ["Xcode", "timelens-insights-server.py"],
+        ["Mail", "Re: 二期验收范围"],
+        ["Xcode", "PRD 对照注释"],
+      ];
+      const base = Date.now() - 7.5 * 3600000;
+      let cur = base;
+      const rows = [];
+      for (let i = 0; i < blocks.length; i++) {
+        const dur = (8 + (i % 5) * 4) * 60 * 1000;
+        const [app, title] = blocks[i];
+        rows.push({
+          id: "demo-lane-" + i,
+          start_ms: cur,
+          end_ms: cur + dur,
+          duration_ms: dur,
+          app_name: app,
+          intent: i % 4 === 0 ? "开发" : i % 4 === 1 ? "检索" : "沟通",
+          window_title: title,
+        });
+        cur += dur;
+      }
+      const t0 = rows[0].start_ms;
+      const t1 = rows[rows.length - 1].end_ms;
+      const span = Math.max(t1 - t0, 1);
+      rows.forEach((x) => {
+        x.rel_start = Math.round(((x.start_ms - t0) / span) * 10000) / 10000;
+        x.rel_width = Math.max(Math.round((x.duration_ms / span) * 10000) / 10000, 0.003);
+      });
+      return { rows, range: { start_ms: t0, end_ms: t1 } };
+    }
+
+    function buildMockFilmstrip() {
+      const base = Date.now() - 2.2 * 3600000;
+      const hashes = ["a1f2c3d4", "a1f2c3d4", "b9e8n7m6", "b9e8n7m6", "b9e8n7m6", "c5k4j3h2"];
+      const strip = [];
+      let dup = 0;
+      for (let i = 0; i < hashes.length; i++) {
+        const ph = hashes[i];
+        if (i > 0 && ph === hashes[i - 1]) {
+          dup++;
+          continue;
+        }
+        if (dup && strip.length) strip[strip.length - 1].collapsed_duplicates_after = dup;
+        dup = 0;
+        strip.push({
+          captured_at_ms: Math.round(base + i * 5.5 * 60 * 1000),
+          perceptual_hash: ph.slice(0, 8) + "…",
+          session_id: "demo-s-" + i,
+          file_path: "~/Library/Application Support/TimeLens/snapshots/demo-" + i + ".webp",
+          collapsed_duplicates_after: 0,
+        });
+      }
+      if (dup && strip.length) strip[strip.length - 1].collapsed_duplicates_after = dup;
+      return strip;
+    }
+
+    function hasRealFiveDim(p2) {
+      if (!p2) return false;
+      const inOk = p2.input_rhythm_hourly && p2.input_rhythm_hourly.some((x) => x.samples > 0);
+      const ambOk = p2.ambient_hourly && p2.ambient_hourly.some((x) => x && x.samples > 0);
+      const nOk = p2.notifications_breakdown && p2.notifications_breakdown.length;
+      const cOk = p2.clipboard_top_paths && p2.clipboard_top_paths.length;
+      return inOk && ambOk && nOk && cOk;
+    }
+
+    function needsMockBySchema(j) {
+      const miss = j.missing_optional_tables || [];
+      return ["input_metrics", "clipboard_flows", "notifications", "ambient_context"].some((t) =>
+        miss.includes(t)
+      );
+    }
+
+    function mergeDisplayPayload(raw) {
+      const out = JSON.parse(JSON.stringify(raw));
+      out.phase2 = out.phase2 || {};
+      const p2 = out.phase2;
+      const flags = { mockPatches: [], useMock: mockFiveDimEnabled };
+      if (!mockFiveDimEnabled) {
+        out._display = flags;
+        return out;
+      }
+
+      if (!p2.input_rhythm_hourly || p2.input_rhythm_hourly.every((x) => !x.samples)) {
+        p2.input_rhythm_hourly = buildMockInputHourly();
+        flags.mockPatches.push("input_metrics");
+      }
+      if (!p2.ambient_hourly || p2.ambient_hourly.every((x) => !x || !x.samples)) {
+        p2.ambient_hourly = buildMockAmbientHourly();
+        flags.mockPatches.push("ambient_context");
+      }
+      if (!p2.notifications_breakdown || !p2.notifications_breakdown.length) {
+        p2.notifications_breakdown = JSON.parse(JSON.stringify(MOCK_NOTIFICATIONS));
+        flags.mockPatches.push("notifications");
+      }
+      if (!(p2.clipboard_top_paths && p2.clipboard_top_paths.length)) {
+        p2.clipboard_top_paths = JSON.parse(JSON.stringify(MOCK_CLIPBOARD));
+        delete p2.clipboard_by_action_app;
+        flags.mockPatches.push("clipboard_flows");
+      }
+      if (!p2.sessions_swimlane || !p2.sessions_swimlane.length) {
+        const { rows, range } = buildMockSwimlane();
+        p2.sessions_swimlane = rows;
+        p2.swimlane_range = range;
+        flags.mockPatches.push("swimlane");
+      }
+      if (!p2.snapshot_filmstrip || !p2.snapshot_filmstrip.length) {
+        p2.snapshot_filmstrip = buildMockFilmstrip();
+        flags.mockPatches.push("snapshots");
+      }
+      if (!out.top_switches || !out.top_switches.length) {
+        out.top_switches = JSON.parse(JSON.stringify(MOCK_SWITCHES));
+        flags.mockPatches.push("app_switches");
+      }
+      const wow = p2.week_over_week;
+      if (!wow || !wow.available) {
+        p2.week_over_week = JSON.parse(JSON.stringify(MOCK_WOW));
+        flags.mockPatches.push("week_compare");
+      }
+
+      if (flags.mockPatches.length) {
+        const demoLines = [
+          "（演示数据）下午 **14–18** 点 KPM 较高；同段 **电量** 与 **外接屏** 曲线已并列展示——**仅事实并列，不推断因果。**",
+          "（演示数据）**Xcode ↔ Safari**、**Xcode ↔ Slack** 为高频切换；通知以 Slack、微信为主。",
+        ];
+        out.rule_narratives = [...(out.rule_narratives || []).filter((t) => !t.includes("（演示数据）")), ...demoLines];
+      }
+
+      out._display = flags;
+      return out;
+    }
+
+    function renderLensInsightPanel() {
+      const panel = document.getElementById("lens-insight-panel");
+      const d = LENS_DETAILS[currentLens];
+      if (!d) {
+        panel.hidden = true;
+        return;
+      }
+      panel.hidden = false;
+      const chips = d.features
+        .map(
+          (f) =>
+            `<button type="button" class="feat-chip" data-jump="${escapeHtml(f.anchor)}" title="${escapeHtml(f.hint)}">${escapeHtml(f.label)}</button>`
+        )
+        .join("");
+      const implicit = d.implicit.map((t) => "<li>" + escapeHtml(t) + "</li>").join("");
+      panel.innerHTML =
+        `<h3>${escapeHtml(d.headline)} · 用户视角</h3>
+         <p class="lens-q"><strong>Ta 在问：</strong>${escapeHtml(d.question)}</p>
+         <div class="sub">隐性需求（未被明说）</div>
+         <ul class="implicit">${implicit}</ul>
+         <div class="sub">产品如何承接（点击跳转模块）</div>
+         <div class="feat-row">${chips}</div>`;
+      panel.querySelectorAll("[data-jump]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = btn.getAttribute("data-jump");
+          document.getElementById("sec-" + id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      });
+    }
+
+    function updateDemoBar(data) {
+      const bar = document.getElementById("demo-bar");
+      const p = data._display;
+      if (!p || !p.useMock || !p.mockPatches || !p.mockPatches.length) {
+        bar.hidden = true;
+        return;
+      }
+      bar.hidden = false;
+      bar.innerHTML =
+        "<strong>五维演示模式已开启</strong>：以下字段为<strong>模拟二期采集</strong>，用于预览 PRD 中的输入 / 剪贴板 / 通知 / 环境与周对比效果。关闭开关后仅显示库内真实数据。<br/><code>" +
+        escapeHtml(p.mockPatches.join(", ")) +
+        "</code>";
+    }
+
+    let charts = [];
+    let lastPayload = null;
+    let rawPayload = null;
+    let mockFiveDimEnabled = true;
+    let currentLens = "developer";
+    let renderGeneration = 0;
+
+    function destroyCharts() {
+      charts.forEach((c) => {
+        try {
+          c.destroy();
+        } catch (e) {
+          /* ignore */
+        }
+      });
+      charts = [];
+    }
+
+    function escapeHtml(s) {
+      if (s == null) return "";
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function fmtDur(ms) {
+      if (ms < 60000) return (ms / 1000).toFixed(0) + " 秒";
+      const m = Math.floor(ms / 60000);
+      if (m < 60) return m + " 分钟";
+      return (ms / 3600000).toFixed(1) + " 小时";
+    }
+
+    function fmtTs(ms) {
+      if (ms == null) return "—";
+      try {
+        const d = new Date(ms);
+        return d.toLocaleString("zh-CN", { hour: "2-digit", minute: "2-digit", month: "numeric", day: "numeric" });
+      } catch {
+        return String(ms);
+      }
+    }
+
+    function hueForApp(name) {
+      let h = 0;
+      const s = String(name || "");
+      for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+      return h % 360;
+    }
+
+    function narrativeToHtml(text) {
+      const parts = text.split(/(\*\*.+?\*\*)/g);
+      return parts
+        .map((p) => {
+          const m = p.match(/^\*\*(.+)\*\*$/);
+          if (m) return "<strong>" + escapeHtml(m[1]) + "</strong>";
+          return escapeHtml(p);
+        })
+        .join("");
+    }
+
+    function mockTagHtml(data, ...patchKeys) {
+      const mp = data._display?.mockPatches;
+      if (!mp || !data._display?.useMock) return "";
+      return patchKeys.some((k) => mp.includes(k)) ? '<span class="mock-tag">演示</span>' : "";
+    }
+
+    function buildMarkdown(data) {
+      const p2 = data.phase2 || {};
+      const lines = [
+        "# TimeLens 日终复盘（本地事实 · 无 LLM）",
+        "",
+        "- 生成：" + data.generated_at,
+        "- 数据源：" + data.db_path,
+        "",
+      ];
+      if (data._display?.useMock && data._display?.mockPatches?.length) {
+        lines.push("- **含模拟字段**：" + data._display.mockPatches.join("、"));
+        lines.push("");
+      }
+      lines.push(
+        "## 总览",
+        "",
+        "- 前台累计：" + (data.totals?.tracked_hours ?? "—") + " 小时",
+        "- 会话条数：" + (data.totals?.window_sessions ?? "—"),
+        "- 应用切换：" + (data.totals?.app_switches ?? "—"),
+        "- 截图记录：" + (data.totals?.snapshots ?? "—"),
+        "",
+        "## 规则摘要",
+        "",
+      );
+      (data.rule_narratives || []).forEach((t) => lines.push("- " + t.replace(/\*\*/g, "")));
+      lines.push("", "## 切换与深度块", "");
+      (data.top_switches || []).slice(0, 8).forEach((r) => {
+        lines.push(`- ${r.from_app} → ${r.to_app}：${r.count} 次`);
+      });
+      if (!(data.top_switches || []).length) lines.push("- （无 app_switches 或为空）");
+      lines.push("", "## 输入节奏", "");
+      if (p2.input_rhythm_hourly) {
+        lines.push("| 小时 | 平均 KPM | 删改率 | 档位 |");
+        lines.push("| --- | --- | --- | --- |");
+        p2.input_rhythm_hourly.forEach((r) => {
+          if (r.samples > 0)
+            lines.push(`| ${r.hour} | ${r.avg_kpm} | ${r.avg_delete_ratio} | ${r.tier_label} |`);
+        });
+      } else lines.push("- 表 input_metrics 未就绪，已降级。");
+      lines.push("", "## 剪贴板主路径", "");
+      if (p2.clipboard_top_paths && p2.clipboard_top_paths.length) {
+        p2.clipboard_top_paths.forEach((r) => lines.push(`- ${r.from_app} → ${r.to_app}：${r.count}`));
+      } else lines.push("- 无配对路径或未采集 clipboard_flows。");
+      lines.push("", "## 通知打断", "");
+      if (p2.notifications_breakdown && p2.notifications_breakdown.length) {
+        p2.notifications_breakdown.forEach((r) =>
+          lines.push(`- ${r.source_app}：${r.count} 次；引发切换占比 ${r.caused_switch_pct}%`)
+        );
+      } else lines.push("- 无 notifications 表或为空。");
+      lines.push("", "## 环境旁证", "");
+      lines.push("- 按小时聚合见界面；并列事实，不推断因果。");
+      lines.push("", "## 截图与会话对齐", "");
+      lines.push(`- 胶片条共 ${(p2.snapshot_filmstrip || []).length} 个关键帧（感知哈希折叠后）。`);
+      lines.push("", "---", "", "*数据来自本地记录，可校准写回策略见产品方案。*");
+      return lines.join("\n");
+    }
+
+    function sectionHtml(id, title, inner, degrade, titleExtraHtml) {
+      const d = degrade
+        ? `<div class="degrade">${escapeHtml(degrade)}</div>`
+        : "";
+      const extra = titleExtraHtml || "";
+      return `<section id="sec-${id}" class="p2-card section-priority" data-section="${id}" style="--p:${orderFor(id)}"><h2>${escapeHtml(title)}${extra}</h2>${d}${inner}</section>`;
+    }
+
+    function orderFor(id) {
+      const ord = LENS_ORDER[currentLens] || LENS_ORDER.developer;
+      const i = ord.indexOf(id);
+      return i >= 0 ? i : 99;
+    }
+
+    function resortSections(root) {
+      const sec = [...root.querySelectorAll("[data-section]")];
+      sec.sort((a, b) => {
+        const oa = parseInt(a.style.getPropertyValue("--p"), 10) || 99;
+        const ob = parseInt(b.style.getPropertyValue("--p"), 10) || 99;
+        return oa - ob;
+      });
+      sec.forEach((el) => root.appendChild(el));
+    }
+
+    function renderLensRow(presets) {
+      const row = document.getElementById("lens-row");
+      row.innerHTML = (presets || [])
+        .map(
+          (p) =>
+            `<button type="button" class="lens-chip${p.id === currentLens ? " on" : ""}" data-lens="${escapeHtml(p.id)}">${escapeHtml(p.label)}</button>`
+        )
+        .join("");
+      row.querySelectorAll(".lens-chip").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          currentLens = btn.getAttribute("data-lens");
+          document.querySelectorAll(".lens-chip").forEach((b) => b.classList.toggle("on", b === btn));
+          if (lastPayload) render(lastPayload);
+        });
+      });
+    }
+
+    function render(data) {
+      const gen = ++renderGeneration;
+      destroyCharts();
+      lastPayload = data;
+      const p2 = data.phase2 || {};
+      const presets = p2.lens_presets || [];
+      renderLensRow(presets);
+      const pr = presets.find((x) => x.id === currentLens);
+      const ld = LENS_DETAILS[currentLens];
+      document.getElementById("lens-hint").textContent =
+        (pr ? "首页强调（PRD）：" + pr.hint : "") + (pr && ld ? " · " : "") + (ld ? "视角：" + ld.headline : "");
+
+      updateDemoBar(data);
+      renderLensInsightPanel();
+
+      document.getElementById("live-meta").textContent =
+        `生成 ${data.generated_at} · ${data.db_path}`;
+
+      const miss = (data.missing_optional_tables || []).join(", ");
+      const missNote = miss
+        ? `以下可选表未出现，对应章节已降级：${miss}。`
+        : "可选维度表齐全或已存在。";
+
+      const swim = p2.sessions_swimlane || [];
+      let swimInner = "";
+      if (!swim.length) {
+        swimInner = '<div class="swim-empty">暂无会话条带（window_sessions 为空）。</div>';
+      } else {
+        swimInner = '<div class="swim-wrap" title="最近 100 段会话，按时间比例排布">';
+        swimInner += '<div class="axis"></div>';
+        swim.forEach((s) => {
+          const hue = hueForApp(s.app_name);
+          const rw = Number(s.rel_width);
+          const rs = Number(s.rel_start);
+          const w = Math.max((Number.isFinite(rw) ? rw : 0) * 100, 0.35);
+          const left = (Number.isFinite(rs) ? rs : 0) * 100;
+          swimInner += `<div class="swim-seg" style="left:${left}%;width:${w}%;background:hsl(${hue} 42% 38%)" title="${escapeHtml(s.app_name)} · ${fmtDur(s.duration_ms)} · ${escapeHtml(s.window_title)}"></div>`;
+        });
+        swimInner += "</div>";
+        swimInner += `<p style="font-size:0.72rem;color:var(--muted);margin-top:0.35rem">区间 ${fmtTs(p2.swimlane_range?.start_ms)} → ${fmtTs(p2.swimlane_range?.end_ms)}</p>`;
+      }
+
+      const film = p2.snapshot_filmstrip || [];
+      let filmInner = "";
+      if (!film.length) {
+        filmInner = '<p class="degrade">无 snapshots 或为空；可找回胶片条降级。</p>';
+      } else {
+        filmInner = '<div class="film-row">';
+        film.forEach((c) => {
+          const fold = c.collapsed_duplicates_after
+            ? `<span class="fold">+${c.collapsed_duplicates_after}</span>`
+            : "";
+          filmInner += `<div class="film-cell" title="${escapeHtml(c.file_path || "")}"><span>${fmtTs(c.captured_at_ms)}</span>${fold}</div>`;
+        });
+        filmInner += "</div>";
+        filmInner += `<p style="font-size:0.72rem;color:var(--muted)">相邻同感知哈希已折叠；悬停可见本地路径（浏览器通常无法直接预览文件）。</p>`;
+      }
+
+      const totals = data.totals || {};
+      const kpis = `
+        <div class="p2-stats-row">
+          <span class="p2-stat"><b>${totals.tracked_hours ?? "—"}</b> 小时前台</span>
+          <span class="p2-stat"><b>${totals.window_sessions ?? "—"}</b> 会话</span>
+          <span class="p2-stat"><b>${totals.app_switches ?? "—"}</b> 切换</span>
+          <span class="p2-stat"><b>${totals.snapshots ?? "—"}</b> 截图行</span>
+          <span class="p2-stat">碎片度 <b>${data.fragmentation?.switches_per_hour ?? "—"}</b> 次/小时</span>
+        </div>`;
+
+      const narr =
+        "<ul class='narratives'>" +
+        (data.rule_narratives || []).map((t) => "<li>" + narrativeToHtml(t) + "</li>").join("") +
+        "</ul>";
+
+      let swTable =
+        "<table class='p2-table'><thead><tr><th>从</th><th>到</th><th>次数</th></tr></thead><tbody>";
+      const sw = data.top_switches || [];
+      if (!sw.length) swTable += "<tr><td colspan='3'>无切换数据</td></tr>";
+      else
+        sw.forEach(
+          (r) =>
+            (swTable += `<tr><td>${escapeHtml(r.from_app)}</td><td>${escapeHtml(r.to_app)}</td><td>${r.count}</td></tr>`)
+        );
+      swTable += "</tbody></table>";
+
+      const mp = data._display?.mockPatches || [];
+      let notifBlock = "";
+      if (
+        !mp.includes("notifications") &&
+        (!p2.notifications_breakdown || !p2.notifications_breakdown.length)
+      ) {
+        notifBlock =
+          '<p class="degrade">无 notifications 或为空：打断贡献表降级为「仅基于切换」的旁证。</p>';
+      } else if (!p2.notifications_breakdown || !p2.notifications_breakdown.length) {
+        notifBlock = '<p class="degrade">无通知数据。</p>';
+      } else {
+        notifBlock =
+          "<table class='p2-table'><thead><tr><th>来源 App</th><th>次数</th><th>占比</th><th>均响应延迟 ms</th><th>引发切换</th></tr></thead><tbody>";
+        p2.notifications_breakdown.forEach((r) => {
+          notifBlock += `<tr><td>${escapeHtml(r.source_app)}</td><td>${r.count}</td><td>${r.share_pct}%</td><td>${r.avg_response_delay_ms ?? "—"}</td><td>${r.caused_switch_pct}%</td></tr>`;
+        });
+        notifBlock += "</tbody></table>";
+      }
+
+      let clipBlock = "";
+      if (p2.clipboard_top_paths && p2.clipboard_top_paths.length) {
+        clipBlock =
+          "<table class='p2-table'><thead><tr><th>复制源</th><th>粘贴目标</th><th>次数</th></tr></thead><tbody>";
+        p2.clipboard_top_paths.forEach(
+          (r) =>
+            (clipBlock += `<tr><td>${escapeHtml(r.from_app)}</td><td>${escapeHtml(r.to_app)}</td><td>${r.count}</td></tr>`)
+        );
+        clipBlock += "</tbody></table>";
+      } else if (p2.clipboard_by_action_app && p2.clipboard_by_action_app.length) {
+        clipBlock =
+          "<p class='degrade'>未能配对 copy→paste，以下为按动作聚合：</p><table class='p2-table'><thead><tr><th>动作</th><th>App</th><th>次数</th></tr></thead><tbody>";
+        p2.clipboard_by_action_app.forEach(
+          (r) =>
+            (clipBlock += `<tr><td>${escapeHtml(r.action)}</td><td>${escapeHtml(r.app_name)}</td><td>${r.count}</td></tr>`)
+        );
+        clipBlock += "</tbody></table>";
+      } else if (!mp.includes("clipboard_flows")) {
+        clipBlock = '<p class="degrade">clipboard_flows 无数据或未采集。</p>';
+      } else {
+        clipBlock = '<p class="degrade">无剪贴板路径。</p>';
+      }
+
+      let weekBlock = "";
+      const wow = p2.week_over_week;
+      if (!wow) weekBlock = '<p class="degrade">无按日数据，无法周对比。</p>';
+      else if (!wow.available) weekBlock = `<p class="degrade">${escapeHtml(wow.reason || "")}</p>`;
+      else {
+        const pct = wow.delta_pct != null ? `${wow.delta_pct > 0 ? "+" : ""}${wow.delta_pct}%` : "—";
+        weekBlock = `<div class="p2-stats-row">
+          <span class="p2-stat">上周 <b>${fmtDur(wow.prev7_tracked_ms)}</b></span>
+          <span class="p2-stat">本周 <b>${fmtDur(wow.last7_tracked_ms)}</b></span>
+          <span class="p2-stat">Δ <b>${fmtDur(Math.abs(wow.delta_ms))}</b>（${pct}）</span>
+        </div>
+        <p style="font-size:0.78rem;color:var(--muted);margin-top:0.5rem">口径：按日 sum(duration_ms)；模板句可接阈值规则，此处仅列事实。</p>`;
+      }
+
+      const calib =
+        `<p style="font-size:0.86rem;color:#d8d2c8">${escapeHtml(p2.calibration_stub?.note || "")}</p>
+         <div style="margin-top:0.75rem;display:flex;gap:0.5rem;flex-wrap:wrap">
+           <span class="p2-badge">合并会话</span>
+           <span class="p2-badge">拆分会话</span>
+           <span class="p2-badge">改标签</span>
+         </div>
+         <p style="font-size:0.72rem;color:var(--muted);margin-top:0.65rem">数据来自本地记录；写回需客户端实现。</p>`;
+
+      const recapInner = narr + kpis + `<p style="font-size:0.78rem;color:var(--muted);margin-top:0.75rem">${escapeHtml(missNote)}</p>`;
+
+      const chartsWrap = `
+        <div class="p2-grid-2">
+          <div>
+            <h3 style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.35rem">会话起点 · 按小时</h3>
+            <div class="chart-box"><canvas id="ch-hour"></canvas></div>
+          </div>
+          <div>
+            <h3 style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.35rem">应用时长 Top</h3>
+            <div class="chart-box tall"><canvas id="ch-apps"></canvas></div>
+          </div>
+        </div>`;
+
+      const inputDegrade =
+        !mp.includes("input_metrics") &&
+        (!p2.input_rhythm_hourly || p2.input_rhythm_hourly.every((x) => !x.samples))
+          ? "input_metrics 表无样本；输入节奏降级。"
+          : null;
+      const ambDegrade =
+        !mp.includes("ambient_context") &&
+        (!p2.ambient_hourly || p2.ambient_hourly.every((x) => !(x && x.samples > 0)))
+          ? "ambient_context 无样本；环境旁证降级。"
+          : null;
+
+      const dualCharts = `
+        <div class="p2-grid-2">
+          <div>
+            <h3 style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.35rem">输入节奏 · 平均 KPM</h3>
+            ${inputDegrade ? `<div class="degrade">${escapeHtml(inputDegrade)}</div>` : ""}
+            <div class="chart-box"><canvas id="ch-input"></canvas></div>
+          </div>
+          <div>
+            <h3 style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.35rem">环境旁证 · 电量均值</h3>
+            ${ambDegrade ? `<div class="degrade">${escapeHtml(ambDegrade)}</div>` : ""}
+            <div class="chart-box"><canvas id="ch-amb"></canvas></div>
+          </div>
+        </div>
+        <p style="font-size:0.72rem;color:var(--muted);margin-top:0.5rem">与 PRD 一致：并列事实，不输出因果或医学结论。</p>`;
+
+      const root = document.getElementById("main");
+      root.innerHTML =
+        sectionHtml("lane", "L1 时间轴 · 会话泳道（最近 100 段）", swimInner, null, mockTagHtml(data, "swimlane")) +
+        sectionHtml("film", "L2 可找回 · 截图胶片（哈希折叠）", filmInner, null, mockTagHtml(data, "snapshots")) +
+        sectionHtml("recap", "L3 可叙述 · 规则摘要与总览", recapInner, null, "") +
+        sectionHtml("viz", "结构分布 · 按小时 & 应用 Top", chartsWrap, null, "") +
+        sectionHtml("switches", "切换图谱 · Top 边", swTable, null, mockTagHtml(data, "app_switches")) +
+        sectionHtml(
+          "input",
+          "输入节奏 · 环境旁证（并列事实）",
+          dualCharts,
+          null,
+          mockTagHtml(data, "input_metrics", "ambient_context")
+        ) +
+        sectionHtml("clipboard", "剪贴板流向", clipBlock, null, mockTagHtml(data, "clipboard_flows")) +
+        sectionHtml("notify", "通知打断", notifBlock, null, mockTagHtml(data, "notifications")) +
+        sectionHtml("week", "周对比（场景 D）", weekBlock, null, mockTagHtml(data, "week_compare")) +
+        sectionHtml("calib", "L4 可校准（占位）", calib, null, "");
+
+      resortSections(root);
+
+      const gridColor = "rgba(243,238,230,0.06)";
+      const tickColor = "#9a9185";
+
+      function safeBindChart(canvasId, factory) {
+        const el = document.getElementById(canvasId);
+        if (!el || typeof Chart === "undefined") return;
+        try {
+          const c = factory(el);
+          if (c) charts.push(c);
+        } catch (err) {
+          console.error("TimeLens chart:", canvasId, err);
+        }
+      }
+
+      function hourLabelsAndData() {
+        let rows = data.by_hour || [];
+        if (!rows.length) {
+          rows = Array.from({ length: 24 }, (_, h) => ({ hour: h, duration_ms: 0 }));
+        }
+        return {
+          labels: rows.map((x) => x.hour + ":00"),
+          values: rows.map((x) => (Number(x.duration_ms) || 0) / 3600000),
+        };
+      }
+
+      requestAnimationFrame(() => {
+        if (gen !== renderGeneration) return;
+        const hd = hourLabelsAndData();
+        safeBindChart("ch-hour", (el) => {
+          return new Chart(el, {
+            type: "bar",
+            data: {
+              labels: hd.labels,
+              datasets: [
+                {
+                  label: "小时",
+                  data: hd.values,
+                  backgroundColor: "rgba(232, 93, 76, 0.5)",
+                  borderRadius: 4,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: {
+                x: { ticks: { color: tickColor, maxRotation: 0, font: { size: 9 } }, grid: { color: gridColor } },
+                y: { ticks: { color: tickColor, callback: (v) => v + "h" }, grid: { color: gridColor }, beginAtZero: true },
+              },
+            },
+          });
+        });
+
+        let apps = (data.top_apps || []).slice(0, 10).reverse();
+        if (!apps.length) apps = [{ app_name: "（暂无）", duration_ms: 0 }];
+
+        safeBindChart("ch-apps", (el) => {
+          return new Chart(el, {
+            type: "bar",
+            data: {
+              labels: apps.map((a) => a.app_name),
+              datasets: [
+                {
+                  label: "小时",
+                  data: apps.map((a) => (Number(a.duration_ms) || 0) / 3600000),
+                  backgroundColor: "rgba(139, 126, 207, 0.55)",
+                  borderRadius: 4,
+                },
+              ],
+            },
+            options: {
+              indexAxis: "y",
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: {
+                x: { ticks: { color: tickColor, callback: (v) => v + "h" }, grid: { color: gridColor }, beginAtZero: true },
+                y: { ticks: { color: tickColor, font: { size: 10 } }, grid: { display: false } },
+              },
+            },
+          });
+        });
+
+        let inp = p2.input_rhythm_hourly || [];
+        if (!inp.length) inp = Array.from({ length: 24 }, (_, h) => ({ hour: h, avg_kpm: 0, samples: 0 }));
+
+        safeBindChart("ch-input", (el) => {
+          return new Chart(el, {
+            type: "line",
+            data: {
+              labels: inp.map((x) => x.hour + "h"),
+              datasets: [
+                {
+                  label: "KPM",
+                  data: inp.map((x) => Number(x.avg_kpm) || 0),
+                  borderColor: "#3d9b8b",
+                  backgroundColor: "rgba(61, 155, 139, 0.2)",
+                  fill: true,
+                  tension: 0.35,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: {
+                x: { ticks: { color: tickColor, font: { size: 9 } }, grid: { color: gridColor } },
+                y: { ticks: { color: tickColor }, grid: { color: gridColor }, beginAtZero: true },
+              },
+            },
+          });
+        });
+
+        let amb = p2.ambient_hourly || [];
+        if (!amb.length) amb = Array.from({ length: 24 }, (_, h) => ({ hour: h, avg_battery: 0, samples: 0 }));
+
+        safeBindChart("ch-amb", (el) => {
+          return new Chart(el, {
+            type: "bar",
+            data: {
+              labels: amb.map((x) => x.hour + "h"),
+              datasets: [
+                {
+                  label: "电量",
+                  data: amb.map((x) => (x.avg_battery != null ? Number(x.avg_battery) : 0)),
+                  backgroundColor: "rgba(212, 162, 76, 0.45)",
+                  borderRadius: 4,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: {
+                x: { ticks: { color: tickColor, font: { size: 9 } }, grid: { color: gridColor } },
+                y: { ticks: { color: tickColor }, grid: { color: gridColor }, beginAtZero: true },
+              },
+            },
+          });
+        });
+      });
+    }
+
+    async function load() {
+      document.getElementById("main").innerHTML = "<p class='live-meta'>拉取 /api/insights …</p>";
+      try {
+        const r = await fetch("/api/insights");
+        const j = await r.json();
+        if (!r.ok) {
+          document.getElementById("main").innerHTML =
+            `<div class="err-box"><strong>无法读取数据库</strong><br/>${escapeHtml(j.hint || j.error || "")}<br/><code>${escapeHtml(j.detail || "")}</code></div>`;
+          document.getElementById("live-meta").textContent = j.detail || "错误";
+          document.getElementById("demo-bar").hidden = true;
+          document.getElementById("lens-insight-panel").hidden = true;
+          return;
+        }
+        rawPayload = j;
+        const chk = document.getElementById("chk-mock-five");
+        if (!chk._tlInited) {
+          chk._tlInited = true;
+          chk.checked = needsMockBySchema(j) || !hasRealFiveDim(j.phase2);
+          chk.addEventListener("change", () => {
+            mockFiveDimEnabled = chk.checked;
+            render(mergeDisplayPayload(rawPayload));
+          });
+        }
+        mockFiveDimEnabled = chk.checked;
+        render(mergeDisplayPayload(rawPayload));
+      } catch (e) {
+        document.getElementById("main").innerHTML =
+          `<div class="err-box">请在本机运行 <code>python3 demo/timelens-insights-server.py</code> 后再打开本页（默认端口 <strong>18888</strong>）。<br/>${escapeHtml(String(e.message || e))}</div>`;
+        document.getElementById("live-meta").textContent = "未连接 API";
+      }
+    }
+
+    document.getElementById("btn-refresh").addEventListener("click", load);
+    document.getElementById("btn-md").addEventListener("click", () => {
+      if (!lastPayload) return;
+      const md = buildMarkdown(lastPayload);
+      const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "timelens-recap-" + (lastPayload.generated_at || "export").replace(/[:]/g, "-") + ".md";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    load();
+  </script>
+</body>
+</html>

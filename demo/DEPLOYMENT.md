@@ -41,6 +41,12 @@ python3 -m http.server 18765
 http://127.0.0.1:18765/timelens-product-showcase.html
 ```
 
+二期效果图（多页索引；**产品基准以 `prd/PRD_二期_智能洞察.md` v3.1 为准**：二期主线为**日终复盘报告**（非 AI 基线 + 可选 AI），深度页面属三期；mock 可与 PRD 逐步对齐）：
+
+```text
+http://127.0.0.1:18765/timelens-phase2-index.html
+```
+
 若已配置根路径重写（见 §4），也可访问：
 
 ```text

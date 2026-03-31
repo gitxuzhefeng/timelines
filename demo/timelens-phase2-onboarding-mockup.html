@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TimeLens 二期 · 首次开启 AI（效果图）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="timelens-phase2-theme.css" />
+  <style>
+    .p2-step {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+      margin-bottom: 1.1rem;
+      padding-bottom: 1.1rem;
+      border-bottom: 1px solid var(--line);
+    }
+    .p2-step:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .p2-step-num {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: var(--accent-soft);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-family: var(--display);
+      font-weight: 800;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .p2-step h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.35rem; }
+    .p2-step p { font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+    .p2-step ul { margin-top: 0.4rem; padding-left: 1.1rem; font-size: 0.8rem; color: #c9c2b6; }
+    .p2-step li { margin-bottom: 0.25rem; }
+  </style>
+</head>
+<body>
+  <div class="p2-outer">
+    <nav class="p2-nav" aria-label="导航">
+      <a href="timelens-phase2-index.html" class="p2-nav-brand">Phase 2</a>
+      <a href="timelens-phase2-index.html">索引</a>
+      <span style="color:var(--line)">·</span>
+      <span class="p2-nav-here">首次引导</span>
+      <span style="color:var(--line)">·</span>
+      <a href="timelens-phase2-ai-settings-mockup.html">AI 设置</a>
+    </nav>
+
+    <div class="p2-window">
+      <div class="p2-titlebar">
+        <div class="p2-dots"><span></span><span></span><span></span></div>
+        <div class="p2-titlebar-title">欢迎使用 · 智能洞察</div>
+      </div>
+      <div class="p2-body">
+        <div class="p2-badge-row">
+          <span class="p2-badge p1">P1 · 极简 Onboarding</span>
+        </div>
+        <h1 class="p2-h1">开启前，三件事说清楚</h1>
+        <p class="p2-lead">不讲空话，只回答：<strong>五维是什么、会送什么出设备、永远不会送什么</strong>。</p>
+
+        <div class="p2-card">
+          <h2>步骤</h2>
+          <div class="p2-step">
+            <div class="p2-step-num">1</div>
+            <div>
+              <h3>五维画像是什么</h3>
+              <p>TimeLens 已在你电脑上记录（仅元数据与统计）：</p>
+              <ul>
+                <li><strong>输入节奏</strong> — 快慢、删改、burst，不记录按键内容</li>
+                <li><strong>剪贴板流向</strong> — 哪个 App 复制、哪个粘贴，不记录剪贴板正文</li>
+                <li><strong>应用切换</strong> — 谁在拉扯你的注意力（边关系）</li>
+                <li><strong>通知打断</strong> — 谁常打断、是否导致切换（若采集可用）</li>
+                <li><strong>环境快照</strong> — 屏幕数、电量、勿扰等旁证</li>
+              </ul>
+            </div>
+          </div>
+          <div class="p2-step">
+            <div class="p2-step-num">2</div>
+            <div>
+              <h3>开启 AI 后，可能离开设备的内容</h3>
+              <p>仅当你打开总开关且勾选对应项：上述维度的<strong>聚合摘要</strong>、脱敏后的窗口标题/URL 摘要、以及你允许的<strong>关键帧截图</strong>（黑名单与过滤仍生效）。</p>
+            </div>
+          </div>
+          <div class="p2-step">
+            <div class="p2-step-num">3</div>
+            <div>
+              <h3>永远不会送给模型</h3>
+              <p>具体按键、剪贴板全文、密码字段；命中敏感过滤的截图。默认不向 TimeLens 官方服务器上传你的行为数据库。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="p2-row" style="border:none;padding:0;margin:1rem 0;">
+          <div class="p2-label">我已阅读并理解出站范围</div>
+          <div class="p2-toggle" aria-hidden="true"></div>
+        </div>
+
+        <button type="button" class="p2-btn">继续前往模型与分维设置</button>
+        <a href="timelens-phase2-ai-settings-mockup.html" class="p2-btn p2-btn-ghost" style="margin-left:0.5rem;text-decoration:none;display:inline-flex;">查看设置页效果图</a>
+
+        <p class="p2-foot">
+          <strong>PRD §4.2：</strong>Onboarding 为 P1；文案可与法务/隐私评审后定稿。
+        </p>
+      </div>
+    </div>
+    <p class="p2-page-foot">Phase 2 · onboarding mockup</p>
+  </div>
+</body>
+</html>

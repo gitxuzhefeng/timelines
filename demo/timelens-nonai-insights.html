@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TimeLens · 非 AI 洞察（本地数据）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.6/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --paper: #0c0b0a;
+      --ink: #f0ebe3;
+      --muted: #948c82;
+      --line: rgba(240, 235, 227, 0.08);
+      --accent: #c45c3e;
+      --accent-soft: rgba(196, 92, 62, 0.14);
+      --teal: #2d8a7c;
+      --teal-soft: rgba(45, 138, 124, 0.16);
+      --violet: #7b6fd4;
+      --violet-soft: rgba(123, 111, 212, 0.14);
+      --sans: "DM Sans", system-ui, sans-serif;
+      --display: "Syne", var(--sans);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--sans);
+      background: var(--paper);
+      color: var(--ink);
+      line-height: 1.55;
+      min-height: 100vh;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.035;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      z-index: 0;
+    }
+    .shell { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 2rem 1.25rem 3.5rem; }
+    header {
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 1.25rem;
+    }
+    header h1 {
+      font-family: var(--display);
+      font-size: clamp(1.5rem, 4vw, 2rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.35rem;
+    }
+    header p { color: var(--muted); font-size: 0.9rem; }
+    header .meta { margin-top: 0.75rem; font-size: 0.75rem; color: var(--muted); font-family: ui-monospace, monospace; word-break: break-all; }
+    .badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 0.25rem 0.5rem;
+      border-radius: 6px;
+      background: var(--accent-soft);
+      color: #e8a090;
+      margin-bottom: 0.6rem;
+    }
+    .grid {
+      display: grid;
+      gap: 1.25rem;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 880px) {
+      .grid-2 { grid-template-columns: 1fr 1fr; }
+    }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 1.15rem 1.2rem;
+      background: linear-gradient(160deg, #141210 0%, #0e0d0c 100%);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.03) inset;
+    }
+    .card h2 {
+      font-family: var(--display);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.85rem;
+    }
+    .narratives { list-style: none; }
+    .narratives li {
+      position: relative;
+      padding-left: 1rem;
+      margin-bottom: 0.65rem;
+      font-size: 0.95rem;
+      color: #dcd6cc;
+    }
+    .narratives li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.55em;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+    .narratives strong { color: var(--ink); font-weight: 600; }
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 0.75rem;
+    }
+    .kpi {
+      padding: 0.85rem;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.25);
+      border: 1px solid var(--line);
+    }
+    .kpi .v { font-family: var(--display); font-size: 1.35rem; font-weight: 800; color: var(--ink); }
+    .kpi .l { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 0.25rem; }
+    .chart-wrap { position: relative; height: 220px; margin-top: 0.5rem; }
+    .chart-wrap.tall { height: 280px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    th, td { text-align: left; padding: 0.45rem 0.35rem; border-bottom: 1px solid var(--line); }
+    th { color: var(--muted); font-weight: 600; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; }
+    .err {
+      padding: 1rem;
+      border-radius: 10px;
+      background: rgba(180, 60, 60, 0.12);
+      border: 1px solid rgba(180, 80, 80, 0.35);
+      color: #e8b4b4;
+      font-size: 0.9rem;
+    }
+    .err code { font-size: 0.75rem; opacity: 0.9; }
+    footer { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--line); font-size: 0.72rem; color: var(--muted); }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-top: 0.75rem;
+      padding: 0.45rem 0.85rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.04);
+      color: var(--ink);
+      cursor: pointer;
+      font-family: var(--sans);
+    }
+    .btn:hover { background: rgba(255,255,255,0.08); }
+    .loading { color: var(--muted); font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="badge">规则聚合 · 非 LLM</div>
+      <h1>TimeLens 非 AI 洞察</h1>
+      <p>基于本地 <code style="color:#c9c2b8">window_sessions</code> / <code style="color:#c9c2b8">app_switches</code> / <code style="color:#c9c2b8">snapshots</code> 的只读统计与固定模板文案。</p>
+      <div class="meta" id="hdr-meta">加载中…</div>
+      <button type="button" class="btn" id="btn-refresh">重新拉取数据</button>
+    </header>
+
+    <div id="app">
+      <p class="loading">正在连接 <code>/api/insights</code> …</p>
+    </div>
+
+    <footer>
+      需先运行：<code style="color:#a8a29e">python3 demo/timelens-insights-server.py</code>，再打开本页。端口默认 18888，可用环境变量 <code>TIMELENS_INSIGHTS_PORT</code> / <code>TIMELENS_DB</code> 覆盖。
+    </footer>
+  </div>
+
+  <script>
+    function fmtDur(ms) {
+      if (ms < 60000) return (ms / 1000).toFixed(0) + " 秒";
+      const m = Math.floor(ms / 60000);
+      if (m < 60) return m + " 分钟";
+      const h = (ms / 3600000).toFixed(1);
+      return h + " 小时";
+    }
+
+    const chartDefaults = {
+      color: "#948c82",
+      grid: "rgba(240,235,227,0.06)",
+      font: "'DM Sans', sans-serif",
+    };
+
+    let charts = [];
+
+    function destroyCharts() {
+      charts.forEach((c) => c.destroy());
+      charts = [];
+    }
+
+    function render(data) {
+      destroyCharts();
+      const el = document.getElementById("app");
+      const hdr = document.getElementById("hdr-meta");
+      hdr.textContent =
+        "生成时间 " +
+        data.generated_at +
+        " · 库 " +
+        data.db_path;
+
+      function narrativeToHtml(text) {
+        const parts = text.split(/(\*\*.+?\*\*)/g);
+        return parts
+          .map((p) => {
+            const m = p.match(/^\*\*(.+)\*\*$/);
+            if (m) return "<strong>" + escapeHtml(m[1]) + "</strong>";
+            return escapeHtml(p);
+          })
+          .join("");
+      }
+
+      const narrHtml2 =
+        "<ul class='narratives'>" +
+        (data.rule_narratives || []).map((t) => "<li>" + narrativeToHtml(t) + "</li>").join("") +
+        "</ul>";
+
+      const totals = data.totals || {};
+      const kpis = `
+        <div class="kpis">
+          <div class="kpi"><div class="v">${totals.tracked_hours != null ? totals.tracked_hours : "—"}</div><div class="l">前台累计(小时)</div></div>
+          <div class="kpi"><div class="v">${totals.window_sessions ?? "—"}</div><div class="l">会话条数</div></div>
+          <div class="kpi"><div class="v">${totals.app_switches ?? "—"}</div><div class="l">应用切换</div></div>
+          <div class="kpi"><div class="v">${totals.snapshots ?? "—"}</div><div class="l">截图记录</div></div>
+          <div class="kpi"><div class="v">${totals.raw_events ?? "—"}</div><div class="l">原始轮询行</div></div>
+        </div>`;
+
+      el.innerHTML = `
+        <div class="card" style="margin-bottom:1.25rem">
+          <h2>规则摘要</h2>
+          ${narrHtml2}
+        </div>
+        <div class="card" style="margin-bottom:1.25rem">
+          <h2>总览</h2>
+          ${kpis}
+          <p style="margin-top:0.85rem;font-size:0.8rem;color:var(--muted)">数据区间：${escapeHtml(data.range?.min_label || "—")} → ${escapeHtml(data.range?.max_label || "—")}</p>
+        </div>
+        <div class="grid grid-2" style="margin-bottom:1.25rem">
+          <div class="card">
+            <h2>按小时分布（会话起点）</h2>
+            <div class="chart-wrap"><canvas id="ch-hour"></canvas></div>
+          </div>
+          <div class="card">
+            <h2>按日前台时长</h2>
+            <div class="chart-wrap tall"><canvas id="ch-day"></canvas></div>
+          </div>
+        </div>
+        <div class="grid grid-2" style="margin-bottom:1.25rem">
+          <div class="card">
+            <h2>应用 Top（按累计时长）</h2>
+            <div class="chart-wrap tall"><canvas id="ch-apps"></canvas></div>
+          </div>
+          <div class="card">
+            <h2>高频切换路径</h2>
+            <div id="switch-table-wrap"></div>
+          </div>
+        </div>
+        <div class="card">
+          <h2>意图占比（若有标注）</h2>
+          <div id="intent-wrap"></div>
+        </div>
+      `;
+
+      const hourLabels = (data.by_hour || []).map((x) => x.hour + ":00");
+      const hourData = (data.by_hour || []).map((x) => x.duration_ms / 3600000);
+
+      const ch1 = new Chart(document.getElementById("ch-hour"), {
+        type: "bar",
+        data: {
+          labels: hourLabels,
+          datasets: [
+            {
+              label: "小时",
+              data: hourData,
+              backgroundColor: "rgba(196, 92, 62, 0.55)",
+              borderRadius: 4,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: chartDefaults.color, maxRotation: 0, font: { size: 9 } }, grid: { color: chartDefaults.grid } },
+            y: {
+              ticks: { color: chartDefaults.color, callback: (v) => v + "h" },
+              grid: { color: chartDefaults.grid },
+              beginAtZero: true,
+            },
+          },
+        },
+      });
+      charts.push(ch1);
+
+      const days = data.by_day || [];
+      const ch2 = new Chart(document.getElementById("ch-day"), {
+        type: "line",
+        data: {
+          labels: days.map((d) => d.date),
+          datasets: [
+            {
+              label: "小时",
+              data: days.map((d) => d.duration_ms / 3600000),
+              borderColor: "#2d8a7c",
+              backgroundColor: "rgba(45, 138, 124, 0.2)",
+              fill: true,
+              tension: 0.35,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: chartDefaults.color, font: { size: 9 } }, grid: { color: chartDefaults.grid } },
+            y: {
+              ticks: { color: chartDefaults.color, callback: (v) => v + "h" },
+              grid: { color: chartDefaults.grid },
+              beginAtZero: true,
+            },
+          },
+        },
+      });
+      charts.push(ch2);
+
+      const apps = (data.top_apps || []).slice(0, 10).reverse();
+      const ch3 = new Chart(document.getElementById("ch-apps"), {
+        type: "bar",
+        data: {
+          labels: apps.map((a) => a.app_name),
+          datasets: [
+            {
+              label: "小时",
+              data: apps.map((a) => a.duration_ms / 3600000),
+              backgroundColor: "rgba(123, 111, 212, 0.55)",
+              borderRadius: 4,
+            },
+          ],
+        },
+        options: {
+          indexAxis: "y",
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              ticks: { color: chartDefaults.color, callback: (v) => v + "h" },
+              grid: { color: chartDefaults.grid },
+              beginAtZero: true,
+            },
+            y: { ticks: { color: chartDefaults.color, font: { size: 10 } }, grid: { display: false } },
+          },
+        },
+      });
+      charts.push(ch3);
+
+      const sw = data.top_switches || [];
+      const swEl = document.getElementById("switch-table-wrap");
+      if (!sw.length) {
+        swEl.innerHTML = "<p style='color:var(--muted);font-size:0.85rem'>无 app_switches 数据</p>";
+      } else {
+        swEl.innerHTML =
+          "<table><thead><tr><th>从</th><th>到</th><th>次数</th></tr></thead><tbody>" +
+          sw
+            .map(
+              (r) =>
+                "<tr><td>" +
+                escapeHtml(r.from_app) +
+                "</td><td>" +
+                escapeHtml(r.to_app) +
+                "</td><td>" +
+                r.count +
+                "</td></tr>"
+            )
+            .join("") +
+          "</tbody></table>";
+      }
+
+      const intentEl = document.getElementById("intent-wrap");
+      const ib = data.intent_breakdown || [];
+      if (!ib.length) {
+        intentEl.innerHTML =
+          "<p style='color:var(--muted);font-size:0.85rem'>暂无 intent 聚合（字段为空或表未使用）。</p>";
+      } else {
+        intentEl.innerHTML =
+          "<table><thead><tr><th>意图</th><th>时长</th><th>占比</th></tr></thead><tbody>" +
+          ib
+            .map(
+              (r) =>
+                "<tr><td>" +
+                escapeHtml(r.intent) +
+                "</td><td>" +
+                fmtDur(r.duration_ms) +
+                "</td><td>" +
+                r.share_pct +
+                "%</td></tr>"
+            )
+            .join("") +
+          "</tbody></table>";
+      }
+    }
+
+    function escapeHtml(s) {
+      if (!s) return "";
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function showError(msg, detail) {
+      document.getElementById("app").innerHTML =
+        "<div class='err'><strong>无法加载数据</strong><br/>" +
+        escapeHtml(msg) +
+        (detail ? "<br/><code>" + escapeHtml(detail) + "</code>" : "") +
+        "</div>";
+    }
+
+    async function load() {
+      document.getElementById("app").innerHTML = "<p class='loading'>正在连接 <code>/api/insights</code> …</p>";
+      try {
+        const r = await fetch("/api/insights");
+        const j = await r.json();
+        if (!r.ok) {
+          showError(j.hint || j.error || r.statusText, j.detail);
+          document.getElementById("hdr-meta").textContent = "请求失败 · " + (j.detail || "");
+          return;
+        }
+        render(j);
+      } catch (e) {
+        showError("请确认已在本机启动 timelens-insights-server.py（默认端口 18888）。", String(e.message || e));
+        document.getElementById("hdr-meta").textContent = "未连接本地 API";
+      }
+    }
+
+    document.getElementById("btn-refresh").addEventListener("click", load);
+    load();
+  </script>
+</body>
+</html>

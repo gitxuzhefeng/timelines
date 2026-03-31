@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TimeLens 二期 · 日终复盘（产品效果图）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Syne:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --paper: #0f0e0c;
+      --ink: #f3eee6;
+      --muted: #9a9185;
+      --line: rgba(243, 238, 230, 0.1);
+      --accent: #e85d4c;
+      --accent-soft: rgba(232, 93, 76, 0.15);
+      --teal: #3d9b8b;
+      --teal-soft: rgba(61, 155, 139, 0.18);
+      --amber: #d4a24c;
+      --amber-soft: rgba(212, 162, 76, 0.15);
+      --violet: #8b7ecf;
+      --violet-soft: rgba(139, 126, 207, 0.18);
+      --mono: ui-monospace, "DM Sans", monospace;
+      --sans: "DM Sans", system-ui, sans-serif;
+      --display: "Syne", var(--sans);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--paper);
+      color: var(--ink);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* texture */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.04;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      z-index: 0;
+    }
+
+    .shell {
+      position: relative;
+      z-index: 1;
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+
+    /* window chrome mock */
+    .window {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      background: linear-gradient(165deg, #161412 0%, #0c0b0a 100%);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.04) inset,
+        0 24px 80px rgba(0,0,0,0.55);
+    }
+
+    .titlebar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid var(--line);
+      background: rgba(0,0,0,0.35);
+    }
+    .dots { display: flex; gap: 6px; }
+    .dots span {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #44403a;
+    }
+    .dots span:nth-child(1) { background: #5c5248; }
+    .dots span:nth-child(2) { background: #4a4540; }
+    .dots span:nth-child(3) { background: #3d3a36; }
+    .titlebar-title {
+      flex: 1;
+      text-align: center;
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      min-height: 720px;
+    }
+    @media (max-width: 860px) {
+      .layout { grid-template-columns: 1fr; }
+      .toc { display: none; }
+    }
+
+    .toc {
+      border-right: 1px solid var(--line);
+      padding: 1.25rem 1rem;
+      background: rgba(0,0,0,0.2);
+    }
+    .toc h3 {
+      font-family: var(--display);
+      font-size: 0.65rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.85rem;
+    }
+    .toc a {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 0.35rem 0;
+      border-left: 2px solid transparent;
+      padding-left: 0.5rem;
+      margin-left: -0.5rem;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .toc a:hover { color: var(--ink); border-color: var(--accent); }
+
+    .main {
+      padding: 1.5rem 1.75rem 2.5rem;
+    }
+
+    .hero {
+      margin-bottom: 2rem;
+      animation: enter 0.7s ease both;
+    }
+    @keyframes enter {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    .badge-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .badge {
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 0.28rem 0.55rem;
+      border-radius: 4px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+    }
+    .badge.hot {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .badge.safe {
+      border-color: var(--teal);
+      color: #7ecfc2;
+      background: var(--teal-soft);
+    }
+
+    .hero h1 {
+      font-family: var(--display);
+      font-size: clamp(1.55rem, 4vw, 2.15rem);
+      font-weight: 800;
+      line-height: 1.15;
+      max-width: 28ch;
+      margin-bottom: 0.5rem;
+    }
+    .hero .sub {
+      color: var(--muted);
+      font-size: 0.92rem;
+      max-width: 52ch;
+    }
+    .hero .sub strong { color: #c9c2b6; font-weight: 600; }
+
+    .pillars {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.45rem;
+      margin-top: 1.25rem;
+    }
+    @media (max-width: 720px) {
+      .pillars { grid-template-columns: repeat(2, 1fr); }
+    }
+    .pillar {
+      font-size: 0.62rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-align: center;
+      padding: 0.5rem 0.35rem;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    .pillar span { display: block; color: var(--ink); font-size: 0.68rem; margin-top: 0.15rem; }
+
+    section {
+      margin-top: 2.25rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--line);
+      scroll-margin-top: 1rem;
+      animation: enter 0.65s ease both;
+    }
+    section:nth-of-type(2) { animation-delay: 0.05s; }
+    section:nth-of-type(3) { animation-delay: 0.1s; }
+    section:nth-of-type(4) { animation-delay: 0.12s; }
+    section:nth-of-type(5) { animation-delay: 0.14s; }
+    section:nth-of-type(6) { animation-delay: 0.16s; }
+    section:nth-of-type(7) { animation-delay: 0.18s; }
+
+    .sec-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.5rem 1rem;
+      margin-bottom: 1rem;
+    }
+    .sec-num {
+      font-family: var(--display);
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--accent);
+      opacity: 0.9;
+    }
+    .sec-title {
+      font-family: var(--display);
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+    .sec-meta {
+      margin-left: auto;
+      font-size: 0.7rem;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+
+    .narrative {
+      font-size: 0.95rem;
+      color: #d8d2c8;
+      max-width: 62ch;
+      margin-bottom: 1rem;
+    }
+    .narrative em {
+      font-style: normal;
+      color: var(--amber);
+      font-weight: 500;
+    }
+
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin-bottom: 1rem;
+    }
+    .stat {
+      font-size: 0.72rem;
+      padding: 0.35rem 0.6rem;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--line);
+      color: var(--muted);
+    }
+    .stat b { color: var(--ink); font-weight: 600; }
+
+    /* mini graph: app switch */
+    .graph {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+      flex-wrap: wrap;
+      padding: 1rem;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: rgba(0,0,0,0.25);
+      margin-top: 0.5rem;
+    }
+    .node {
+      font-size: 0.65rem;
+      font-weight: 600;
+      padding: 0.45rem 0.55rem;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      color: var(--ink);
+    }
+    .node.c1 { border-color: var(--teal); background: var(--teal-soft); }
+    .node.c2 { border-color: var(--amber); background: var(--amber-soft); }
+    .node.c3 { border-color: var(--violet); background: var(--violet-soft); }
+    .edge {
+      font-size: 0.58rem;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+
+    /* input rhythm bars */
+    .rhythm {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 4px;
+      align-items: end;
+      height: 72px;
+      margin-top: 0.75rem;
+      padding: 0.5rem;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.2);
+      border: 1px solid var(--line);
+    }
+    .rhythm i {
+      display: block;
+      border-radius: 3px 3px 0 0;
+      background: linear-gradient(180deg, var(--teal), rgba(61,155,139,0.35));
+      min-height: 8px;
+      animation: bar 1.2s ease both;
+    }
+    .rhythm i:nth-child(4), .rhythm i:nth-child(5) { background: linear-gradient(180deg, var(--accent), rgba(232,93,76,0.4)); }
+    @keyframes bar {
+      from { transform: scaleY(0); transform-origin: bottom; }
+      to { transform: scaleY(1); }
+    }
+
+    .flow-list {
+      list-style: none;
+      margin-top: 0.5rem;
+    }
+    .flow-list li {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 0.55rem 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 0.82rem;
+    }
+    .flow-list li:last-child { border-bottom: none; }
+    .flow-rank {
+      font-family: var(--display);
+      font-weight: 800;
+      font-size: 0.85rem;
+      color: var(--muted);
+      width: 1.5rem;
+    }
+    .flow-path { flex: 1; color: #d8d2c8; }
+    .flow-path code { font-family: var(--mono); font-size: 0.75rem; color: var(--amber); }
+    .flow-n { font-size: 0.72rem; color: var(--muted); font-family: var(--mono); }
+
+    .interrupt-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+      margin-top: 0.5rem;
+    }
+    .interrupt-table th,
+    .interrupt-table td {
+      text-align: left;
+      padding: 0.5rem 0.6rem;
+      border-bottom: 1px solid var(--line);
+    }
+    .interrupt-table th { color: var(--muted); font-weight: 500; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; }
+
+    .conf {
+      display: inline-block;
+      font-size: 0.58rem;
+      padding: 0.15rem 0.35rem;
+      border-radius: 3px;
+      background: var(--amber-soft);
+      color: var(--amber);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    .ambient {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin-top: 0.75rem;
+    }
+    .amb-card {
+      flex: 1;
+      min-width: 140px;
+      padding: 0.75rem;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.03);
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    .amb-card strong { display: block; color: var(--ink); font-size: 0.85rem; margin-bottom: 0.2rem; }
+
+    /* multimodal cards */
+    .mm-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.75rem;
+      margin-top: 0.75rem;
+    }
+    .mm-card {
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: #121110;
+    }
+    .mm-thumb {
+      height: 88px;
+      background: linear-gradient(135deg, #1e3d36 0%, #2a2520 50%, #1a1c28 100%);
+      position: relative;
+    }
+    .mm-thumb::after {
+      content: "";
+      position: absolute;
+      inset: 12px;
+      border: 1px dashed rgba(243,238,230,0.12);
+      border-radius: 4px;
+    }
+    .mm-body { padding: 0.65rem 0.75rem; }
+    .mm-tag {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--teal);
+      margin-bottom: 0.25rem;
+    }
+    .mm-title { font-size: 0.8rem; font-weight: 600; color: var(--ink); }
+    .mm-anchor {
+      font-size: 0.65rem;
+      color: var(--muted);
+      font-family: var(--mono);
+      margin-top: 0.35rem;
+    }
+
+    .footer-note {
+      margin-top: 2.5rem;
+      padding: 1rem 1.1rem;
+      border-radius: 8px;
+      border: 1px dashed var(--line);
+      font-size: 0.72rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .footer-note strong { color: #b5aea3; }
+
+    .page-foot {
+      text-align: center;
+      margin-top: 2rem;
+      font-size: 0.68rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .mock2-nav {
+      max-width: 1120px;
+      margin: 0 auto 1rem;
+      padding: 0 1.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem 0.65rem;
+      font-family: var(--sans);
+      font-size: 0.72rem;
+    }
+    .mock2-nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .mock2-nav a:hover { color: var(--ink); }
+    .mock2-nav .mock2-brand {
+      font-family: var(--display);
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink);
+      margin-right: 0.25rem;
+    }
+    .mock2-nav .mock2-here { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <nav class="mock2-nav" aria-label="二期效果图导航">
+    <a href="timelens-phase2-index.html" class="mock2-brand">Phase 2</a>
+    <a href="timelens-phase2-index.html">索引</a>
+    <span style="color:var(--line)">·</span>
+    <span class="mock2-here">日终复盘</span>
+    <span style="color:var(--line)">·</span>
+    <a href="timelens-phase2-ai-settings-mockup.html">AI 设置</a>
+    <a href="timelens-phase2-session-drilldown-mockup.html">Session 下钻</a>
+    <a href="timelens-phase2-correction-mockup.html">纠偏</a>
+    <a href="timelens-phase2-weekly-compare-mockup.html">周对比</a>
+    <a href="timelens-phase2-onboarding-mockup.html">引导</a>
+    <a href="timelens-phase2-webhook-mockup.html">Webhook</a>
+  </nav>
+  <div class="shell">
+    <div class="window">
+      <div class="titlebar">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="titlebar-title">TimeLens · 本地数据 · 日终复盘</div>
+      </div>
+      <div class="layout">
+        <nav class="toc" aria-label="章节">
+          <h3>本期结构</h3>
+          <a href="#overview">总览</a>
+          <a href="#switch">应用切换</a>
+          <a href="#input">输入节奏</a>
+          <a href="#clipboard">剪贴板</a>
+          <a href="#notify">通知打断</a>
+          <a href="#ambient">环境旁证</a>
+          <a href="#mm">多模态意图</a>
+        </nav>
+        <div class="main">
+          <header class="hero">
+            <div class="badge-row">
+              <span class="badge hot">二期 P0 · 日终复盘 v1</span>
+              <span class="badge safe">数字来自本地聚合 · 可核对</span>
+              <span class="badge">演示数据 · 非真实采集</span>
+            </div>
+            <h1>五维画像一起说话：<br />你今天是怎么被「扯」着过完的</h1>
+            <p class="sub">
+              <strong>二期核心</strong>不是泛聊天，而是把
+              <strong>输入节奏、剪贴板流向、应用切换、通知打断、环境快照</strong>
+              与<strong>关键截图</strong>交给多模态模型，写成一篇你能对得上自己记忆的一天。
+            </p>
+            <div class="pillars">
+              <div class="pillar">① 输入节奏 <span>KPM / 删改 / burst</span></div>
+              <div class="pillar">② 剪贴板 <span>App→App 无正文</span></div>
+              <div class="pillar">③ 切换图谱 <span>边关系 TopN</span></div>
+              <div class="pillar">④ 通知打断 <span>谁拽你走</span></div>
+              <div class="pillar">⑤ 环境快照 <span>屏 / 电 / 勿扰</span></div>
+            </div>
+          </header>
+
+          <section id="overview">
+            <div class="sec-head">
+              <span class="sec-num">00</span>
+              <h2 class="sec-title">总览</h2>
+              <span class="sec-meta">local_aggregate · day_2026-03-31</span>
+            </div>
+            <p class="narrative">
+              今天下午 <em>14:00–18:00</em> 是典型的<strong>交叉工作流</strong>：IDE、浏览器与 IM 高频三角切换；剪贴板主路径显示大量「查文档 → 写代码」；
+              输入侧 <em>删改率升高</em> 出现在切换风暴之后，而不是上午的长专注段。环境上下午均为双屏、电池一度低于 20% 且未充电——与输入节律下降<strong>并列出现</strong>，不作因果定论。
+            </p>
+            <div class="stats">
+              <span class="stat">App 切换 <b>187</b> 次 / 日</span>
+              <span class="stat">深度段（&gt;30min 无切）<b>2</b> 段</span>
+              <span class="stat">剪贴板配对 <b>54</b> 次</span>
+              <span class="stat">通知归因切换 <b>11</b> 次 <span class="conf">置信 · 中</span></span>
+            </div>
+          </section>
+
+          <section id="switch">
+            <div class="sec-head">
+              <span class="sec-num">01</span>
+              <h2 class="sec-title">应用切换图谱</h2>
+              <span class="sec-meta">app_switches · Top 边</span>
+            </div>
+            <p class="narrative">
+              图谱里<strong>最重的三对边</strong>决定了叙事主调：你在「写代码」和「查资料/回消息」之间被反复拉扯，而不是单一 App 时长能描述的「一直在写」。
+            </p>
+            <div class="graph" aria-hidden="true">
+              <span class="node c1">VS Code</span>
+              <span class="edge">47→</span>
+              <span class="node c2">Chrome</span>
+              <span class="edge">←38</span>
+              <span class="node c1">VS Code</span>
+              <span class="edge" style="flex-basis:100%;height:0"></span>
+              <span class="node c3">Slack</span>
+              <span class="edge">29→</span>
+              <span class="node c1">VS Code</span>
+              <span class="edge">←22</span>
+              <span class="node c2">Chrome</span>
+              <span class="edge" style="flex-basis:100%;height:0"></span>
+              <span class="node c2">Chrome</span>
+              <span class="edge">19→</span>
+              <span class="node c3">微信</span>
+            </div>
+            <div class="stats">
+              <span class="stat">VS Code ↔ Chrome <b>85</b> 次</span>
+              <span class="stat">Slack → VS Code <b>29</b> 次</span>
+              <span class="stat">碎片化窗口（5min 内 &gt;5 切）<b>6</b> 次</span>
+            </div>
+          </section>
+
+          <section id="input">
+            <div class="sec-head">
+              <span class="sec-num">02</span>
+              <h2 class="sec-title">输入节奏</h2>
+              <span class="sec-meta">input_metrics · 按小时</span>
+            </div>
+            <p class="narrative">
+              上午 <em>心流档位</em> 偏高（高 KPM、低删改、长 burst）；下午切换增多后，<em>挣扎档位</em> 抬升——AI 只负责把本地算好的档位翻译成话，并<strong>互链</strong>到上一节的切换高峰时段。
+            </p>
+            <div class="rhythm" title="示意：8 小时柱高 = 相对输入强度">
+              <i style="height:45%"></i><i style="height:62%"></i><i style="height:78%"></i><i style="height:88%"></i>
+              <i style="height:72%"></i><i style="height:55%"></i><i style="height:38%"></i><i style="height:42%"></i>
+            </div>
+            <div class="stats">
+              <span class="stat">峰值 KPM <b>412</b></span>
+              <span class="stat">日删改率 <b>0.14</b></span>
+              <span class="stat">typing burst <b>23</b> 次</span>
+            </div>
+          </section>
+
+          <section id="clipboard">
+            <div class="sec-head">
+              <span class="sec-num">03</span>
+              <h2 class="sec-title">剪贴板主路径</h2>
+              <span class="sec-meta">clipboard_flows · 无正文</span>
+            </div>
+            <p class="narrative">
+              只使用 <em>类型与长度</em> 元数据，还原「信息搬家」方向：哪条 App→App 边最忙，对应你在叙事里的「查—写」或「AI—IDE」模式。
+            </p>
+            <ul class="flow-list">
+              <li><span class="flow-rank">1</span><span class="flow-path"><code>Chrome</code> → <code>VS Code</code> · 代码片段类</span><span class="flow-n">× 31</span></li>
+              <li><span class="flow-rank">2</span><span class="flow-path"><code>ChatGPT</code> → <code>VS Code</code> · plain_text</span><span class="flow-n">× 14</span></li>
+              <li><span class="flow-rank">3</span><span class="flow-path"><code>Notion</code> → <code>Chrome</code> · url</span><span class="flow-n">× 9</span></li>
+            </ul>
+          </section>
+
+          <section id="notify">
+            <div class="sec-head">
+              <span class="sec-num">04</span>
+              <h2 class="sec-title">通知打断</h2>
+              <span class="sec-meta">notifications + app_switches</span>
+            </div>
+            <p class="narrative">
+              「谁最常拽你走」来自<strong>本地统计</strong>；模型只润色表述。检测不可靠时须降级——此处演示为<strong>完整数据可用</strong>态。
+            </p>
+            <table class="interrupt-table">
+              <thead>
+                <tr>
+                  <th>来源 App</th>
+                  <th>通知次数</th>
+                  <th>导致切换</th>
+                  <th>回到原任务均时</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Slack</td>
+                  <td>23</td>
+                  <td>11</td>
+                  <td>4m 12s</td>
+                </tr>
+                <tr>
+                  <td>微信</td>
+                  <td>14</td>
+                  <td>6</td>
+                  <td>6m 05s</td>
+                </tr>
+                <tr>
+                  <td>邮件</td>
+                  <td>8</td>
+                  <td>2</td>
+                  <td>—</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section id="ambient">
+            <div class="sec-head">
+              <span class="sec-num">05</span>
+              <h2 class="sec-title">环境旁证</h2>
+              <span class="sec-meta">ambient_context · 低风险字段</span>
+            </div>
+            <p class="narrative">
+              环境不抢戏，只提供<strong>并列旁证</strong>：多屏、低电量、勿扰未开、会议态（摄像占用）等，与输入/切换章节同屏出现，避免「脑补健康结论」。
+            </p>
+            <div class="ambient">
+              <div class="amb-card"><strong>显示器</strong>2 块 · 外接活跃</div>
+              <div class="amb-card"><strong>电池</strong>最低 18% · 15:20 未插电</div>
+              <div class="amb-card"><strong>勿扰</strong>关闭</div>
+              <div class="amb-card"><strong>摄像</strong>14:50–15:40 占用（会议态可能）</div>
+            </div>
+          </section>
+
+          <section id="mm">
+            <div class="sec-head">
+              <span class="sec-num">06</span>
+              <h2 class="sec-title">多模态意图小结</h2>
+              <span class="sec-meta">snapshots + 五维摘要 → 模型</span>
+            </div>
+            <p class="narrative">
+              每个关键断言带<strong>可下钻锚点</strong>：时间段、session、缩略图（已脱敏/已过黑名单帧不展示）。用户能核对「这句话是不是我屏幕上那一幕」。
+            </p>
+            <div class="mm-grid">
+              <article class="mm-card">
+                <div class="mm-thumb"></div>
+                <div class="mm-body">
+                  <div class="mm-tag">攻坚排错</div>
+                  <div class="mm-title">IDE 全屏 + 错误栈上下文</div>
+                  <div class="mm-anchor">session · 8f2a…c91 · 15:08–15:52</div>
+                </div>
+              </article>
+              <article class="mm-card">
+                <div class="mm-thumb"></div>
+                <div class="mm-body">
+                  <div class="mm-tag">交叉查资料</div>
+                  <div class="mm-title">浏览器文档 + 多标签标题切换</div>
+                  <div class="mm-anchor">session · 3d71…04b · 16:05–16:40</div>
+                </div>
+              </article>
+              <article class="mm-card">
+                <div class="mm-thumb"></div>
+                <div class="mm-body">
+                  <div class="mm-tag">IM 碎片回复</div>
+                  <div class="mm-title">小窗 IM + 低 burst 输入</div>
+                  <div class="mm-anchor">session · 9e04…77d · 17:10–17:35</div>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <p class="footer-note">
+            <strong>本页为二期《日终复盘》静态效果图。</strong>
+            体现 PRD 要求：固定章节顺序、五维数据各自成节、关键数字可本地核对、多模态只解释不篡改统计、通知与环境章节可降级。
+            打开方式：直接用浏览器打开本 HTML 文件即可。
+          </p>
+        </div>
+      </div>
+    </div>
+    <p class="page-foot">TimeLens Phase 2 · Recap Mockup</p>
+  </div>
+</body>
+</html>

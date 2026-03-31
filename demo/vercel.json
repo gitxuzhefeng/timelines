@@ -3,6 +3,14 @@
     {
       "source": "/",
       "destination": "/timelens-product-showcase.html"
+    },
+    {
+      "source": "/seed",
+      "destination": "/timelens-product-showcase.html"
+    },
+    {
+      "source": "/phase2",
+      "destination": "/timelens-phase2-index.html"
     }
   ]
 }
