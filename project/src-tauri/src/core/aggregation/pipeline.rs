@@ -8,11 +8,13 @@ use parking_lot::Mutex;
 use std::time::Instant;
 
 use chrono::Utc;
+use rusqlite::Connection;
 use log::warn;
 use serde_json::json;
 use tauri::{AppHandle, Emitter};
 use uuid::Uuid;
 
+use crate::core::intent_mapping::resolve_intent;
 use crate::core::models::{
     AggregationCmd, SessionUpdateOp, WindowSession, WriteEvent,
 };
@@ -57,6 +59,7 @@ fn insert_session(
     window_title: &str,
     extracted_url: &Option<String>,
     extracted_file_path: &Option<String>,
+    intent: Option<String>,
 ) {
     let _ = writer.try_send(WriteEvent::SessionUpdate(SessionUpdateOp::Insert {
         id: id.to_string(),
@@ -68,7 +71,7 @@ fn insert_session(
         window_title: window_title.to_string(),
         extracted_url: extracted_url.clone(),
         extracted_file_path: extracted_file_path.clone(),
-        intent: None,
+        intent,
         raw_event_count: 1,
         is_active: 1,
     }));
@@ -92,6 +95,7 @@ fn window_session_from(
     window_title: &str,
     extracted_url: &Option<String>,
     extracted_file_path: &Option<String>,
+    intent: Option<String>,
     raw_count: i64,
     active: bool,
 ) -> WindowSession {
@@ -105,10 +109,24 @@ fn window_session_from(
         window_title: window_title.to_string(),
         extracted_url: extracted_url.clone(),
         extracted_file_path: extracted_file_path.clone(),
-        intent: None,
+        intent,
         raw_event_count: raw_count,
         is_active: active,
     }
+}
+
+fn resolved_intent_for_insert(
+    read_conn: &Mutex<Connection>,
+    app_name: &str,
+    bundle_id: &Option<String>,
+) -> Option<String> {
+    let g = read_conn.lock();
+    resolve_intent(
+        &g,
+        app_name,
+        bundle_id.as_deref(),
+    )
+    .unwrap_or(None)
 }
 
 fn handle_cmd(
@@ -118,6 +136,7 @@ fn handle_cmd(
     app: &AppHandle,
     current_session: &Arc<RwLock<Option<String>>>,
     is_afk: &Arc<AtomicBool>,
+    read_conn: &Mutex<Connection>,
 ) {
     match cmd {
         AggregationCmd::Shutdown => {}
@@ -149,6 +168,7 @@ fn handle_cmd(
             is_afk.store(false, Ordering::Relaxed);
             let _ = writer.try_send(WriteEvent::SessionUpdate(SessionUpdateOp::DeactivateAll));
             let new_id = Uuid::new_v4().to_string();
+            let intent = resolved_intent_for_insert(read_conn, &app_name, &bundle_id);
             insert_session(
                 writer,
                 &new_id,
@@ -158,6 +178,7 @@ fn handle_cmd(
                 &window_title,
                 &extracted_url,
                 &extracted_file_path,
+                intent.clone(),
             );
             st.active_id = Some(new_id.clone());
             st.start_ms = timestamp_ms;
@@ -173,11 +194,24 @@ fn handle_cmd(
                 &window_title,
                 &extracted_url,
                 &extracted_file_path,
+                intent,
                 1,
                 true,
             );
             emit_session(app, &w);
             let _ = app.emit("afk_state_changed", json!({ "isAfk": false, "idleSeconds": 0.0 }));
+        }
+        AggregationCmd::EnterRecordingBlackout { timestamp_ms } => {
+            if let Some(ref id) = st.active_id {
+                close_session(writer, id, st.start_ms, timestamp_ms);
+            }
+            let _ = writer.try_send(WriteEvent::SessionUpdate(SessionUpdateOp::DeactivateAll));
+            st.active_id = None;
+            st.start_ms = 0;
+            st.last_app.clear();
+            st.last_bundle = None;
+            *current_session.write().expect("lock") = None;
+            is_afk.store(false, Ordering::Relaxed);
         }
         AggregationCmd::Tick {
             timestamp_ms,
@@ -199,6 +233,7 @@ fn handle_cmd(
                     }
                     let _ = writer.try_send(WriteEvent::SessionUpdate(SessionUpdateOp::DeactivateAll));
                     let new_id = Uuid::new_v4().to_string();
+                    let intent = resolved_intent_for_insert(read_conn, &app_name, &bundle_id);
                     insert_session(
                         writer,
                         &new_id,
@@ -208,6 +243,7 @@ fn handle_cmd(
                         &window_title,
                         &extracted_url,
                         &extracted_file_path,
+                        intent.clone(),
                     );
                     st.active_id = Some(new_id.clone());
                     st.start_ms = timestamp_ms;
@@ -223,6 +259,7 @@ fn handle_cmd(
                         &window_title,
                         &extracted_url,
                         &extracted_file_path,
+                        intent,
                         1,
                         true,
                     );
@@ -255,6 +292,7 @@ fn handle_cmd(
                             let _ =
                                 writer.try_send(WriteEvent::SessionUpdate(SessionUpdateOp::DeactivateAll));
                             let new_id = Uuid::new_v4().to_string();
+                            let intent = resolved_intent_for_insert(read_conn, &app_name, &bundle_id);
                             insert_session(
                                 writer,
                                 &new_id,
@@ -264,6 +302,7 @@ fn handle_cmd(
                                 &window_title,
                                 &extracted_url,
                                 &extracted_file_path,
+                                intent.clone(),
                             );
                             st.active_id = Some(new_id.clone());
                             st.start_ms = timestamp_ms;
@@ -279,6 +318,7 @@ fn handle_cmd(
                                 &window_title,
                                 &extracted_url,
                                 &extracted_file_path,
+                                intent,
                                 1,
                                 true,
                             );
@@ -286,6 +326,7 @@ fn handle_cmd(
                         }
                     } else {
                         let new_id = Uuid::new_v4().to_string();
+                        let intent = resolved_intent_for_insert(read_conn, &app_name, &bundle_id);
                         insert_session(
                             writer,
                             &new_id,
@@ -295,6 +336,7 @@ fn handle_cmd(
                             &window_title,
                             &extracted_url,
                             &extracted_file_path,
+                            intent.clone(),
                         );
                         st.active_id = Some(new_id.clone());
                         st.start_ms = timestamp_ms;
@@ -310,6 +352,7 @@ fn handle_cmd(
                             &window_title,
                             &extracted_url,
                             &extracted_file_path,
+                            intent,
                             1,
                             true,
                         );
@@ -399,6 +442,7 @@ pub fn spawn_aggregation_thread(
                     &app,
                     &current_session,
                     &is_afk,
+                    read_conn.as_ref(),
                 ),
                 Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
                 Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,

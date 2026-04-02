@@ -5,6 +5,30 @@ use serde::{Deserialize, Serialize};
 pub struct PermissionStatus {
     pub accessibility_granted: bool,
     pub screen_recording_granted: bool,
+    /// 系统通知监听相关权限（Windows：通知读取；macOS：本应用 UserNotifications 非「拒绝」）。
+    pub notification_listener_granted: bool,
+}
+
+/// 单引擎健康状态（`get_pipeline_health`），与二期架构文档对齐。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EngineStatus {
+    /// `running` | `degraded` | `stopped`
+    pub status: String,
+    pub last_data_ms: Option<i64>,
+    pub error_count: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PipelineHealth {
+    pub tracker: EngineStatus,
+    pub capture: EngineStatus,
+    pub input_dynamics: EngineStatus,
+    pub clipboard: EngineStatus,
+    pub notifications: EngineStatus,
+    pub ambient_context: EngineStatus,
+    pub last_check_ms: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -195,11 +219,77 @@ pub enum SessionUpdateOp {
 }
 
 #[derive(Debug, Clone)]
+pub struct InputMetricRow {
+    pub id: String,
+    pub timestamp_ms: i64,
+    pub session_id: Option<String>,
+    pub window_interval_secs: f64,
+    pub keystrokes_count: i64,
+    pub kpm: f64,
+    pub delete_count: i64,
+    pub delete_ratio: f64,
+    pub shortcut_count: i64,
+    pub copy_count: i64,
+    pub paste_count: i64,
+    pub undo_count: i64,
+    pub mouse_click_count: i64,
+    pub mouse_distance_px: f64,
+    pub scroll_delta_total: f64,
+    pub scroll_direction_changes: i64,
+    pub typing_burst_count: i64,
+    pub longest_pause_ms: i64,
+}
+
+#[derive(Debug, Clone)]
+pub struct ClipboardFlowRow {
+    pub id: String,
+    pub timestamp_ms: i64,
+    pub action: String,
+    pub app_name: String,
+    pub bundle_id: Option<String>,
+    pub content_type: Option<String>,
+    pub content_length: i64,
+    pub flow_pair_id: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct NotificationRow {
+    pub id: String,
+    pub timestamp_ms: i64,
+    pub source_app: String,
+    pub source_bundle_id: Option<String>,
+    pub current_foreground_app: Option<String>,
+    pub user_responded: i64,
+    pub response_delay_ms: Option<i64>,
+    pub caused_switch: i64,
+}
+
+#[derive(Debug, Clone)]
+pub struct AmbientContextRow {
+    pub id: String,
+    pub timestamp_ms: i64,
+    pub wifi_ssid: Option<String>,
+    pub display_count: i64,
+    pub is_external_display: i64,
+    pub battery_level: Option<f64>,
+    pub is_charging: Option<i64>,
+    pub is_camera_active: i64,
+    pub is_audio_input_active: i64,
+    pub is_dnd_enabled: i64,
+    pub screen_brightness: Option<f64>,
+    pub active_space_index: Option<i64>,
+}
+
+#[derive(Debug, Clone)]
 pub enum WriteEvent {
     RawEvent(RawEventRow),
     AppSwitch(AppSwitchRow),
     Snapshot(SnapshotRow),
     SessionUpdate(SessionUpdateOp),
+    InputMetric(InputMetricRow),
+    ClipboardFlow(ClipboardFlowRow),
+    Notification(NotificationRow),
+    AmbientContext(AmbientContextRow),
     /// Delete old raw rows; clear snapshot file paths after deleting files on disk.
     Retention {
         raw_cutoff_ms: i64,
@@ -248,5 +338,9 @@ pub enum AggregationCmd {
         extracted_url: Option<String>,
         extracted_file_path: Option<String>,
         state_hash: i64,
+    },
+    /// 前台进入黑名单应用：关闭当前 Session，不新建 Session，直至回到非黑名单前台。
+    EnterRecordingBlackout {
+        timestamp_ms: i64,
     },
 }

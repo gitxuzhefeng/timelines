@@ -1,18 +1,34 @@
-//! 前台窗口与空闲检测（Windows Win32）。
+//! 前台窗口与空闲检测（Windows Win32）；键鼠计数（WH_KEYBOARD_LL / WH_MOUSE_LL）；环境采样；通知监听权限探测。
 
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::{Arc, Mutex, OnceLock};
 
 use screenshots::Screen;
-use windows::core::PWSTR;
-use windows::Win32::Foundation::CloseHandle;
-use windows::Win32::System::SystemInformation::GetTickCount;
+use windows::UI::Notifications::Management::{
+    UserNotificationListener, UserNotificationListenerAccessStatus,
+};
+use windows::Win32::Foundation::{ERROR_SUCCESS, HWND, LPARAM, LRESULT, WPARAM};
+use windows::Win32::NetworkManagement::WiFi::{
+    wlan_interface_state_connected, wlan_intf_opcode_current_connection, WlanCloseHandle,
+    WlanEnumInterfaces, WlanFreeMemory, WlanOpenHandle, WlanQueryInterface, DOT11_SSID,
+    WLAN_API_VERSION, WLAN_CONNECTION_ATTRIBUTES, WLAN_INTERFACE_INFO, WLAN_INTERFACE_INFO_LIST,
+};
+use windows::Win32::System::Power::{GetSystemPowerStatus, SYSTEM_POWER_STATUS};
+use windows::Win32::System::WinRT::RoInitialize;
+use windows::Win32::System::WinRT::RO_INIT_MULTITHREADED;
 use windows::Win32::System::Threading::{
     OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
 };
 use windows::Win32::UI::Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO};
 use windows::Win32::UI::WindowsAndMessaging::{
-    GetForegroundWindow, GetWindowTextW, GetWindowThreadProcessId,
+    CallNextHookEx, DispatchMessageW, HHOOK, KBDLLHOOKSTRUCT, LLKHF_INJECTED, LLMHF_INJECTED,
+    MSLLHOOKSTRUCT, PeekMessageW, SetWindowsHookExW, TranslateMessage, UnhookWindowsHookEx, MSG,
+    PM_REMOVE, WH_KEYBOARD_LL, WH_MOUSE_LL, WM_KEYDOWN, WM_LBUTTONDOWN, WM_QUIT,
 };
+use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetSystemMetrics, GetWindowTextW, GetWindowThreadProcessId, SM_CMONITORS};
+use windows::core::PWSTR;
+use windows::Win32::Foundation::CloseHandle;
 
 #[derive(Debug, Clone)]
 pub struct FrontWindowState {
@@ -21,6 +37,12 @@ pub struct FrontWindowState {
     pub window_title: String,
     pub is_fullscreen: bool,
 }
+
+static KEY_TOTAL: AtomicU32 = AtomicU32::new(0);
+static MOUSE_TOTAL: AtomicU32 = AtomicU32::new(0);
+static INPUT_LAST: Mutex<Option<(u32, u32)>> = Mutex::new(None);
+static KB_HOOK_HANDLE: OnceLock<HHOOK> = OnceLock::new();
+static MOUSE_HOOK_HANDLE: OnceLock<HHOOK> = OnceLock::new();
 
 pub fn ax_trusted() -> bool {
     true
@@ -35,7 +57,7 @@ pub fn idle_seconds() -> f64 {
         if !GetLastInputInfo(&mut lii).as_bool() {
             return 0.0;
         }
-        let tick = GetTickCount();
+        let tick = windows::Win32::System::SystemInformation::GetTickCount();
         let idle_ms = tick.wrapping_sub(lii.dwTime);
         idle_ms as f64 / 1000.0
     }
@@ -47,6 +69,203 @@ pub fn screen_capture_granted() -> bool {
 
 pub fn screen_capture_refresh_access() -> bool {
     screen_capture_probe()
+}
+
+pub fn active_display_count() -> i32 {
+    unsafe { GetSystemMetrics(SM_CMONITORS).max(1) }
+}
+
+/// 与上一采样点相比的新增 KeyDown / 左键按下（排除注入事件）；依赖 `spawn_low_level_input_hooks`。
+pub fn hardware_input_delta() -> (u32, u32) {
+    let k = KEY_TOTAL.load(Ordering::Relaxed);
+    let m = MOUSE_TOTAL.load(Ordering::Relaxed);
+    let mut g = INPUT_LAST.lock().unwrap();
+    match *g {
+        None => {
+            *g = Some((k, m));
+            (0, 0)
+        }
+        Some((pk, pm)) => {
+            let dk = k.saturating_sub(pk);
+            let dm = m.saturating_sub(pm);
+            *g = Some((k, m));
+            (dk, dm)
+        }
+    }
+}
+
+pub fn spawn_low_level_input_hooks(running: Arc<AtomicBool>) {
+    std::thread::spawn(move || unsafe {
+        let Ok(k_hook) = SetWindowsHookExW(
+            WH_KEYBOARD_LL,
+            Some(low_level_keyboard_proc),
+            windows::Win32::Foundation::HINSTANCE::default(),
+            0,
+        ) else {
+            log::warn!("WH_KEYBOARD_LL: SetWindowsHookExW failed");
+            return;
+        };
+        let Ok(m_hook) = SetWindowsHookExW(
+            WH_MOUSE_LL,
+            Some(low_level_mouse_proc),
+            windows::Win32::Foundation::HINSTANCE::default(),
+            0,
+        ) else {
+            log::warn!("WH_MOUSE_LL: SetWindowsHookExW failed");
+            let _ = UnhookWindowsHookEx(k_hook);
+            return;
+        };
+        let _ = KB_HOOK_HANDLE.set(k_hook);
+        let _ = MOUSE_HOOK_HANDLE.set(m_hook);
+
+        let mut msg = MSG::default();
+        while running.load(Ordering::Relaxed) {
+            while PeekMessageW(&mut msg, HWND(0), 0, 0, PM_REMOVE).as_bool() {
+                if msg.message == WM_QUIT {
+                    break;
+                }
+                let _ = TranslateMessage(&msg);
+                DispatchMessageW(&msg);
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        let _ = UnhookWindowsHookEx(k_hook);
+        let _ = UnhookWindowsHookEx(m_hook);
+    });
+}
+
+unsafe extern "system" fn low_level_keyboard_proc(
+    code: i32,
+    wparam: WPARAM,
+    lparam: LPARAM,
+) -> LRESULT {
+    let hk = KB_HOOK_HANDLE.get().copied().unwrap_or_default();
+    if code < 0 {
+        return CallNextHookEx(hk, code, wparam, lparam);
+    }
+    if wparam.0 as u32 == WM_KEYDOWN {
+        let info = &*(lparam.0 as *const KBDLLHOOKSTRUCT);
+        if info.flags.0 & LLKHF_INJECTED.0 == 0 {
+            KEY_TOTAL.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+    CallNextHookEx(hk, code, wparam, lparam)
+}
+
+unsafe extern "system" fn low_level_mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
+    let hk = MOUSE_HOOK_HANDLE.get().copied().unwrap_or_default();
+    if code < 0 {
+        return CallNextHookEx(hk, code, wparam, lparam);
+    }
+    if wparam.0 as u32 == WM_LBUTTONDOWN {
+        let info = &*(lparam.0 as *const MSLLHOOKSTRUCT);
+        if info.flags & LLMHF_INJECTED == 0 {
+            MOUSE_TOTAL.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+    CallNextHookEx(hk, code, wparam, lparam)
+}
+
+pub fn notifications_listener_access_granted() -> bool {
+    unsafe {
+        let _ = RoInitialize(RO_INIT_MULTITHREADED);
+    }
+    match UserNotificationListener::Current() {
+        Ok(l) => l
+            .GetAccessStatus()
+            .map(|s| s == UserNotificationListenerAccessStatus::Allowed)
+            .unwrap_or(false),
+        Err(_) => false,
+    }
+}
+
+pub fn sample_ambient_extras() -> super::AmbientExtras {
+    super::AmbientExtras {
+        wifi_ssid: wifi_ssid_connected(),
+        battery_percent: battery_percent_win(),
+        is_charging: ac_power_online_win(),
+    }
+}
+
+fn battery_percent_win() -> Option<f64> {
+    let mut st = SYSTEM_POWER_STATUS::default();
+    unsafe {
+        GetSystemPowerStatus(&mut st).ok()?;
+    }
+    if st.BatteryLifePercent >= 1 && st.BatteryLifePercent <= 100 {
+        Some(f64::from(st.BatteryLifePercent))
+    } else {
+        None
+    }
+}
+
+fn ac_power_online_win() -> Option<i64> {
+    let mut st = SYSTEM_POWER_STATUS::default();
+    unsafe {
+        GetSystemPowerStatus(&mut st).ok()?;
+    }
+    match st.ACLineStatus {
+        0 => Some(0),
+        1 => Some(1),
+        _ => None,
+    }
+}
+
+fn dot11_ssid_to_string(s: &DOT11_SSID) -> Option<String> {
+    let n = s.uSSIDLength as usize;
+    if n == 0 || n > s.ucSSID.len() {
+        return None;
+    }
+    std::str::from_utf8(&s.ucSSID[..n])
+        .ok()
+        .map(|x| x.to_string())
+}
+
+fn wifi_ssid_connected() -> Option<String> {
+    unsafe {
+        let mut negotiated = 0u32;
+        let mut client = windows::Win32::Foundation::HANDLE::default();
+        if WlanOpenHandle(WLAN_API_VERSION, None, &mut negotiated, &mut client) != ERROR_SUCCESS.0 {
+            return None;
+        }
+        let mut list: *mut WLAN_INTERFACE_INFO_LIST = std::ptr::null_mut();
+        let r = WlanEnumInterfaces(client, None, &mut list);
+        if r != ERROR_SUCCESS.0 || list.is_null() {
+            let _ = WlanCloseHandle(client, None);
+            return None;
+        }
+        let mut out = None;
+        let n = (*list).dwNumberOfItems as usize;
+        let base: *const WLAN_INTERFACE_INFO = std::ptr::addr_of!((*list).InterfaceInfo[0]);
+        for i in 0..n {
+            let info = &*base.add(i);
+            if info.isState != wlan_interface_state_connected {
+                continue;
+            }
+            let mut sz = 0u32;
+            let mut pdata: *mut core::ffi::c_void = std::ptr::null_mut();
+            let qr = WlanQueryInterface(
+                client,
+                &info.InterfaceGuid,
+                wlan_intf_opcode_current_connection,
+                None,
+                &mut sz,
+                &mut pdata,
+                None,
+            );
+            if qr != ERROR_SUCCESS.0 || pdata.is_null() || sz < std::mem::size_of::<WLAN_CONNECTION_ATTRIBUTES>() as u32
+            {
+                continue;
+            }
+            let attrs = &*(pdata as *const WLAN_CONNECTION_ATTRIBUTES);
+            out = dot11_ssid_to_string(&attrs.wlanAssociationAttributes.dot11Ssid);
+            WlanFreeMemory(pdata);
+            break;
+        }
+        WlanFreeMemory(list as *mut _);
+        let _ = WlanCloseHandle(client, None);
+        out
+    }
 }
 
 fn screen_capture_probe() -> bool {

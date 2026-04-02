@@ -44,6 +44,26 @@ export interface RawEvent {
 export interface PermissionStatus {
   accessibilityGranted: boolean;
   screenRecordingGranted: boolean;
+  /** 系统通知监听相关权限（与 `get_pipeline_health.notifications` 降级语义对齐） */
+  notificationListenerGranted: boolean;
+}
+
+/** 与 Rust `EngineStatus` 对齐 */
+export interface EngineStatus {
+  status: "running" | "degraded" | "stopped" | string;
+  lastDataMs: number | null;
+  errorCount: number;
+}
+
+/** 与 Rust `PipelineHealth` 对齐 */
+export interface PipelineHealth {
+  tracker: EngineStatus;
+  capture: EngineStatus;
+  inputDynamics: EngineStatus;
+  clipboard: EngineStatus;
+  notifications: EngineStatus;
+  ambientContext: EngineStatus;
+  lastCheckMs: number;
 }
 
 export interface ActivityStats {
@@ -70,6 +90,31 @@ export interface WriterStats {
   lastBatchEvents: number;
   lastBatchMs: number;
   channelPendingEstimate: number;
+}
+
+export interface EngineFlagsResponse {
+  engineInput: boolean;
+  engineClipboard: boolean;
+  engineNotifications: boolean;
+  engineAmbient: boolean;
+  aiEnabled: boolean;
+}
+
+export interface DailyReportDto {
+  id: string;
+  reportDate: string;
+  reportType: string;
+  contentMd: string;
+  generatedAtMs: number;
+  aiModel: string | null;
+  aiPromptHash: string | null;
+}
+
+export interface AiSettingsDto {
+  privacyAcknowledged: boolean;
+  baseUrl: string;
+  model: string;
+  hasApiKey: boolean;
 }
 
 /**

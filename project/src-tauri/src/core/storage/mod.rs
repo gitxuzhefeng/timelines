@@ -9,6 +9,7 @@ pub struct DataPaths {
     pub data_dir: PathBuf,
     pub db_path: PathBuf,
     pub shots_dir: PathBuf,
+    pub exports_dir: PathBuf,
 }
 
 impl DataPaths {
@@ -20,11 +21,13 @@ impl DataPaths {
         let data_dir = root.join("data");
         let db_path = data_dir.join("db.sqlite");
         let shots_dir = data_dir.join("shots");
+        let exports_dir = root.join("exports");
         Ok(Self {
             root,
             data_dir,
             db_path,
             shots_dir,
+            exports_dir,
         })
     }
 
@@ -32,6 +35,7 @@ impl DataPaths {
         use std::fs;
         fs::create_dir_all(&self.data_dir)?;
         fs::create_dir_all(&self.shots_dir)?;
+        fs::create_dir_all(&self.exports_dir)?;
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;

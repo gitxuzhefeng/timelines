@@ -92,7 +92,140 @@ CREATE INDEX IF NOT EXISTS idx_switches_ts ON app_switches(timestamp_ms);
 CREATE INDEX IF NOT EXISTS idx_switches_from_app ON app_switches(from_app);
 CREATE INDEX IF NOT EXISTS idx_switches_to_app ON app_switches(to_app);
 "#,
-}];
+},
+    Migration {
+        version: 2,
+        description: "Phase 2: missing P0 tables + daily_analysis + daily_reports",
+        sql: r#"
+CREATE TABLE IF NOT EXISTS intent_mapping (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    match_pattern TEXT NOT NULL,
+    match_field TEXT NOT NULL DEFAULT 'app_name',
+    intent TEXT NOT NULL,
+    priority INTEGER DEFAULT 0,
+    is_builtin INTEGER DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS input_metrics (
+    id TEXT PRIMARY KEY,
+    timestamp_ms INTEGER NOT NULL,
+    session_id TEXT,
+    window_interval_secs REAL NOT NULL,
+    keystrokes_count INTEGER DEFAULT 0,
+    kpm REAL DEFAULT 0,
+    delete_count INTEGER DEFAULT 0,
+    delete_ratio REAL DEFAULT 0,
+    shortcut_count INTEGER DEFAULT 0,
+    copy_count INTEGER DEFAULT 0,
+    paste_count INTEGER DEFAULT 0,
+    undo_count INTEGER DEFAULT 0,
+    mouse_click_count INTEGER DEFAULT 0,
+    mouse_distance_px REAL DEFAULT 0,
+    scroll_delta_total REAL DEFAULT 0,
+    scroll_direction_changes INTEGER DEFAULT 0,
+    typing_burst_count INTEGER DEFAULT 0,
+    longest_pause_ms INTEGER DEFAULT 0,
+    FOREIGN KEY (session_id) REFERENCES window_sessions(id)
+);
+CREATE INDEX IF NOT EXISTS idx_input_metrics_ts ON input_metrics(timestamp_ms);
+CREATE INDEX IF NOT EXISTS idx_input_metrics_session ON input_metrics(session_id);
+
+CREATE TABLE IF NOT EXISTS clipboard_flows (
+    id TEXT PRIMARY KEY,
+    timestamp_ms INTEGER NOT NULL,
+    action TEXT NOT NULL,
+    app_name TEXT NOT NULL,
+    bundle_id TEXT,
+    content_type TEXT,
+    content_length INTEGER DEFAULT 0,
+    flow_pair_id TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_clipboard_ts ON clipboard_flows(timestamp_ms);
+CREATE INDEX IF NOT EXISTS idx_clipboard_pair ON clipboard_flows(flow_pair_id);
+CREATE INDEX IF NOT EXISTS idx_clipboard_app ON clipboard_flows(app_name);
+
+CREATE TABLE IF NOT EXISTS notifications (
+    id TEXT PRIMARY KEY,
+    timestamp_ms INTEGER NOT NULL,
+    source_app TEXT NOT NULL,
+    source_bundle_id TEXT,
+    current_foreground_app TEXT,
+    user_responded INTEGER DEFAULT 0,
+    response_delay_ms INTEGER,
+    caused_switch INTEGER DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_notif_ts ON notifications(timestamp_ms);
+CREATE INDEX IF NOT EXISTS idx_notif_source_app ON notifications(source_app);
+
+CREATE TABLE IF NOT EXISTS ambient_context (
+    id TEXT PRIMARY KEY,
+    timestamp_ms INTEGER NOT NULL,
+    wifi_ssid TEXT,
+    display_count INTEGER DEFAULT 1,
+    is_external_display INTEGER DEFAULT 0,
+    battery_level REAL,
+    is_charging INTEGER,
+    is_camera_active INTEGER DEFAULT 0,
+    is_audio_input_active INTEGER DEFAULT 0,
+    is_dnd_enabled INTEGER DEFAULT 0,
+    screen_brightness REAL,
+    active_space_index INTEGER
+);
+CREATE INDEX IF NOT EXISTS idx_ambient_ts ON ambient_context(timestamp_ms);
+
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS daily_analysis (
+    id TEXT PRIMARY KEY,
+    analysis_date TEXT NOT NULL UNIQUE,
+    generated_at_ms INTEGER NOT NULL,
+    version INTEGER NOT NULL DEFAULT 1,
+    total_active_ms INTEGER,
+    intent_breakdown TEXT,
+    top_apps TEXT,
+    total_switches INTEGER,
+    switches_per_hour TEXT,
+    top_switch_pairs TEXT,
+    deep_work_segments TEXT,
+    deep_work_total_ms INTEGER,
+    fragmentation_pct REAL,
+    notification_count INTEGER,
+    top_interrupters TEXT,
+    interrupts_in_deep INTEGER,
+    avg_kpm REAL,
+    kpm_by_hour TEXT,
+    avg_delete_ratio REAL,
+    flow_score_avg REAL,
+    struggle_score_avg REAL,
+    clipboard_pairs INTEGER,
+    top_flows TEXT,
+    scene_breakdown TEXT,
+    data_sources TEXT,
+    degraded_sections TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_daily_date ON daily_analysis(analysis_date);
+
+CREATE TABLE IF NOT EXISTS daily_reports (
+    id TEXT PRIMARY KEY,
+    analysis_id TEXT NOT NULL,
+    report_date TEXT NOT NULL,
+    generated_at_ms INTEGER NOT NULL,
+    report_type TEXT NOT NULL,
+    content_md TEXT NOT NULL,
+    content_html TEXT,
+    ai_model TEXT,
+    ai_prompt_hash TEXT,
+    FOREIGN KEY (analysis_id) REFERENCES daily_analysis(id)
+);
+CREATE INDEX IF NOT EXISTS idx_reports_date ON daily_reports(report_date);
+CREATE INDEX IF NOT EXISTS idx_reports_analysis ON daily_reports(analysis_id);
+"#,
+    },
+];
 
 fn current_version(conn: &Connection) -> rusqlite::Result<i32> {
     let exists: bool = conn.query_row(
@@ -147,10 +280,10 @@ mod tests {
                 |r| r.get(0),
             )
             .unwrap();
-        assert_eq!(v, 1);
+        assert_eq!(v, 2);
         let tables: i64 = c
             .query_row(
-                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='raw_events'",
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='daily_analysis'",
                 [],
                 |r| r.get(0),
             )

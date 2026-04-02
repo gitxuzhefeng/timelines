@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type {
   ActivityStats,
   PermissionStatus,
+  PipelineHealth,
   RawEvent,
   Snapshot,
   StorageStats,
@@ -37,6 +38,7 @@ interface AppState {
   activity: ActivityStats | null;
   storage: StorageStats | null;
   writer: WriterStats | null;
+  pipelineHealth: PipelineHealth | null;
   loadingSessions: boolean;
   error: string | null;
   formatBytes: (n: number) => string;
@@ -65,6 +67,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   activity: null,
   storage: null,
   writer: null,
+  pipelineHealth: null,
   loadingSessions: false,
   error: null,
   formatBytes,
@@ -83,6 +86,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         writer,
         raw,
         activity,
+        health,
       ] = await Promise.all([
         api.isTracking(),
         api.checkPermissions(),
@@ -90,6 +94,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         api.getWriterStats(),
         api.getRawEventsRecent(80),
         api.getActivityStats(get().date),
+        api.getPipelineHealth(),
       ]);
       set({
         isTracking: tracking,
@@ -98,6 +103,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         writer,
         rawEvents: raw,
         activity,
+        pipelineHealth: health,
         error: null,
       });
       await get().refreshSessions();

@@ -9,15 +9,18 @@ use std::time::Duration;
 use chrono::Utc;
 use crc32fast::Hasher as Crc32;
 use log::warn;
+use serde_json::json;
 use std::hash::{Hash, Hasher};
 use tauri::{AppHandle, Emitter};
 use uuid::Uuid;
 
 use crate::core::acquisition::{self, FrontWindowState};
 use crate::core::models::{
-    AggregationCmd, AppSwitch, AppSwitchRow, CapturePriority, CaptureSignal, RawEventRow, WriteEvent,
+    AggregationCmd, AppSwitch, AppSwitchRow, CapturePriority, CaptureSignal, NotificationRow,
+    RawEventRow, WriteEvent,
 };
 use crate::core::privacy;
+use crate::core::settings::app_name_blacklisted;
 use crate::core::writer::WriterHandle;
 
 const AFK_SECS: f64 = 300.0;
@@ -47,6 +50,8 @@ pub fn spawn_tracker_thread(
     running: Arc<AtomicBool>,
     is_afk: Arc<AtomicBool>,
     current_session: Arc<RwLock<Option<String>>>,
+    notification_heuristic_enabled: Arc<AtomicBool>,
+    app_blacklist: Arc<RwLock<Vec<String>>>,
 ) {
     thread::spawn(move || {
         let mut last_hash: Option<i64> = None;
@@ -55,6 +60,7 @@ pub fn spawn_tracker_thread(
         let mut last_title = String::new();
         let mut last_session_start_ms: i64 = 0;
         let mut local_afk = false;
+        let mut in_blackout = false;
         let mut last_low_cap = std::time::Instant::now()
             .checked_sub(LOW_CAPTURE_EVERY)
             .unwrap_or_else(std::time::Instant::now);
@@ -106,6 +112,26 @@ pub fn spawn_tracker_thread(
                         is_fullscreen: false,
                     },
                 };
+                let list = app_blacklist
+                    .read()
+                    .ok()
+                    .map(|g| g.clone())
+                    .unwrap_or_default();
+                if app_name_blacklisted(&front.app_name, &list) {
+                    local_afk = false;
+                    is_afk.store(false, Ordering::Relaxed);
+                    let ts = Utc::now().timestamp_millis();
+                    let _ = agg_tx.send(AggregationCmd::EnterRecordingBlackout { timestamp_ms: ts });
+                    let _ = app.emit("afk_state_changed", json!({ "isAfk": false, "idleSeconds": 0.0 }));
+                    in_blackout = true;
+                    last_hash = None;
+                    last_app.clear();
+                    last_bundle = None;
+                    last_title.clear();
+                    last_session_start_ms = 0;
+                    continue;
+                }
+                in_blackout = false;
                 let (eu, ep) = privacy::extract_url_and_path(&front.window_title);
                 let _ = agg_tx.send(AggregationCmd::ExitAfk {
                     timestamp_ms: ts,
@@ -163,6 +189,29 @@ pub fn spawn_tracker_thread(
                     continue;
                 }
             };
+            let list = app_blacklist
+                .read()
+                .ok()
+                .map(|g| g.clone())
+                .unwrap_or_default();
+            let ts_blk = Utc::now().timestamp_millis();
+            if app_name_blacklisted(&front.app_name, &list) {
+                if !in_blackout {
+                    in_blackout = true;
+                    let _ = agg_tx.send(AggregationCmd::EnterRecordingBlackout {
+                        timestamp_ms: ts_blk,
+                    });
+                    last_hash = None;
+                    last_app.clear();
+                    last_bundle = None;
+                    last_title.clear();
+                    last_session_start_ms = 0;
+                }
+                continue;
+            }
+            if in_blackout {
+                in_blackout = false;
+            }
             let mut title = front.window_title.clone();
             if let Some(ref b) = front.bundle_id {
                 if privacy::should_redact_bundle(b) {
@@ -190,6 +239,16 @@ pub fn spawn_tracker_thread(
 
             if trigger == "window_change" {
                 let dur = (ts - last_session_start_ms).max(0);
+                let short_bounce = notification_heuristic_enabled.load(Ordering::Relaxed)
+                    && !last_app.is_empty()
+                    && front.app_name != last_app
+                    && dur > 0
+                    && dur < 2_500;
+                let switch_type: String = if short_bounce {
+                    "notification".into()
+                } else {
+                    "voluntary".into()
+                };
                 let sw_id = Uuid::new_v4().to_string();
                 let sw = AppSwitchRow {
                     id: sw_id.clone(),
@@ -201,11 +260,11 @@ pub fn spawn_tracker_thread(
                     to_bundle_id: front.bundle_id.clone(),
                     to_window_title: Some(title.clone()),
                     from_session_duration_ms: dur,
-                    switch_type: "voluntary".into(),
+                    switch_type: switch_type.clone(),
                 };
                 if !last_app.is_empty() {
                     let ev = AppSwitch {
-                        id: sw_id,
+                        id: sw_id.clone(),
                         timestamp_ms: ts,
                         from_app: sw.from_app.clone(),
                         from_bundle_id: sw.from_bundle_id.clone(),
@@ -218,6 +277,19 @@ pub fn spawn_tracker_thread(
                     };
                     let _ = writer.try_send(WriteEvent::AppSwitch(sw));
                     let _ = app.emit("app_switch_recorded", ev);
+                    if short_bounce {
+                        let nid = Uuid::new_v4().to_string();
+                        let _ = writer.try_send(WriteEvent::Notification(NotificationRow {
+                            id: nid,
+                            timestamp_ms: ts,
+                            source_app: front.app_name.clone(),
+                            source_bundle_id: front.bundle_id.clone(),
+                            current_foreground_app: Some(last_app.clone()),
+                            user_responded: 0,
+                            response_delay_ms: None,
+                            caused_switch: 1,
+                        }));
+                    }
                 }
             }
 

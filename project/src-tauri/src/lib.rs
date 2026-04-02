@@ -1,3 +1,4 @@
+mod analysis;
 mod api;
 mod core;
 
@@ -9,6 +10,7 @@ use parking_lot::Mutex;
 use tauri::http::{header, status::StatusCode, Response};
 use tauri::{Emitter, Manager};
 
+#[derive(Clone)]
 pub struct AppState(pub Arc<AppStateInner>);
 
 /// 为截图 WebP 提供 `timelens://localhost/snapshot/{id}` 响应（按 id 查库读盘）。
@@ -68,6 +70,13 @@ pub struct AppStateInner {
     pub screen_ok: Arc<AtomicBool>,
     pub current_session: Arc<RwLock<Option<String>>>,
     pub capture_tx: crossbeam_channel::Sender<core::models::CaptureSignal>,
+    pub engine_input: Arc<AtomicBool>,
+    pub engine_clipboard: Arc<AtomicBool>,
+    pub engine_notifications: Arc<AtomicBool>,
+    pub engine_ambient: Arc<AtomicBool>,
+    pub ai_enabled: Arc<AtomicBool>,
+    /// 与 `settings.app_capture_blacklist` 同步；采集线程热读。
+    pub app_blacklist: Arc<RwLock<Vec<String>>>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -85,6 +94,19 @@ pub fn run() {
             let writer = core::writer::spawn_writer_thread(wconn, metrics.clone());
             let read_conn =
                 core::storage::db::open_read(&paths.db_path).map_err(|e| format!("{e}"))?;
+            let (ei, ec, en, ea, ai_on) = {
+                let g = read_conn.lock();
+                core::settings::load_flags(&g)
+            };
+            let engine_input = Arc::new(AtomicBool::new(ei));
+            let engine_clipboard = Arc::new(AtomicBool::new(ec));
+            let engine_notifications = Arc::new(AtomicBool::new(en));
+            let engine_ambient = Arc::new(AtomicBool::new(ea));
+            let ai_enabled = Arc::new(AtomicBool::new(ai_on));
+            let app_blacklist = Arc::new(RwLock::new({
+                let g = read_conn.lock();
+                core::settings::get_app_blacklist(&g)
+            }));
             let tracking = Arc::new(AtomicBool::new(false));
             let running = Arc::new(AtomicBool::new(true));
             let is_afk = Arc::new(AtomicBool::new(false));
@@ -133,7 +155,32 @@ pub fn run() {
                 running.clone(),
                 is_afk.clone(),
                 current_session.clone(),
+                engine_notifications.clone(),
+                app_blacklist.clone(),
             );
+            #[cfg(any(target_os = "macos", target_os = "windows"))]
+            core::collection::phase2::spawn_phase2_collectors(
+                writer.clone(),
+                tracking.clone(),
+                running.clone(),
+                current_session.clone(),
+                core::collection::phase2::Phase2EngineFlags {
+                    input: engine_input.clone(),
+                    clipboard: engine_clipboard.clone(),
+                    ambient: engine_ambient.clone(),
+                },
+                app_blacklist.clone(),
+            );
+            #[cfg(target_os = "windows")]
+            {
+                core::acquisition::spawn_low_level_input_hooks(running.clone());
+                core::collection::notifications_listener::spawn_system_notification_listener(
+                    writer.clone(),
+                    tracking.clone(),
+                    running.clone(),
+                    engine_notifications.clone(),
+                );
+            }
             let screen_ok_on_focus = screen_ok.clone();
             let wm_emit = metrics.clone();
             let state = AppState(Arc::new(AppStateInner {
@@ -147,6 +194,12 @@ pub fn run() {
                 screen_ok,
                 current_session,
                 capture_tx: cap_tx,
+                engine_input,
+                engine_clipboard,
+                engine_notifications,
+                engine_ambient,
+                ai_enabled,
+                app_blacklist,
             }));
             app.manage(state);
             #[cfg(all(desktop, any(target_os = "macos", target_os = "windows")))]
@@ -168,6 +221,7 @@ pub fn run() {
             let ps = core::models::PermissionStatus {
                 accessibility_granted: core::acquisition::ax_trusted(),
                 screen_recording_granted: core::acquisition::screen_capture_granted(),
+                notification_listener_granted: core::acquisition::notifications_listener_access_granted(),
             };
             let _ = handle.emit("permissions_required", ps);
             #[cfg(all(desktop, any(target_os = "macos", target_os = "windows")))]
@@ -233,6 +287,7 @@ pub fn run() {
             api::check_permissions,
             api::open_accessibility_settings,
             api::open_screen_recording_settings,
+            api::open_notification_settings,
             api::get_sessions,
             api::get_session_snapshots,
             api::get_activity_stats,
@@ -244,6 +299,21 @@ pub fn run() {
             api::get_writer_stats,
             api::run_retention_cleanup,
             api::checkpoint_wal,
+            api::get_pipeline_health,
+            api::get_engine_flags,
+            api::set_engine_enabled,
+            api::set_ai_enabled,
+            api::get_ai_settings,
+            api::set_ai_settings,
+            api::set_ai_privacy_acknowledged,
+            api::update_session_intent,
+            api::get_app_blacklist,
+            api::set_app_blacklist,
+            api::generate_daily_analysis,
+            api::get_daily_analysis,
+            api::generate_daily_report,
+            api::get_daily_report,
+            api::export_daily_report,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

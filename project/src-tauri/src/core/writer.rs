@@ -53,8 +53,12 @@ fn event_sort_key(e: &WriteEvent) -> u8 {
         WriteEvent::AppSwitch(_) => 1,
         WriteEvent::RawEvent(_) => 2,
         WriteEvent::Snapshot(_) => 3,
-        WriteEvent::Retention { .. } => 4,
-        WriteEvent::WalCheckpoint => 5,
+        WriteEvent::InputMetric(_) => 4,
+        WriteEvent::ClipboardFlow(_) => 5,
+        WriteEvent::Notification(_) => 6,
+        WriteEvent::AmbientContext(_) => 7,
+        WriteEvent::Retention { .. } => 8,
+        WriteEvent::WalCheckpoint => 9,
         WriteEvent::Shutdown => 0,
     }
 }
@@ -205,6 +209,94 @@ fn apply_batch(conn: &mut Connection, batch: &[WriteEvent]) -> rusqlite::Result<
                         s.resolution,
                         s.format,
                         s.perceptual_hash,
+                    ],
+                )?;
+            }
+            WriteEvent::InputMetric(r) => {
+                tx.execute(
+                    r#"INSERT INTO input_metrics (
+                        id, timestamp_ms, session_id, window_interval_secs,
+                        keystrokes_count, kpm, delete_count, delete_ratio, shortcut_count,
+                        copy_count, paste_count, undo_count, mouse_click_count, mouse_distance_px,
+                        scroll_delta_total, scroll_direction_changes, typing_burst_count, longest_pause_ms
+                    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)"#,
+                    params![
+                        r.id,
+                        r.timestamp_ms,
+                        r.session_id,
+                        r.window_interval_secs,
+                        r.keystrokes_count,
+                        r.kpm,
+                        r.delete_count,
+                        r.delete_ratio,
+                        r.shortcut_count,
+                        r.copy_count,
+                        r.paste_count,
+                        r.undo_count,
+                        r.mouse_click_count,
+                        r.mouse_distance_px,
+                        r.scroll_delta_total,
+                        r.scroll_direction_changes,
+                        r.typing_burst_count,
+                        r.longest_pause_ms,
+                    ],
+                )?;
+            }
+            WriteEvent::ClipboardFlow(r) => {
+                tx.execute(
+                    r#"INSERT INTO clipboard_flows (
+                        id, timestamp_ms, action, app_name, bundle_id, content_type, content_length, flow_pair_id
+                    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)"#,
+                    params![
+                        r.id,
+                        r.timestamp_ms,
+                        r.action,
+                        r.app_name,
+                        r.bundle_id,
+                        r.content_type,
+                        r.content_length,
+                        r.flow_pair_id,
+                    ],
+                )?;
+            }
+            WriteEvent::Notification(r) => {
+                tx.execute(
+                    r#"INSERT INTO notifications (
+                        id, timestamp_ms, source_app, source_bundle_id, current_foreground_app,
+                        user_responded, response_delay_ms, caused_switch
+                    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)"#,
+                    params![
+                        r.id,
+                        r.timestamp_ms,
+                        r.source_app,
+                        r.source_bundle_id,
+                        r.current_foreground_app,
+                        r.user_responded,
+                        r.response_delay_ms,
+                        r.caused_switch,
+                    ],
+                )?;
+            }
+            WriteEvent::AmbientContext(r) => {
+                tx.execute(
+                    r#"INSERT INTO ambient_context (
+                        id, timestamp_ms, wifi_ssid, display_count, is_external_display,
+                        battery_level, is_charging, is_camera_active, is_audio_input_active,
+                        is_dnd_enabled, screen_brightness, active_space_index
+                    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)"#,
+                    params![
+                        r.id,
+                        r.timestamp_ms,
+                        r.wifi_ssid,
+                        r.display_count,
+                        r.is_external_display,
+                        r.battery_level,
+                        r.is_charging,
+                        r.is_camera_active,
+                        r.is_audio_input_active,
+                        r.is_dnd_enabled,
+                        r.screen_brightness,
+                        r.active_space_index,
                     ],
                 )?;
             }

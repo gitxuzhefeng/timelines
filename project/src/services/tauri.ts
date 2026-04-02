@@ -2,7 +2,11 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
   ActivityStats,
+  AiSettingsDto,
+  DailyReportDto,
+  EngineFlagsResponse,
   PermissionStatus,
+  PipelineHealth,
   RawEvent,
   Snapshot,
   StorageStats,
@@ -36,6 +40,10 @@ export async function openAccessibilitySettings(): Promise<void> {
 
 export async function openScreenRecordingSettings(): Promise<void> {
   await invoke("open_screen_recording_settings");
+}
+
+export async function openNotificationSettings(): Promise<void> {
+  await invoke("open_notification_settings");
 }
 
 export async function getSessions(
@@ -79,6 +87,89 @@ export async function runRetentionCleanup(): Promise<void> {
 
 export async function checkpointWal(): Promise<void> {
   await invoke("checkpoint_wal");
+}
+
+export async function getPipelineHealth(): Promise<PipelineHealth> {
+  return invoke<PipelineHealth>("get_pipeline_health");
+}
+
+export async function getEngineFlags(): Promise<EngineFlagsResponse> {
+  return invoke<EngineFlagsResponse>("get_engine_flags");
+}
+
+export async function setEngineEnabled(name: string, enabled: boolean): Promise<void> {
+  await invoke("set_engine_enabled", { name, enabled });
+}
+
+export async function setAiEnabled(enabled: boolean): Promise<void> {
+  await invoke("set_ai_enabled", { enabled });
+}
+
+export async function getAiSettings(): Promise<AiSettingsDto> {
+  return invoke<AiSettingsDto>("get_ai_settings");
+}
+
+export async function setAiPrivacyAcknowledged(
+  acknowledged: boolean,
+): Promise<void> {
+  await invoke("set_ai_privacy_acknowledged", { acknowledged });
+}
+
+export async function setAiSettings(
+  baseUrl: string | null,
+  model: string | null,
+  apiKey: string | null,
+): Promise<void> {
+  await invoke("set_ai_settings", { baseUrl, model, apiKey });
+}
+
+export async function updateSessionIntent(
+  sessionId: string,
+  intent: string | null,
+): Promise<void> {
+  await invoke("update_session_intent", {
+    sessionId,
+    intent: intent === "" || intent === null ? null : intent,
+  });
+}
+
+export async function getAppBlacklist(): Promise<string[]> {
+  return invoke<string[]>("get_app_blacklist");
+}
+
+export async function setAppBlacklist(apps: string[]): Promise<void> {
+  await invoke("set_app_blacklist", { apps });
+}
+
+export async function generateDailyAnalysis(date: string): Promise<string> {
+  return invoke<string>("generate_daily_analysis", { date });
+}
+
+export async function generateDailyReport(
+  date: string,
+  withAi: boolean,
+): Promise<DailyReportDto> {
+  return invoke<DailyReportDto>("generate_daily_report", { date, withAi });
+}
+
+export async function getDailyReport(
+  date: string,
+  reportType?: string | null,
+): Promise<DailyReportDto | null> {
+  return invoke<DailyReportDto | null>("get_daily_report", {
+    date,
+    reportType: reportType ?? null,
+  });
+}
+
+export async function exportDailyReport(
+  date: string,
+  reportType?: string | null,
+): Promise<string> {
+  return invoke<string>("export_daily_report", {
+    date,
+    reportType: reportType ?? null,
+  });
 }
 
 export type EventPayloads = {
