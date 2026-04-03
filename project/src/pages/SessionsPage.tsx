@@ -1,15 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Virtuoso } from "react-virtuoso";
 import { useAppStore } from "../stores/appStore";
 import * as api from "../services/tauri";
 import { snapshotTimelensUrl } from "../types";
-
-const INTENT_OPTIONS: { value: string; label: string }[] = [
-  { value: "", label: "未分类（清空）" },
-  { value: "编码开发", label: "编码开发" },
-  { value: "研究检索", label: "研究检索" },
-  { value: "通讯沟通", label: "通讯沟通" },
-];
 
 function fmtTime(ms: number): string {
   const d = new Date(ms);
@@ -39,7 +33,6 @@ export default function SessionsPage() {
     error,
     formatBytes,
     refreshAll,
-    refreshSessions,
     selectSession,
     selectSnapshot,
     setPermissions,
@@ -47,17 +40,7 @@ export default function SessionsPage() {
   } = useAppStore();
 
   const selectedSnap = snapshots.find((s) => s.id === selectedSnapshotId) ?? snapshots[0];
-  const selectedSession = useMemo(
-    () => sessions.find((s) => s.id === selectedSessionId) ?? null,
-    [sessions, selectedSessionId],
-  );
-  const [intentDraft, setIntentDraft] = useState("");
-  const [intentSaving, setIntentSaving] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
-
-  useEffect(() => {
-    setIntentDraft(selectedSession?.intent ?? "");
-  }, [selectedSession?.id, selectedSession?.intent]);
 
   useEffect(() => {
     if (!lightboxSrc) return;
@@ -67,19 +50,6 @@ export default function SessionsPage() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [lightboxSrc]);
-
-  async function saveSessionIntent(next: string | null) {
-    if (!selectedSessionId) return;
-    setIntentSaving(true);
-    try {
-      await api.updateSessionIntent(selectedSessionId, next);
-      await refreshSessions();
-    } catch (e) {
-      useAppStore.setState({ error: String(e) });
-    } finally {
-      setIntentSaving(false);
-    }
-  }
 
   return (
     <div className="flex h-full min-h-0 flex-col text-zinc-100">
@@ -160,12 +130,26 @@ export default function SessionsPage() {
             </>
           )}
         </div>
-        {activity && (
-          <span className="ml-auto text-xs text-zinc-500">
-            Session {activity.sessionCount} · 截图 {activity.snapshotCount} · 切换{" "}
-            {activity.switchCount}
-          </span>
-        )}
+        <div className="flex w-full flex-wrap items-center justify-end gap-3 sm:w-auto sm:ml-auto">
+        <Link
+          to="/intents"
+          className="text-xs text-zinc-400 underline-offset-2 hover:underline"
+        >
+          Intent 管理
+        </Link>
+        <Link
+          to="/ocr"
+          className="text-xs text-emerald-400/90 underline-offset-2 hover:underline"
+        >
+          OCR 检索
+        </Link>
+          {activity && (
+            <span className="text-xs text-zinc-500">
+              Session {activity.sessionCount} · 截图 {activity.snapshotCount} · 切换{" "}
+              {activity.switchCount}
+            </span>
+          )}
+        </div>
       </header>
 
       {error && (
@@ -177,8 +161,8 @@ export default function SessionsPage() {
         </div>
       )}
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-0 lg:grid-cols-[minmax(280px,340px)_1fr]">
-        <section className="flex min-h-0 flex-col border-b border-zinc-800 lg:border-b-0 lg:border-r">
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(240px,300px)_minmax(0,1fr)_minmax(168px,220px)]">
+        <section className="flex min-h-[200px] flex-col border-b border-zinc-800 lg:min-h-0 lg:border-b-0 lg:border-r">
           <div className="border-b border-zinc-800 px-3 py-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
             Sessions
             {loadingSessions && <span className="ml-2 text-zinc-600">加载中…</span>}
@@ -210,139 +194,98 @@ export default function SessionsPage() {
           </div>
         </section>
 
-        <section className="flex min-h-0 flex-1 flex-col">
-          {selectedSession && (
-            <div className="flex flex-wrap items-center gap-2 border-b border-zinc-800 px-3 py-2 text-sm">
-              <span className="text-xs text-zinc-500">Intent 纠错（M5）</span>
-              <select
-                className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-200"
-                value={
-                  INTENT_OPTIONS.some((o) => o.value === (selectedSession.intent ?? ""))
-                    ? (selectedSession.intent ?? "")
-                    : "__custom__"
-                }
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v === "__custom__") return;
-                  void saveSessionIntent(v === "" ? null : v);
-                }}
-                disabled={intentSaving}
-              >
-                {INTENT_OPTIONS.map((o) => (
-                  <option key={o.value || "empty"} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-                <option value="__custom__">自定义（下方输入）</option>
-              </select>
-              <input
-                type="text"
-                placeholder="自定义 Intent"
-                className="min-w-[8rem] flex-1 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-200"
-                value={intentDraft}
-                onChange={(e) => setIntentDraft(e.target.value)}
-                disabled={intentSaving}
-              />
+        <section className="flex min-h-[280px] min-w-0 flex-col border-b border-zinc-800 lg:min-h-0 lg:border-b-0 lg:border-r">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-zinc-800 px-3 py-2 text-xs text-zinc-500">
+            <span className="font-medium uppercase tracking-wide">截图预览</span>
+            {selectedSnap ? (
+              <>
+                <span className="font-mono text-zinc-400">{fmtTime(selectedSnap.capturedAtMs)}</span>
+                <span className="text-zinc-600">·</span>
+                <span>
+                  {selectedSnap.triggerType} · {selectedSnap.resolution ?? "—"}
+                </span>
+              </>
+            ) : (
+              <span>选择会话与截图</span>
+            )}
+          </div>
+          <div className="flex min-h-0 flex-1 items-center justify-center bg-zinc-900/50 p-4">
+            {selectedSnap?.filePath ? (
               <button
                 type="button"
-                className="rounded bg-zinc-700 px-2 py-1 text-xs hover:bg-zinc-600 disabled:opacity-40"
-                disabled={intentSaving}
-                onClick={() =>
-                  void saveSessionIntent(intentDraft.trim() === "" ? null : intentDraft.trim())
-                }
+                className="max-h-full max-w-full cursor-zoom-in border-0 bg-transparent p-0"
+                title="点击放大"
+                onClick={() => setLightboxSrc(snapshotTimelensUrl(selectedSnap.id))}
               >
-                保存自定义
+                <img
+                  src={snapshotTimelensUrl(selectedSnap.id)}
+                  alt="snapshot"
+                  className="max-h-full max-w-full rounded border border-zinc-700 object-contain shadow-lg"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
               </button>
-            </div>
-          )}
-          <div className="grid min-h-0 flex-1 grid-rows-1 gap-0 lg:grid-cols-[1fr_280px] lg:grid-rows-1">
-            <div className="flex min-h-[200px] flex-1 flex-col border-b border-zinc-800 lg:min-h-0 lg:border-b-0 lg:border-r">
-              <div className="border-b border-zinc-800 px-3 py-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
-                截图预览
-                {selectedSnap && (
-                  <span className="ml-2 font-normal normal-case text-zinc-600">
-                    {selectedSnap.triggerType} · {selectedSnap.resolution ?? "—"}
-                  </span>
-                )}
-              </div>
-              <div className="flex min-h-0 flex-1 items-center justify-center bg-zinc-900/50 p-4">
-                {selectedSnap && selectedSnap.filePath ? (
-                  <button
-                    type="button"
-                    className="max-h-full max-w-full cursor-zoom-in border-0 bg-transparent p-0"
-                    title="点击放大"
-                    onClick={() => setLightboxSrc(snapshotTimelensUrl(selectedSnap.id))}
-                  >
-                    <img
-                      src={snapshotTimelensUrl(selectedSnap.id)}
-                      alt="snapshot"
-                      className="max-h-full max-w-full rounded border border-zinc-700 object-contain shadow-lg"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
-                    />
-                  </button>
-                ) : (
-                  <p className="text-sm text-zinc-600">选择 Session 与截图</p>
-                )}
-              </div>
-            </div>
-            <div className="flex max-h-[40vh] min-h-[160px] flex-col lg:max-h-none">
-              <div className="border-b border-zinc-800 px-3 py-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
-                当前 Session 截图
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto">
-                {snapshots.length === 0 ? (
-                  <p className="p-3 text-xs text-zinc-600">无截图</p>
-                ) : (
-                  <ul className="divide-y divide-zinc-800">
-                    {snapshots.map((sn) => (
-                      <li key={sn.id}>
-                        <button
-                          type="button"
-                          onClick={() => selectSnapshot(sn.id)}
-                          className={`flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-xs ${
-                            sn.id === (selectedSnapshotId ?? selectedSnap?.id)
-                              ? "bg-zinc-800/60"
-                              : "hover:bg-zinc-900"
-                          }`}
-                        >
-                          <span className="text-zinc-300">{fmtTime(sn.capturedAtMs)}</span>
-                          <span className="text-zinc-600">{sn.triggerType}</span>
-                          {sn.filePath ? (
-                            <img
-                              src={snapshotTimelensUrl(sn.id)}
-                              alt=""
-                              className="mt-1 h-12 w-full cursor-zoom-in rounded border border-zinc-700 object-cover"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                void selectSnapshot(sn.id);
-                                setLightboxSrc(snapshotTimelensUrl(sn.id));
-                              }}
-                            />
-                          ) : null}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="max-h-36 overflow-hidden border-t border-zinc-800">
-            <div className="border-b border-zinc-800 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
-              最近 Raw（全局）
-            </div>
-            <div className="max-h-28 overflow-x-auto overflow-y-auto px-2 py-1 font-mono text-[10px] leading-tight text-zinc-500">
-              {rawEvents.slice(0, 24).map((r) => (
-                <div key={r.id} className="truncate">
-                  {fmtTime(r.timestampMs)} [{r.triggerType}] {r.appName}: {r.windowTitle}
-                </div>
-              ))}
-            </div>
+            ) : (
+              <p className="text-sm text-zinc-600">选择 Session 与截图</p>
+            )}
           </div>
         </section>
+
+        <section className="flex max-h-[36vh] min-h-[160px] flex-col lg:max-h-none lg:min-h-0">
+          <div className="border-b border-zinc-800 px-3 py-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+            当前 Session 截图
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {snapshots.length === 0 ? (
+              <p className="p-3 text-xs text-zinc-600">无截图</p>
+            ) : (
+              <ul className="divide-y divide-zinc-800">
+                {snapshots.map((sn) => (
+                  <li key={sn.id}>
+                    <button
+                      type="button"
+                      onClick={() => selectSnapshot(sn.id)}
+                      className={`flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-xs ${
+                        sn.id === (selectedSnapshotId ?? selectedSnap?.id)
+                          ? "bg-zinc-800/60"
+                          : "hover:bg-zinc-900"
+                      }`}
+                    >
+                      <span className="text-zinc-300">{fmtTime(sn.capturedAtMs)}</span>
+                      <span className="text-zinc-600">{sn.triggerType}</span>
+                      {sn.filePath ? (
+                        <img
+                          src={snapshotTimelensUrl(sn.id)}
+                          alt=""
+                          className="mt-1 h-12 w-full cursor-zoom-in rounded border border-zinc-700 object-cover"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            selectSnapshot(sn.id);
+                            setLightboxSrc(snapshotTimelensUrl(sn.id));
+                          }}
+                        />
+                      ) : null}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
+      </div>
+
+      <div className="max-h-32 overflow-hidden border-t border-zinc-800">
+        <div className="border-b border-zinc-800 px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+          最近 Raw（全局）
+        </div>
+        <div className="max-h-24 overflow-x-auto overflow-y-auto px-2 py-1 font-mono text-[10px] leading-tight text-zinc-500">
+          {rawEvents.slice(0, 24).map((r) => (
+            <div key={r.id} className="truncate">
+              {fmtTime(r.timestampMs)} [{r.triggerType}] {r.appName}: {r.windowTitle}
+            </div>
+          ))}
+        </div>
       </div>
 
       <footer className="border-t border-zinc-800 bg-zinc-900/80">

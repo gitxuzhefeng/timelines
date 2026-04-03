@@ -53,12 +53,13 @@ fn event_sort_key(e: &WriteEvent) -> u8 {
         WriteEvent::AppSwitch(_) => 1,
         WriteEvent::RawEvent(_) => 2,
         WriteEvent::Snapshot(_) => 3,
-        WriteEvent::InputMetric(_) => 4,
-        WriteEvent::ClipboardFlow(_) => 5,
-        WriteEvent::Notification(_) => 6,
-        WriteEvent::AmbientContext(_) => 7,
-        WriteEvent::Retention { .. } => 8,
-        WriteEvent::WalCheckpoint => 9,
+        WriteEvent::SnapshotOcr(_) => 4,
+        WriteEvent::InputMetric(_) => 5,
+        WriteEvent::ClipboardFlow(_) => 6,
+        WriteEvent::Notification(_) => 7,
+        WriteEvent::AmbientContext(_) => 8,
+        WriteEvent::Retention { .. } => 9,
+        WriteEvent::WalCheckpoint => 10,
         WriteEvent::Shutdown => 0,
     }
 }
@@ -211,6 +212,64 @@ fn apply_batch(conn: &mut Connection, batch: &[WriteEvent]) -> rusqlite::Result<
                         s.perceptual_hash,
                     ],
                 )?;
+            }
+            WriteEvent::SnapshotOcr(r) => {
+                tx.execute(
+                    r#"INSERT INTO snapshot_ocr (
+                        snapshot_id, session_id, captured_at_ms, ocr_text, ocr_meta, redacted,
+                        status, error_hint, processed_at_ms
+                    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+                    ON CONFLICT(snapshot_id) DO UPDATE SET
+                        ocr_text = excluded.ocr_text,
+                        ocr_meta = excluded.ocr_meta,
+                        redacted = excluded.redacted,
+                        status = excluded.status,
+                        error_hint = excluded.error_hint,
+                        processed_at_ms = excluded.processed_at_ms"#,
+                    params![
+                        r.snapshot_id,
+                        r.session_id,
+                        r.captured_at_ms,
+                        r.ocr_text,
+                        r.ocr_meta,
+                        r.redacted,
+                        r.status,
+                        r.error_hint,
+                        r.processed_at_ms,
+                    ],
+                )?;
+                tx.execute(
+                    "DELETE FROM snapshot_ocr_fts WHERE snapshot_id = ?1",
+                    [&r.snapshot_id],
+                )?;
+                if let Some(ref body) = r.fts_body {
+                    if !body.trim().is_empty() {
+                        tx.execute(
+                            r#"INSERT INTO snapshot_ocr_fts (snapshot_id, session_id, captured_at_ms, body)
+                               VALUES (?1, ?2, ?3, ?4)"#,
+                            params![r.snapshot_id, r.session_id, r.captured_at_ms, body],
+                        )?;
+                    }
+                }
+                if r.update_session_context {
+                    tx.execute(
+                        r#"INSERT INTO session_ocr_context (
+                            session_id, summary_line, summary_source, updated_at_ms, empty_reason
+                        ) VALUES (?1, ?2, ?3, ?4, ?5)
+                        ON CONFLICT(session_id) DO UPDATE SET
+                            summary_line = excluded.summary_line,
+                            summary_source = excluded.summary_source,
+                            updated_at_ms = excluded.updated_at_ms,
+                            empty_reason = excluded.empty_reason"#,
+                        params![
+                            r.session_id,
+                            r.session_summary_line,
+                            r.session_summary_source,
+                            r.processed_at_ms,
+                            r.session_empty_reason,
+                        ],
+                    )?;
+                }
             }
             WriteEvent::InputMetric(r) => {
                 tx.execute(

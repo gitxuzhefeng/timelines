@@ -28,6 +28,7 @@ pub struct PipelineHealth {
     pub clipboard: EngineStatus,
     pub notifications: EngineStatus,
     pub ambient_context: EngineStatus,
+    pub ocr: EngineStatus,
     pub last_check_ms: i64,
 }
 
@@ -188,6 +189,27 @@ pub struct SnapshotRow {
     pub perceptual_hash: Option<String>,
 }
 
+/// 单帧 OCR 结果写入 `snapshot_ocr` + 可选 FTS + `session_ocr_context`。
+#[derive(Debug, Clone)]
+pub struct SnapshotOcrRow {
+    pub snapshot_id: String,
+    pub session_id: String,
+    pub captured_at_ms: i64,
+    pub ocr_text: Option<String>,
+    /// 可选 JSON：引擎、闸门统计、行级摘要等（见 OCR 专题方案）。
+    pub ocr_meta: Option<String>,
+    /// 进入 FTS 的文本（与 `ocr_text` 一致或为空表示不索引）。
+    pub fts_body: Option<String>,
+    pub redacted: i64,
+    pub status: String,
+    pub error_hint: Option<String>,
+    pub processed_at_ms: i64,
+    pub update_session_context: bool,
+    pub session_summary_line: Option<String>,
+    pub session_summary_source: Option<String>,
+    pub session_empty_reason: Option<String>,
+}
+
 #[derive(Debug, Clone)]
 pub enum SessionUpdateOp {
     Insert {
@@ -285,6 +307,7 @@ pub enum WriteEvent {
     RawEvent(RawEventRow),
     AppSwitch(AppSwitchRow),
     Snapshot(SnapshotRow),
+    SnapshotOcr(SnapshotOcrRow),
     SessionUpdate(SessionUpdateOp),
     InputMetric(InputMetricRow),
     ClipboardFlow(ClipboardFlowRow),

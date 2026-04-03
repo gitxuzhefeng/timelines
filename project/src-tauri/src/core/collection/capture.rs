@@ -1,7 +1,7 @@
 use std::fs;
 use std::process::Command;
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
+    atomic::{AtomicBool, AtomicUsize, Ordering},
     Arc, Mutex as StdMutex,
 };
 use std::thread;
@@ -18,6 +18,7 @@ use tauri::{AppHandle, Emitter};
 use uuid::Uuid;
 
 use crate::core::models::{CapturePriority, CaptureSignal, SnapshotPayload, SnapshotRow, WriteEvent};
+use crate::core::ocr::OcrJob;
 use crate::core::storage::DataPaths;
 use crate::core::writer::WriterHandle;
 
@@ -117,6 +118,11 @@ pub fn spawn_capture_thread(
     is_afk: Arc<AtomicBool>,
     screen_ok: Arc<AtomicBool>,
     app: AppHandle,
+    ocr_hook: Option<(
+        crossbeam_channel::Sender<OcrJob>,
+        Arc<AtomicBool>,
+        Arc<AtomicUsize>,
+    )>,
 ) {
     let last_phash: Arc<StdMutex<Option<image_hasher::ImageHash>>> =
         Arc::new(StdMutex::new(None));
@@ -198,6 +204,11 @@ pub fn spawn_capture_thread(
                 perceptual_hash: perceptual_hash.clone(),
             };
             let _ = writer.try_send(WriteEvent::Snapshot(row));
+            let path_for_ocr = fp.clone();
+            let ocr_snapshot_id = id.clone();
+            let ocr_session_id = sid.clone();
+            let ocr_trigger = sig.trigger_type.clone();
+            let ocr_phash = perceptual_hash.clone();
             let snap = crate::core::models::Snapshot {
                 id,
                 session_id: sid,
@@ -213,6 +224,26 @@ pub fn spawn_capture_thread(
                 "new_snapshot_saved",
                 SnapshotPayload { snapshot: snap },
             );
+            if let Some((ref ocr_tx, ref ocr_on, ref pend)) = ocr_hook {
+                if ocr_on.load(Ordering::Relaxed) {
+                    let job = OcrJob {
+                        snapshot_id: ocr_snapshot_id,
+                        session_id: ocr_session_id,
+                        file_path: path_for_ocr,
+                        captured_at_ms,
+                        trigger_type: ocr_trigger,
+                        perceptual_hash: ocr_phash,
+                    };
+                    match ocr_tx.try_send(job) {
+                        Ok(()) => {
+                            pend.fetch_add(1, Ordering::Relaxed);
+                        }
+                        Err(e) => {
+                            warn!("ocr queue full or closed, skip: {e}");
+                        }
+                    }
+                }
+            }
             info!("snapshot saved {out_path:?}");
         }
     });

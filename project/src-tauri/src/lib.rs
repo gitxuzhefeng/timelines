@@ -3,7 +3,7 @@ mod api;
 mod core;
 
 use std::borrow::Cow;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI64, AtomicUsize, Ordering};
 use std::sync::{Arc, RwLock};
 
 use parking_lot::Mutex;
@@ -77,6 +77,10 @@ pub struct AppStateInner {
     pub ai_enabled: Arc<AtomicBool>,
     /// 与 `settings.app_capture_blacklist` 同步；采集线程热读。
     pub app_blacklist: Arc<RwLock<Vec<String>>>,
+    pub ocr_enabled: Arc<AtomicBool>,
+    pub ocr_last_success_ms: Arc<AtomicI64>,
+    pub ocr_last_error: Arc<Mutex<Option<String>>>,
+    pub ocr_pending: Arc<AtomicUsize>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -107,6 +111,13 @@ pub fn run() {
                 let g = read_conn.lock();
                 core::settings::get_app_blacklist(&g)
             }));
+            let ocr_enabled = Arc::new(AtomicBool::new({
+                let g = read_conn.lock();
+                core::settings::get_ocr_enabled(&g)
+            }));
+            let ocr_last_success_ms = Arc::new(AtomicI64::new(-1));
+            let ocr_last_error = Arc::new(Mutex::new(None));
+            let ocr_pending = Arc::new(AtomicUsize::new(0));
             let tracking = Arc::new(AtomicBool::new(false));
             let running = Arc::new(AtomicBool::new(true));
             let is_afk = Arc::new(AtomicBool::new(false));
@@ -132,15 +143,33 @@ pub fn run() {
                 is_afk.clone(),
             );
             #[cfg(any(target_os = "macos", target_os = "windows"))]
-            core::collection::capture::spawn_capture_thread(
-                cap_rx,
-                writer.clone(),
-                read_conn.clone(),
-                paths.clone(),
-                is_afk.clone(),
-                screen_ok.clone(),
-                handle.clone(),
-            );
+            {
+                let (ocr_tx, ocr_rx) = crossbeam_channel::bounded::<core::ocr::OcrJob>(32);
+                core::ocr::spawn_ocr_worker(
+                    ocr_rx,
+                    writer.clone(),
+                    read_conn.clone(),
+                    ocr_enabled.clone(),
+                    app_blacklist.clone(),
+                    ocr_last_success_ms.clone(),
+                    ocr_last_error.clone(),
+                    ocr_pending.clone(),
+                );
+                core::collection::capture::spawn_capture_thread(
+                    cap_rx,
+                    writer.clone(),
+                    read_conn.clone(),
+                    paths.clone(),
+                    is_afk.clone(),
+                    screen_ok.clone(),
+                    handle.clone(),
+                    Some((
+                        ocr_tx,
+                        ocr_enabled.clone(),
+                        ocr_pending.clone(),
+                    )),
+                );
+            }
             #[cfg(not(any(target_os = "macos", target_os = "windows")))]
             std::thread::spawn(move || {
                 while cap_rx.recv().is_ok() {}
@@ -200,6 +229,10 @@ pub fn run() {
                 engine_ambient,
                 ai_enabled,
                 app_blacklist,
+                ocr_enabled,
+                ocr_last_success_ms,
+                ocr_last_error,
+                ocr_pending,
             }));
             app.manage(state);
             #[cfg(all(desktop, any(target_os = "macos", target_os = "windows")))]
@@ -307,6 +340,8 @@ pub fn run() {
             api::set_ai_settings,
             api::set_ai_privacy_acknowledged,
             api::update_session_intent,
+            api::list_app_intent_aggregates,
+            api::set_intent_for_app_aggregate,
             api::get_app_blacklist,
             api::set_app_blacklist,
             api::generate_daily_analysis,
@@ -314,6 +349,14 @@ pub fn run() {
             api::generate_daily_report,
             api::get_daily_report,
             api::export_daily_report,
+            api::get_ocr_settings,
+            api::set_ocr_settings,
+            api::set_ocr_privacy_acknowledged,
+            api::get_ocr_status,
+            api::get_session_ocr_context,
+            api::search_ocr_text,
+            api::list_ocr_eval_samples,
+            api::evaluate_ocr_snapshot,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

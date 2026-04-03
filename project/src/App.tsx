@@ -11,6 +11,9 @@ import * as api from "./services/tauri";
 import HealthPage from "./pages/HealthPage";
 import RecapPage from "./pages/RecapPage";
 import SessionsPage from "./pages/SessionsPage";
+import OcrSearchPage from "./pages/OcrSearchPage";
+import OcrEvalPage from "./pages/OcrEvalPage";
+import IntentManagePage from "./pages/IntentManagePage";
 import SettingsPage from "./pages/SettingsPage";
 
 function navCls({ isActive }: { isActive: boolean }): string {
@@ -87,6 +90,15 @@ export default function App() {
             <NavLink to="/sessions" className={navCls}>
               会话
             </NavLink>
+            <NavLink to="/ocr" className={navCls}>
+              OCR 检索
+            </NavLink>
+            <NavLink to="/ocr-eval" className={navCls}>
+              OCR 评估
+            </NavLink>
+            <NavLink to="/intents" className={navCls}>
+              Intent
+            </NavLink>
             <NavLink to="/health" className={navCls}>
               健康
             </NavLink>
@@ -100,6 +112,9 @@ export default function App() {
             <Route path="/" element={<Navigate to="/recap" replace />} />
             <Route path="/recap" element={<RecapPage />} />
             <Route path="/sessions" element={<SessionsPage />} />
+            <Route path="/ocr" element={<OcrSearchPage />} />
+            <Route path="/ocr-eval" element={<OcrEvalPage />} />
+            <Route path="/intents" element={<IntentManagePage />} />
             <Route path="/health" element={<HealthPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>

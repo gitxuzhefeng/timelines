@@ -33,6 +33,7 @@ export default function HealthPage() {
     ["剪贴板", "clipboard"],
     ["通知", "notifications"],
     ["环境", "ambientContext"],
+    ["OCR / 屏幕文字", "ocr"],
   ];
 
   return (

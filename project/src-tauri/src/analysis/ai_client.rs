@@ -14,6 +14,7 @@ const SYSTEM_PROMPT: &str = r#"你是 TimeLens 日终复盘助手。用户将提
 2. 不做开放式闲聊；输出一段 **Markdown** 叙事（可多段），聚焦模式归纳、注意力与打断、可执行改进建议。
 3. 不要输出 JSON；不要用 Markdown 代码块包裹全文（小段列表可用）。
 4. 若某数据源在 degraded_sections 中列出，须在叙事中说明该维度当日数据不足或已降级，不得猜测具体数值。
+5. 若 JSON 含可选字段 `ocr_session_summaries`（脱敏后的屏幕文字摘要列表），仅作情境参考；不得将其当作精确事实，且不得与聚合指标中的数字矛盾。
 "#;
 
 pub fn prompt_hash_hex() -> String {

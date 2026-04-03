@@ -5,9 +5,16 @@ import type {
   AiSettingsDto,
   DailyReportDto,
   EngineFlagsResponse,
+  AppIntentAggregate,
+  OcrEvalSampleRow,
+  OcrEvaluateSnapshotResult,
+  OcrSearchHit,
+  OcrSettingsDto,
+  OcrStatusDto,
   PermissionStatus,
   PipelineHealth,
   RawEvent,
+  SessionOcrContextDto,
   Snapshot,
   StorageStats,
   WindowSession,
@@ -93,6 +100,80 @@ export async function getPipelineHealth(): Promise<PipelineHealth> {
   return invoke<PipelineHealth>("get_pipeline_health");
 }
 
+export async function getOcrSettings(): Promise<OcrSettingsDto> {
+  return invoke<OcrSettingsDto>("get_ocr_settings");
+}
+
+export async function setOcrPrivacyAcknowledged(
+  acknowledged: boolean,
+): Promise<void> {
+  await invoke("set_ocr_privacy_acknowledged", { acknowledged });
+}
+
+export async function setOcrSettings(params: {
+  enabled?: boolean | null;
+  allowExportToAi?: boolean | null;
+  showSessionSummary?: boolean | null;
+  ocrLanguages?: string | null;
+  ocrPsm?: number | null;
+  ocrWordConfMin?: number | null;
+  ocrLineConfMin?: number | null;
+  ocrPreprocessScale?: boolean | null;
+  ocrPreprocessDarkInvert?: boolean | null;
+}): Promise<OcrSettingsDto> {
+  return invoke<OcrSettingsDto>("set_ocr_settings", {
+    enabled: params.enabled ?? null,
+    allowExportToAi: params.allowExportToAi ?? null,
+    showSessionSummary: params.showSessionSummary ?? null,
+    ocrLanguages: params.ocrLanguages ?? null,
+    ocrPsm: params.ocrPsm ?? null,
+    ocrWordConfMin: params.ocrWordConfMin ?? null,
+    ocrLineConfMin: params.ocrLineConfMin ?? null,
+    ocrPreprocessScale: params.ocrPreprocessScale ?? null,
+    ocrPreprocessDarkInvert: params.ocrPreprocessDarkInvert ?? null,
+  });
+}
+
+export async function getOcrStatus(): Promise<OcrStatusDto> {
+  return invoke<OcrStatusDto>("get_ocr_status");
+}
+
+export async function getSessionOcrContext(
+  sessionId: string,
+): Promise<SessionOcrContextDto> {
+  return invoke<SessionOcrContextDto>("get_session_ocr_context", {
+    sessionId,
+  });
+}
+
+export async function searchOcrText(
+  query: string,
+  date?: string | null,
+  restrictSessionId?: string | null,
+): Promise<OcrSearchHit[]> {
+  return invoke<OcrSearchHit[]>("search_ocr_text", {
+    query,
+    date: date ?? null,
+    restrictSessionId: restrictSessionId ?? null,
+  });
+}
+
+export async function listOcrEvalSamples(
+  limit?: number | null,
+): Promise<OcrEvalSampleRow[]> {
+  return invoke<OcrEvalSampleRow[]>("list_ocr_eval_samples", {
+    limit: limit ?? null,
+  });
+}
+
+export async function evaluateOcrSnapshot(
+  snapshotId: string,
+): Promise<OcrEvaluateSnapshotResult> {
+  return invoke<OcrEvaluateSnapshotResult>("evaluate_ocr_snapshot", {
+    snapshotId,
+  });
+}
+
 export async function getEngineFlags(): Promise<EngineFlagsResponse> {
   return invoke<EngineFlagsResponse>("get_engine_flags");
 }
@@ -129,6 +210,23 @@ export async function updateSessionIntent(
 ): Promise<void> {
   await invoke("update_session_intent", {
     sessionId,
+    intent: intent === "" || intent === null ? null : intent,
+  });
+}
+
+export async function listAppIntentAggregates(): Promise<AppIntentAggregate[]> {
+  return invoke<AppIntentAggregate[]>("list_app_intent_aggregates");
+}
+
+/** 返回受影响的 window_sessions 行数 */
+export async function setIntentForAppAggregate(
+  appName: string,
+  bundleId: string | null,
+  intent: string | null,
+): Promise<number> {
+  return invoke<number>("set_intent_for_app_aggregate", {
+    appName,
+    bundleId,
     intent: intent === "" || intent === null ? null : intent,
   });
 }

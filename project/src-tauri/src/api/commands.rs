@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 use std::sync::atomic::Ordering;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use chrono::{Local, Utc};
 use rusqlite::params;
@@ -19,6 +19,8 @@ use crate::core::models::{
     ActivityStats, AppMeta, AppSwitch, CapturePriority, CaptureSignal, EngineStatus,
     PermissionStatus, PipelineHealth, RawEvent, Snapshot, StorageStats, WindowSession, WriteEvent,
 };
+use crate::core::ocr::OcrLineEval;
+use crate::core::ocr::OcrPipelineConfig;
 use crate::core::settings;
 use crate::core::storage::db;
 use crate::core::time_range::local_day_bounds_ms;
@@ -531,9 +533,15 @@ pub fn get_pipeline_health(state: State<'_, AppState>) -> Result<PipelineHealth,
     let clip_last = max_ts(&conn, "SELECT MAX(timestamp_ms) FROM clipboard_flows");
     let notif_last = max_ts(&conn, "SELECT MAX(timestamp_ms) FROM notifications");
     let ambient_last = max_ts(&conn, "SELECT MAX(timestamp_ms) FROM ambient_context");
+    let ocr_last = max_ts(
+        &conn,
+        "SELECT MAX(processed_at_ms) FROM snapshot_ocr WHERE status = 'ok' AND redacted = 0 \
+         AND length(trim(COALESCE(ocr_text,''))) > 0",
+    );
     let engine_notif = state.0.engine_notifications.load(Ordering::Relaxed);
     let notif_perm = acquisition::notifications_listener_access_granted();
     let notif_force_degraded = tracking && engine_notif && !notif_perm;
+    let ocr_en = state.0.ocr_enabled.load(Ordering::Relaxed);
 
     Ok(PipelineHealth {
         tracker: engine_status(tracking, true, !ax, raw_last, now, 180_000),
@@ -570,9 +578,90 @@ pub fn get_pipeline_health(state: State<'_, AppState>) -> Result<PipelineHealth,
             now,
             90_000,
         ),
+        ocr: engine_status(tracking, ocr_en, false, ocr_last, now, 1_800_000),
         last_check_ms: now,
     })
 }
+
+fn build_daily_ocr_summaries_value(
+    conn: &rusqlite::Connection,
+    date: &str,
+    blacklist: &[String],
+) -> Result<serde_json::Value, String> {
+    let (start, end) = local_day_bounds_ms(date)?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT ws.id, ws.app_name, sc.summary_line \
+             FROM window_sessions ws \
+             LEFT JOIN session_ocr_context sc ON sc.session_id = ws.id \
+             WHERE ws.start_ms >= ?1 AND ws.start_ms <= ?2",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(params![start, end], |r| {
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, Option<String>>(2)?,
+            ))
+        })
+        .map_err(|e| e.to_string())?;
+    let mut arr = Vec::new();
+    for row in rows {
+        let (id, app, sum) = row.map_err(|e| e.to_string())?;
+        if settings::app_name_blacklisted(&app, blacklist) {
+            continue;
+        }
+        if let Some(line) = sum {
+            let t = line.trim();
+            if !t.is_empty() {
+                arr.push(json!({
+                    "session_id": id,
+                    "summary": t,
+                }));
+            }
+        }
+    }
+    Ok(json!(arr))
+}
+
+/// 空格 / 逗号分隔的多关键词；去重保序；用于 FTS `body:"a" AND body:"b"`。
+fn parse_ocr_search_keywords(q: &str) -> Result<Vec<String>, String> {
+    const MAX_KW: usize = 8;
+    let mut out: Vec<String> = Vec::new();
+    for part in q.split(|c: char| {
+        c.is_whitespace() || c == ',' || c == '，' || c == ';' || c == '；'
+    }) {
+        let t = part.trim();
+        if t.is_empty() {
+            continue;
+        }
+        if t.chars().count() > 64 {
+            return Err("单个关键词过长（≤64 字）".into());
+        }
+        let esc = t.replace('\"', "\"\"");
+        if !out.iter().any(|x| x == &esc) {
+            out.push(esc);
+        }
+        if out.len() > MAX_KW {
+            return Err(format!("最多 {MAX_KW} 个关键词"));
+        }
+    }
+    if out.is_empty() {
+        return Err("关键词为空".into());
+    }
+    Ok(out)
+}
+
+fn build_ocr_fts_and_expr(tokens: &[String]) -> String {
+    tokens
+        .iter()
+        .map(|t| format!("body: \"{t}\""))
+        .collect::<Vec<_>>()
+        .join(" AND ")
+}
+
+const OCR_FULL_TEXT_MAX_CHARS: usize = 65536;
 
 fn open_db_rw(path: &Path) -> Result<rusqlite::Connection, String> {
     let mut c = rusqlite::Connection::open(path).map_err(|e| e.to_string())?;
@@ -723,6 +812,100 @@ pub fn update_session_intent(
         }
     }
     Ok(())
+}
+
+/// 按「应用名 + Bundle」聚合历史 Session，用于 Intent 统一管理页。
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppIntentAggregateDto {
+    pub app_name: String,
+    pub bundle_id: Option<String>,
+    pub session_count: i64,
+    /// 当前 `intent_mapping` 解析结果（含内置与用户规则）。
+    pub resolved_intent: Option<String>,
+}
+
+/// 列出所有出现过的 (app_name, bundle_id) 组合及会话数、解析到的 Intent。
+#[tauri::command]
+pub fn list_app_intent_aggregates(state: State<'_, AppState>) -> Result<Vec<AppIntentAggregateDto>, String> {
+    let g = state.0.read_conn.lock();
+    let sql = "SELECT app_name, \
+         CASE WHEN trim(coalesce(bundle_id,'')) = '' THEN NULL ELSE trim(bundle_id) END AS bid, \
+         COUNT(*) as cnt \
+         FROM window_sessions \
+         GROUP BY app_name, CASE WHEN trim(coalesce(bundle_id,'')) = '' THEN NULL ELSE trim(bundle_id) END \
+         ORDER BY cnt DESC, app_name ASC";
+    let mut stmt = g.prepare(sql).map_err(|e| e.to_string())?;
+    let mut rows = stmt.query([]).map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    while let Some(r) = rows.next().map_err(|e| e.to_string())? {
+        let app_name: String = r.get(0).map_err(|e| e.to_string())?;
+        let bundle_id: Option<String> = r.get(1).map_err(|e| e.to_string())?;
+        let session_count: i64 = r.get(2).map_err(|e| e.to_string())?;
+        let resolved_intent = intent_mapping::resolve_intent(&g, &app_name, bundle_id.as_deref())
+            .map_err(|e| e.to_string())?;
+        out.push(AppIntentAggregateDto {
+            app_name,
+            bundle_id,
+            session_count,
+            resolved_intent,
+        });
+    }
+    Ok(out)
+}
+
+/// 为同一应用键批量设置 Intent：写入 `intent_mapping`（新 Session 自动匹配），并更新所有已存在 Session 的 `intent` 字段。
+#[tauri::command]
+pub fn set_intent_for_app_aggregate(
+    state: State<'_, AppState>,
+    app_name: String,
+    bundle_id: Option<String>,
+    intent: Option<String>,
+) -> Result<i64, String> {
+    let mut c = open_db_rw(&state.0.paths.db_path)?;
+    let bundle_norm = bundle_id
+        .as_ref()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string());
+    let intent_trim = intent.as_ref().map(|s| s.trim()).filter(|s| !s.is_empty());
+
+    let updated: i64 = if let Some(ref t) = intent_trim {
+        intent_mapping::upsert_user_intent_rule(&mut c, &app_name, bundle_norm.as_deref(), t)
+            .map_err(|e| e.to_string())?;
+        if let Some(ref b) = bundle_norm {
+            c.execute(
+                "UPDATE window_sessions SET intent = ?1 \
+                 WHERE app_name = ?2 AND trim(coalesce(bundle_id,'')) = ?3",
+                params![t, app_name, b],
+            )
+        } else {
+            c.execute(
+                "UPDATE window_sessions SET intent = ?1 \
+                 WHERE app_name = ?2 AND trim(coalesce(bundle_id,'')) = ''",
+                params![t, app_name],
+            )
+        }
+        .map_err(|e| e.to_string())? as i64
+    } else {
+        intent_mapping::remove_user_intent_rules(&mut c, &app_name, bundle_norm.as_deref())
+            .map_err(|e| e.to_string())?;
+        if let Some(ref b) = bundle_norm {
+            c.execute(
+                "UPDATE window_sessions SET intent = NULL \
+                 WHERE app_name = ?1 AND trim(coalesce(bundle_id,'')) = ?2",
+                params![app_name, b],
+            )
+        } else {
+            c.execute(
+                "UPDATE window_sessions SET intent = NULL \
+                 WHERE app_name = ?1 AND trim(coalesce(bundle_id,'')) = ''",
+                params![app_name],
+            )
+        }
+        .map_err(|e| e.to_string())? as i64
+    };
+    Ok(updated)
 }
 
 #[tauri::command]
@@ -938,6 +1121,14 @@ pub fn generate_daily_report(
             obj.insert("data_sources".to_string(), ds);
         }
 
+        if settings::get_ocr_allow_export_to_ai(&c) && settings::get_ocr_enabled(&c) {
+            let bl = settings::get_app_blacklist(&c);
+            let summaries = build_daily_ocr_summaries_value(&c, &date, &bl)?;
+            if let Some(obj) = payload.as_object_mut() {
+                obj.insert("ocr_session_summaries".to_string(), summaries);
+            }
+        }
+
         let ai_body = ai_client::complete_narrative(&base_url, &api_key, &model, &payload)?;
         let prompt_hash = ai_client::prompt_hash_hex();
 
@@ -1126,4 +1317,514 @@ pub fn export_daily_report(
         .join(format!("timelens-recap-{date}{suffix}.md"));
     fs::write(&path, content).map_err(|e| e.to_string())?;
     Ok(path.to_string_lossy().into_owned())
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OcrSettingsDto {
+    pub privacy_acknowledged: bool,
+    pub enabled: bool,
+    pub allow_export_to_ai: bool,
+    pub show_session_summary: bool,
+    pub pipeline: crate::core::ocr::OcrPipelineConfig,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OcrStatusDto {
+    pub enabled: bool,
+    pub last_success_ms: Option<i64>,
+    pub pending_jobs: usize,
+    pub last_error: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionOcrContextDto {
+    pub summary_line: Option<String>,
+    pub summary_source: Option<String>,
+    pub empty_reason: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OcrSearchHit {
+    pub snapshot_id: String,
+    pub session_id: String,
+    pub captured_at_ms: i64,
+    /// FTS5 `snippet`：以 « » 标出匹配片段（若引擎未返回则为空串）。
+    pub matched_snippet: String,
+    /// 该帧脱敏后的整段 OCR（截断至 `OCR_FULL_TEXT_MAX_CHARS`）；无则 null。
+    pub full_ocr_text: Option<String>,
+    /// 实际参与 AND 检索的关键词（与输入顺序一致，已去重）。
+    pub matched_keywords: Vec<String>,
+    pub app_name: String,
+    pub window_title: String,
+    pub session_intent: Option<String>,
+}
+
+#[tauri::command]
+pub fn get_ocr_settings(state: State<'_, AppState>) -> Result<OcrSettingsDto, String> {
+    let conn = state.0.read_conn.lock();
+    let pipeline = settings::get_ocr_pipeline_config(&conn);
+    Ok(OcrSettingsDto {
+        privacy_acknowledged: settings::get_ocr_privacy_acknowledged(&conn),
+        enabled: state.0.ocr_enabled.load(Ordering::Relaxed),
+        allow_export_to_ai: settings::get_ocr_allow_export_to_ai(&conn),
+        show_session_summary: settings::get_ocr_show_session_summary(&conn),
+        pipeline,
+    })
+}
+
+#[tauri::command]
+pub fn set_ocr_privacy_acknowledged(
+    state: State<'_, AppState>,
+    acknowledged: bool,
+) -> Result<(), String> {
+    let mut c = open_db_rw(&state.0.paths.db_path)?;
+    settings::set_ocr_privacy_acknowledged(&mut c, acknowledged).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn set_ocr_settings(
+    state: State<'_, AppState>,
+    enabled: Option<bool>,
+    allow_export_to_ai: Option<bool>,
+    show_session_summary: Option<bool>,
+    ocr_languages: Option<String>,
+    ocr_psm: Option<i32>,
+    ocr_word_conf_min: Option<f32>,
+    ocr_line_conf_min: Option<f32>,
+    ocr_preprocess_scale: Option<bool>,
+    ocr_preprocess_dark_invert: Option<bool>,
+) -> Result<OcrSettingsDto, String> {
+    let mut c = open_db_rw(&state.0.paths.db_path)?;
+    if let Some(v) = enabled {
+        if v && !settings::get_ocr_privacy_acknowledged(&c) {
+            return Err("请先阅读并确认 OCR 说明（设置页）".into());
+        }
+        settings::set_ocr_enabled(&mut c, v).map_err(|e| e.to_string())?;
+        state.0.ocr_enabled.store(v, Ordering::Relaxed);
+    }
+    if let Some(v) = allow_export_to_ai {
+        settings::set_ocr_allow_export_to_ai(&mut c, v).map_err(|e| e.to_string())?;
+    }
+    if let Some(v) = show_session_summary {
+        settings::set_ocr_show_session_summary(&mut c, v).map_err(|e| e.to_string())?;
+    }
+    settings::apply_ocr_pipeline_overrides(
+        &mut c,
+        ocr_languages.as_deref(),
+        ocr_psm,
+        ocr_word_conf_min,
+        ocr_line_conf_min,
+        ocr_preprocess_scale,
+        ocr_preprocess_dark_invert,
+    )
+    .map_err(|e| e.to_string())?;
+    drop(c);
+    get_ocr_settings(state)
+}
+
+#[tauri::command]
+pub fn get_ocr_status(state: State<'_, AppState>) -> Result<OcrStatusDto, String> {
+    let conn = state.0.read_conn.lock();
+    let last_db = max_ts(
+        &conn,
+        "SELECT MAX(processed_at_ms) FROM snapshot_ocr WHERE status = 'ok' AND redacted = 0 \
+         AND length(trim(COALESCE(ocr_text,''))) > 0",
+    );
+    let last_atomic = state.0.ocr_last_success_ms.load(Ordering::Relaxed);
+    let last_success_ms = match (last_db, last_atomic >= 0) {
+        (Some(db), true) => Some(db.max(last_atomic)),
+        (Some(db), false) => Some(db),
+        (None, true) => Some(last_atomic),
+        _ => None,
+    };
+    let last_error = state.0.ocr_last_error.lock().clone();
+    Ok(OcrStatusDto {
+        enabled: state.0.ocr_enabled.load(Ordering::Relaxed),
+        last_success_ms,
+        pending_jobs: state.0.ocr_pending.load(Ordering::Relaxed),
+        last_error,
+    })
+}
+
+#[tauri::command]
+pub fn get_session_ocr_context(
+    state: State<'_, AppState>,
+    session_id: String,
+) -> Result<SessionOcrContextDto, String> {
+    let conn = state.0.read_conn.lock();
+    let app_name: String = conn
+        .query_row(
+            "SELECT app_name FROM window_sessions WHERE id = ?1",
+            [&session_id],
+            |r| r.get(0),
+        )
+        .map_err(|_| "会话不存在".to_string())?;
+    let bl = settings::get_app_blacklist(&conn);
+    if settings::app_name_blacklisted(&app_name, &bl) {
+        return Ok(SessionOcrContextDto {
+            summary_line: None,
+            summary_source: None,
+            empty_reason: Some("应用位于采集黑名单，未进行 OCR".into()),
+        });
+    }
+    if !state.0.ocr_enabled.load(Ordering::Relaxed) {
+        return Ok(SessionOcrContextDto {
+            summary_line: None,
+            summary_source: None,
+            empty_reason: Some("OCR 已关闭".into()),
+        });
+    }
+    let row = conn
+        .query_row(
+            "SELECT summary_line, summary_source, empty_reason FROM session_ocr_context WHERE session_id = ?1",
+            [&session_id],
+            |r| {
+                Ok((
+                    r.get::<_, Option<String>>(0)?,
+                    r.get::<_, Option<String>>(1)?,
+                    r.get::<_, Option<String>>(2)?,
+                ))
+            },
+        )
+        .optional()
+        .map_err(|e| e.to_string())?;
+    if let Some((sl, ss, er)) = row {
+        let empty = sl.as_ref().map(|s| s.trim().is_empty()).unwrap_or(true);
+        if empty {
+            return Ok(SessionOcrContextDto {
+                summary_line: None,
+                summary_source: ss,
+                empty_reason: er.or_else(|| Some("暂无来自屏幕文字的摘要".into())),
+            });
+        }
+        return Ok(SessionOcrContextDto {
+            summary_line: sl,
+            summary_source: ss,
+            empty_reason: er,
+        });
+    }
+    Ok(SessionOcrContextDto {
+        summary_line: None,
+        summary_source: None,
+        empty_reason: Some("尚未处理到可用 OCR 摘要".into()),
+    })
+}
+
+#[tauri::command]
+pub fn search_ocr_text(
+    state: State<'_, AppState>,
+    query: String,
+    date: Option<String>,
+    restrict_session_id: Option<String>,
+) -> Result<Vec<OcrSearchHit>, String> {
+    let tokens = parse_ocr_search_keywords(&query)?;
+    let keywords_display: Vec<String> = tokens
+        .iter()
+        .map(|t| t.replace("\"\"", "\""))
+        .collect();
+    let match_expr = build_ocr_fts_and_expr(&tokens);
+    let conn = state.0.read_conn.lock();
+    let bl = settings::get_app_blacklist(&conn);
+
+    let map_row = |r: &rusqlite::Row| -> rusqlite::Result<OcrSearchHit> {
+        let full: Option<String> = r.get(4)?;
+        let full_trim = full.and_then(|s| {
+            let t = s.trim();
+            if t.is_empty() {
+                None
+            } else {
+                Some(truncate_chars(t, OCR_FULL_TEXT_MAX_CHARS))
+            }
+        });
+        Ok(OcrSearchHit {
+            snapshot_id: r.get(0)?,
+            session_id: r.get(1)?,
+            captured_at_ms: r.get(2)?,
+            matched_snippet: r.get::<_, Option<String>>(3)?.unwrap_or_default(),
+            full_ocr_text: full_trim,
+            matched_keywords: keywords_display.clone(),
+            app_name: r.get(5)?,
+            window_title: r.get(6)?,
+            session_intent: r.get(7)?,
+        })
+    };
+
+    let mut hits: Vec<OcrSearchHit> = if let Some(d) = date {
+        let (start, end) = local_day_bounds_ms(&d)?;
+        if let Some(ref sid) = restrict_session_id {
+            let mut stmt = conn
+                .prepare(
+                    "SELECT fts.snapshot_id, fts.session_id, fts.captured_at_ms, \
+                     snippet(snapshot_ocr_fts, 3, '«', '»', ' … ', 20), \
+                     o.ocr_text, ws.app_name, ws.window_title, ws.intent \
+                     FROM snapshot_ocr_fts AS fts \
+                     INNER JOIN snapshot_ocr o ON o.snapshot_id = fts.snapshot_id \
+                     INNER JOIN window_sessions ws ON ws.id = fts.session_id \
+                     WHERE snapshot_ocr_fts MATCH ?1 \
+                       AND fts.captured_at_ms >= ?2 AND fts.captured_at_ms <= ?3 \
+                       AND fts.session_id = ?4 \
+                       AND o.status = 'ok' AND o.redacted = 0 \
+                     LIMIT 50",
+                )
+                .map_err(|e| e.to_string())?;
+            let rows = stmt
+                .query_map(params![match_expr, start, end, sid], map_row)
+                .map_err(|e| e.to_string())?;
+            rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?
+        } else {
+            let mut stmt = conn
+                .prepare(
+                    "SELECT fts.snapshot_id, fts.session_id, fts.captured_at_ms, \
+                     snippet(snapshot_ocr_fts, 3, '«', '»', ' … ', 20), \
+                     o.ocr_text, ws.app_name, ws.window_title, ws.intent \
+                     FROM snapshot_ocr_fts AS fts \
+                     INNER JOIN snapshot_ocr o ON o.snapshot_id = fts.snapshot_id \
+                     INNER JOIN window_sessions ws ON ws.id = fts.session_id \
+                     WHERE snapshot_ocr_fts MATCH ?1 \
+                       AND fts.captured_at_ms >= ?2 AND fts.captured_at_ms <= ?3 \
+                       AND o.status = 'ok' AND o.redacted = 0 \
+                     LIMIT 50",
+                )
+                .map_err(|e| e.to_string())?;
+            let rows = stmt
+                .query_map(params![match_expr, start, end], map_row)
+                .map_err(|e| e.to_string())?;
+            rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?
+        }
+    } else if let Some(ref sid) = restrict_session_id {
+        let mut stmt = conn
+            .prepare(
+                "SELECT fts.snapshot_id, fts.session_id, fts.captured_at_ms, \
+                 snippet(snapshot_ocr_fts, 3, '«', '»', ' … ', 20), \
+                 o.ocr_text, ws.app_name, ws.window_title, ws.intent \
+                 FROM snapshot_ocr_fts AS fts \
+                 INNER JOIN snapshot_ocr o ON o.snapshot_id = fts.snapshot_id \
+                 INNER JOIN window_sessions ws ON ws.id = fts.session_id \
+                 WHERE snapshot_ocr_fts MATCH ?1 AND fts.session_id = ?2 \
+                   AND o.status = 'ok' AND o.redacted = 0 \
+                 LIMIT 50",
+            )
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map(params![match_expr, sid], map_row)
+            .map_err(|e| e.to_string())?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?
+    } else {
+        let mut stmt = conn
+            .prepare(
+                "SELECT fts.snapshot_id, fts.session_id, fts.captured_at_ms, \
+                 snippet(snapshot_ocr_fts, 3, '«', '»', ' … ', 20), \
+                 o.ocr_text, ws.app_name, ws.window_title, ws.intent \
+                 FROM snapshot_ocr_fts AS fts \
+                 INNER JOIN snapshot_ocr o ON o.snapshot_id = fts.snapshot_id \
+                 INNER JOIN window_sessions ws ON ws.id = fts.session_id \
+                 WHERE snapshot_ocr_fts MATCH ?1 AND o.status = 'ok' AND o.redacted = 0 \
+                 LIMIT 50",
+            )
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([&match_expr], map_row)
+            .map_err(|e| e.to_string())?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?
+    };
+
+    hits.retain(|h| !settings::app_name_blacklisted(&h.app_name, &bl));
+    Ok(hits)
+}
+
+fn truncate_chars(s: &str, max_chars: usize) -> String {
+    let mut out = String::new();
+    for (i, ch) in s.chars().enumerate() {
+        if i >= max_chars {
+            out.push('…');
+            break;
+        }
+        out.push(ch);
+    }
+    out
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OcrEvalSampleRowDto {
+    pub snapshot_id: String,
+    pub session_id: String,
+    pub captured_at_ms: i64,
+    pub app_name: String,
+    pub window_title: String,
+    pub file_path: String,
+    pub ocr_status: Option<String>,
+    pub ocr_text_preview: Option<String>,
+    pub ocr_meta: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OcrEvaluateSnapshotDto {
+    pub snapshot_id: String,
+    pub ok: bool,
+    pub error_message: Option<String>,
+    pub duration_ms: u64,
+    pub pipeline: OcrPipelineConfig,
+    pub final_text: String,
+    pub summary_line: Option<String>,
+    pub gated_preview: String,
+    pub lines: Vec<OcrLineEval>,
+    pub ocr_meta: Option<String>,
+}
+
+/// 最近截图 + 已有 OCR 状态，供「OCR 效果评估」页列表。
+#[tauri::command]
+pub fn list_ocr_eval_samples(
+    state: State<'_, AppState>,
+    limit: Option<i32>,
+) -> Result<Vec<OcrEvalSampleRowDto>, String> {
+    let lim = limit.unwrap_or(40).clamp(5, 200);
+    let conn = state.0.read_conn.lock();
+    let mut stmt = conn
+        .prepare(
+            "SELECT s.id, s.session_id, s.captured_at_ms, s.file_path, \
+                    ws.app_name, ws.window_title, o.status, o.ocr_text, o.ocr_meta \
+             FROM snapshots s \
+             INNER JOIN window_sessions ws ON ws.id = s.session_id \
+             LEFT JOIN snapshot_ocr o ON o.snapshot_id = s.id \
+             ORDER BY s.captured_at_ms DESC \
+             LIMIT ?1",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([lim], |r| {
+            let text: Option<String> = r.get(7)?;
+            let preview = text.and_then(|s| {
+                let t = s.trim();
+                if t.is_empty() {
+                    None
+                } else {
+                    Some(truncate_chars(t, 120))
+                }
+            });
+            Ok(OcrEvalSampleRowDto {
+                snapshot_id: r.get(0)?,
+                session_id: r.get(1)?,
+                captured_at_ms: r.get(2)?,
+                file_path: r.get(3)?,
+                app_name: r.get(4)?,
+                window_title: r.get(5)?,
+                ocr_status: r.get(6)?,
+                ocr_text_preview: preview,
+                ocr_meta: r.get(8)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+/// 对单帧重新跑本地 OCR 管线（不写入数据库），返回行级闸门明细。
+#[tauri::command]
+pub fn evaluate_ocr_snapshot(
+    state: State<'_, AppState>,
+    snapshot_id: String,
+) -> Result<OcrEvaluateSnapshotDto, String> {
+    let path: String = {
+        let conn = state.0.read_conn.lock();
+        conn.query_row(
+            "SELECT file_path FROM snapshots WHERE id = ?1",
+            [&snapshot_id],
+            |r| r.get(0),
+        )
+        .map_err(|_| "找不到截图".to_string())?
+    };
+    if path.trim().is_empty() {
+        return Err("截图路径为空".into());
+    }
+    let pipeline = {
+        let c = state.0.read_conn.lock();
+        settings::get_ocr_pipeline_config(&c)
+    };
+    let pipeline_err = pipeline.clone();
+    let t0 = Instant::now();
+    let res = crate::core::ocr::ocr_image_file(Path::new(&path), &pipeline);
+    let duration_ms = t0.elapsed().as_millis() as u64;
+    match res {
+        Ok(out) => Ok(OcrEvaluateSnapshotDto {
+            snapshot_id: snapshot_id.clone(),
+            ok: true,
+            error_message: None,
+            duration_ms,
+            pipeline,
+            final_text: out.text,
+            summary_line: out.summary,
+            gated_preview: out.gated_preview,
+            lines: out.lines_detail,
+            ocr_meta: out.ocr_meta,
+        }),
+        Err(e) => Ok(OcrEvaluateSnapshotDto {
+            snapshot_id,
+            ok: false,
+            error_message: Some(e),
+            duration_ms,
+            pipeline: pipeline_err,
+            final_text: String::new(),
+            summary_line: None,
+            gated_preview: String::new(),
+            lines: vec![],
+            ocr_meta: None,
+        }),
+    }
+}
+
+#[cfg(test)]
+mod ocr_search_kw_tests {
+    use super::{build_ocr_fts_and_expr, parse_ocr_search_keywords};
+    use rusqlite::Connection;
+
+    /// SQLite FTS5：`FROM snapshot_ocr_fts AS fts` 时 `WHERE fts MATCH` 会报 no such column: fts。
+    #[test]
+    fn fts5_match_must_use_virtual_table_name_not_alias() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE VIRTUAL TABLE snapshot_ocr_fts USING fts5(
+                snapshot_id UNINDEXED,
+                session_id UNINDEXED,
+                captured_at_ms UNINDEXED,
+                body
+            );
+            INSERT INTO snapshot_ocr_fts(snapshot_id, session_id, captured_at_ms, body)
+            VALUES ('s1','sess',1,'hello world');",
+        )
+        .unwrap();
+        let bad = conn.prepare(
+            "SELECT 1 FROM snapshot_ocr_fts AS fts WHERE fts MATCH 'hello' LIMIT 1",
+        );
+        assert!(bad.is_err(), "alias MATCH should fail");
+        let good: i32 = conn
+            .query_row(
+                "SELECT 1 FROM snapshot_ocr_fts AS fts WHERE snapshot_ocr_fts MATCH 'hello' LIMIT 1",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(good, 1);
+    }
+
+    #[test]
+    fn parse_multi_and_dedup() {
+        let v = parse_ocr_search_keywords("  foo  bar   foo ").unwrap();
+        assert_eq!(v, vec!["foo", "bar"]);
+        assert_eq!(
+            build_ocr_fts_and_expr(&v),
+            "body: \"foo\" AND body: \"bar\""
+        );
+    }
+
+    #[test]
+    fn parse_comma_cn() {
+        let v = parse_ocr_search_keywords("发票，订单").unwrap();
+        assert_eq!(v.len(), 2);
+    }
 }

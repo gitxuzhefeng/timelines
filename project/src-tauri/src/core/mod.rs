@@ -1,6 +1,7 @@
 pub mod aggregation;
 pub mod collection;
 pub mod intent_mapping;
+pub mod ocr;
 pub mod models;
 pub mod privacy;
 pub mod settings;

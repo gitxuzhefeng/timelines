@@ -225,6 +225,50 @@ CREATE INDEX IF NOT EXISTS idx_reports_date ON daily_reports(report_date);
 CREATE INDEX IF NOT EXISTS idx_reports_analysis ON daily_reports(analysis_id);
 "#,
     },
+    Migration {
+        version: 3,
+        description: "Phase 2 OCR: snapshot_ocr, session_ocr_context, FTS5",
+        sql: r#"
+CREATE TABLE IF NOT EXISTS snapshot_ocr (
+    snapshot_id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    captured_at_ms INTEGER NOT NULL,
+    ocr_text TEXT,
+    redacted INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL,
+    error_hint TEXT,
+    processed_at_ms INTEGER NOT NULL,
+    FOREIGN KEY (snapshot_id) REFERENCES snapshots(id) ON DELETE CASCADE,
+    FOREIGN KEY (session_id) REFERENCES window_sessions(id)
+);
+CREATE INDEX IF NOT EXISTS idx_snapshot_ocr_session ON snapshot_ocr(session_id);
+CREATE INDEX IF NOT EXISTS idx_snapshot_ocr_time ON snapshot_ocr(captured_at_ms);
+
+CREATE TABLE IF NOT EXISTS session_ocr_context (
+    session_id TEXT PRIMARY KEY,
+    summary_line TEXT,
+    summary_source TEXT,
+    updated_at_ms INTEGER NOT NULL,
+    empty_reason TEXT,
+    FOREIGN KEY (session_id) REFERENCES window_sessions(id)
+);
+
+CREATE VIRTUAL TABLE IF NOT EXISTS snapshot_ocr_fts USING fts5(
+    snapshot_id UNINDEXED,
+    session_id UNINDEXED,
+    captured_at_ms UNINDEXED,
+    body,
+    tokenize = 'unicode61 remove_diacritics 0'
+);
+"#,
+    },
+    Migration {
+        version: 4,
+        description: "OCR quality: snapshot_ocr.ocr_meta JSON",
+        sql: r#"
+ALTER TABLE snapshot_ocr ADD COLUMN ocr_meta TEXT;
+"#,
+    },
 ];
 
 fn current_version(conn: &Connection) -> rusqlite::Result<i32> {
@@ -280,7 +324,7 @@ mod tests {
                 |r| r.get(0),
             )
             .unwrap();
-        assert_eq!(v, 2);
+        assert_eq!(v, 4);
         let tables: i64 = c
             .query_row(
                 "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='daily_analysis'",

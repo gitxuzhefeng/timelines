@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TimeLens · 会话 / OCR 布局 Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #09090b;
+      --surface: #18181b;
+      --surface-2: #27272a;
+      --border: #3f3f46;
+      --text: #fafafa;
+      --muted: #a1a1aa;
+      --dim: #71717a;
+      --accent: #22c55e;
+      --accent-dim: rgba(34, 197, 94, 0.15);
+      --highlight: rgba(245, 158, 11, 0.45);
+      --radius: 10px;
+      --font: "Inter", system-ui, sans-serif;
+      --mono: "Geist Mono", ui-monospace, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .app-shell {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Top bar */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      height: 48px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .brand {
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      font-size: 15px;
+    }
+
+    .nav {
+      display: flex;
+      gap: 4px;
+    }
+
+    .nav button {
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .nav button:hover {
+      color: var(--text);
+      background: var(--surface-2);
+    }
+
+    .nav button.active {
+      color: var(--text);
+      background: var(--surface-2);
+      box-shadow: inset 0 0 0 1px var(--border);
+    }
+
+    .nav button.demo-tag::after {
+      content: " demo";
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--dim);
+      vertical-align: super;
+    }
+
+    /* Sub header (session page) */
+    .subbar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(24, 24, 27, 0.6);
+      font-size: 13px;
+    }
+
+    .subbar.hidden {
+      display: none;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--surface-2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .badge.ok {
+      border-color: rgba(34, 197, 94, 0.35);
+      color: #86efac;
+      background: var(--accent-dim);
+    }
+
+    .stats {
+      margin-left: auto;
+      color: var(--dim);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Main */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .view {
+      display: none;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .view.active {
+      display: flex;
+    }
+
+    /* —— Session view: 3 columns —— */
+    .session-layout {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 260px 1fr 200px;
+      min-height: 0;
+    }
+
+    @media (max-width: 960px) {
+      .session-layout {
+        grid-template-columns: 220px 1fr 160px;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .session-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr auto;
+      }
+    }
+
+    .panel {
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      background: var(--bg);
+    }
+
+    .panel:last-child {
+      border-right: none;
+      border-left: 1px solid var(--border);
+    }
+
+    .panel-h {
+      padding: 12px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: var(--dim);
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .session-list {
+      overflow-y: auto;
+      padding: 8px;
+      flex: 1;
+    }
+
+    .session-item {
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      margin-bottom: 4px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: background 0.12s, border-color 0.12s;
+    }
+
+    .session-item:hover {
+      background: var(--surface);
+    }
+
+    .session-item.selected {
+      background: var(--surface-2);
+      border-color: var(--border);
+    }
+
+    .session-item .title {
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .session-item .meta {
+      font-size: 12px;
+      color: var(--dim);
+      margin-top: 2px;
+      font-family: var(--mono);
+    }
+
+    .preview-center {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      background: #0c0c0e;
+    }
+
+    .preview-toolbar {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .preview-toolbar .label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .preview-toolbar .time {
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+
+    .preview-frame {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      min-height: 280px;
+      overflow: auto;
+    }
+
+    .preview-placeholder {
+      width: 100%;
+      max-width: min(920px, 100%);
+      aspect-ratio: 16 / 10;
+      border-radius: 12px;
+      border: 1px dashed var(--border);
+      background: linear-gradient(145deg, var(--surface) 0%, #121214 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--dim);
+      text-align: center;
+      padding: 24px;
+    }
+
+    .preview-placeholder strong {
+      color: var(--muted);
+      font-size: 15px;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .filmstrip {
+      overflow-y: auto;
+      padding: 10px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .thumb {
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid transparent;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: border-color 0.12s, opacity 0.12s;
+      background: var(--surface);
+    }
+
+    .thumb:hover {
+      border-color: var(--border);
+    }
+
+    .thumb.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.35);
+    }
+
+    .thumb .img {
+      aspect-ratio: 16 / 10;
+      background: linear-gradient(135deg, #27272a, #18181b);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: var(--dim);
+      font-family: var(--mono);
+    }
+
+    .thumb .cap {
+      padding: 6px 8px;
+      font-size: 11px;
+      color: var(--muted);
+      font-family: var(--mono);
+      border-top: 1px solid var(--border);
+    }
+
+    /* —— OCR view —— */
+    .ocr-layout {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .ocr-search {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .ocr-search h2 {
+      margin: 0 0 4px;
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .ocr-search p {
+      margin: 0 0 16px;
+      font-size: 13px;
+      color: var(--dim);
+    }
+
+    .search-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .search-row input[type="text"] {
+      flex: 1;
+      min-width: 200px;
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    .search-row input::placeholder {
+      color: var(--dim);
+    }
+
+    .chk {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      user-select: none;
+      cursor: pointer;
+    }
+
+    .btn {
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 10px 18px;
+      border-radius: var(--radius);
+      border: none;
+      cursor: pointer;
+      background: var(--accent);
+      color: #052e16;
+    }
+
+    .btn:hover {
+      filter: brightness(1.08);
+    }
+
+    .ocr-results {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px 32px;
+    }
+
+    .result-count {
+      font-size: 12px;
+      color: var(--dim);
+      margin-bottom: 16px;
+    }
+
+    .hit-card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--surface);
+      margin-bottom: 20px;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: minmax(220px, 28%) 1fr;
+      min-height: 200px;
+    }
+
+    @media (max-width: 900px) {
+      .hit-card {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .hit-a {
+      padding: 16px 18px;
+      border-right: 1px solid var(--border);
+      background: rgba(9, 9, 11, 0.5);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    @media (max-width: 900px) {
+      .hit-a {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+    }
+
+    .hit-a .tag {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .kv {
+      display: grid;
+      gap: 4px;
+      font-size: 13px;
+    }
+
+    .kv dt {
+      color: var(--dim);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .kv dd {
+      margin: 0;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .hit-bc {
+      display: grid;
+      grid-template-columns: minmax(200px, 38%) 1fr;
+      min-height: 0;
+    }
+
+    @media (max-width: 700px) {
+      .hit-bc {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .hit-b {
+      padding: 14px;
+      border-right: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0c0c0e;
+    }
+
+    @media (max-width: 700px) {
+      .hit-b {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+    }
+
+    .hit-b .shot {
+      width: 100%;
+      max-width: 360px;
+      aspect-ratio: 16 / 10;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: linear-gradient(160deg, #3f3f46 0%, #18181b 50%, #27272a 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hit-b .shot::after {
+      content: "截图预览";
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: var(--dim);
+    }
+
+    .hit-b .pin {
+      position: absolute;
+      top: 42%;
+      left: 55%;
+      transform: translate(-50%, -50%);
+      background: var(--highlight);
+      color: #422006;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    .hit-c {
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 0;
+    }
+
+    .hit-c .tag {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #a78bfa;
+    }
+
+    .match-term {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-family: var(--mono);
+    }
+
+    .pill.hl {
+      background: var(--highlight);
+      border-color: rgba(245, 158, 11, 0.5);
+      color: #1c1917;
+      font-weight: 600;
+    }
+
+    .snippet {
+      font-size: 13px;
+      line-height: 1.65;
+      color: var(--muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      max-height: 140px;
+      overflow-y: auto;
+    }
+
+    .snippet mark {
+      background: var(--highlight);
+      color: #1c1917;
+      padding: 0 2px;
+      border-radius: 3px;
+    }
+
+    .full-ocr {
+      font-size: 12px;
+      color: var(--dim);
+      line-height: 1.6;
+      max-height: 120px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      font-family: var(--mono);
+    }
+
+    .full-ocr mark {
+      background: var(--highlight);
+      color: #1c1917;
+    }
+
+    footer.note {
+      padding: 12px 24px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--dim);
+      background: var(--surface);
+    }
+
+    footer.note code {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">TimeLens</div>
+      <nav class="nav" aria-label="主导航">
+        <button type="button" data-view="review">复盘</button>
+        <button type="button" class="active demo-tag" data-view="session">会话</button>
+        <button type="button" demo-tag data-view="ocr">OCR 检索</button>
+        <button type="button" data-view="health">健康</button>
+        <button type="button" data-view="settings">设置</button>
+      </nav>
+      <span style="font-size:12px;color:var(--dim);">布局静态 Demo</span>
+    </header>
+
+    <div class="subbar" id="subbar-session">
+      <span style="font-weight:600;">会话</span>
+      <span style="color:var(--muted);">2026/04/03</span>
+      <span class="badge">采集已停止</span>
+      <span class="badge ok">辅助功能</span>
+      <span class="badge ok">屏幕录制</span>
+      <span class="badge ok">通知监听</span>
+      <span class="stats">Session 93 · 截图 132 · 切换 86</span>
+    </div>
+
+    <div class="subbar hidden" id="subbar-ocr">
+      <span style="font-weight:600;">OCR 检索</span>
+      <span style="color:var(--muted);">在全库或当前会话中搜索屏幕识别文字</span>
+    </div>
+
+    <main class="main">
+      <!-- 会话：仅预览 + 右侧条带 -->
+      <section class="view active" id="view-session" aria-label="会话视图">
+        <div class="session-layout">
+          <aside class="panel">
+            <div class="panel-h">Sessions</div>
+            <div class="session-list">
+              <div class="session-item">
+                <div class="title">FIClash</div>
+                <div class="meta">13:58:12 · 24 raw</div>
+              </div>
+              <div class="session-item selected">
+                <div class="title">Cursor</div>
+                <div class="meta">14:00:57 · 86 raw</div>
+              </div>
+              <div class="session-item">
+                <div class="title">iTerm2</div>
+                <div class="meta">14:12:03 · 12 raw</div>
+              </div>
+            </div>
+          </aside>
+
+          <section class="preview-center">
+            <div class="preview-toolbar">
+              <span class="label">当前截图</span>
+              <span class="time">14:07:51</span>
+              <span class="label" style="margin-left:8px;">·</span>
+              <span class="label">Cursor</span>
+              <span class="time">timelines</span>
+            </div>
+            <div class="preview-frame">
+              <div class="preview-placeholder">
+                <strong>会话页：大图预览区</strong>
+                此处仅展示当前选中截图，不包含「屏幕文字摘要」「Intent 纠错」「OCR 检索」等模块。<br />
+                OCR 相关能力迁移到独立「OCR 检索」页。
+              </div>
+            </div>
+          </section>
+
+          <aside class="panel">
+            <div class="panel-h">本会话截图</div>
+            <div class="filmstrip">
+              <div class="thumb">
+                <div class="img">#001</div>
+                <div class="cap">14:05:02</div>
+              </div>
+              <div class="thumb selected">
+                <div class="img">#002</div>
+                <div class="cap">14:07:51</div>
+              </div>
+              <div class="thumb">
+                <div class="img">#003</div>
+                <div class="cap">14:09:18</div>
+              </div>
+              <div class="thumb">
+                <div class="img">#004</div>
+                <div class="cap">14:11:44</div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- OCR：搜索 + 结果（a 会话 b 图 c 文） -->
+      <section class="view" id="view-ocr" aria-label="OCR 检索视图">
+        <div class="ocr-layout">
+          <div class="ocr-search">
+            <h2>在识别文字中搜索</h2>
+            <p>支持关键词、短语；结果展示会话上下文、对应截图与匹配片段 / 全文。</p>
+            <div class="search-row">
+              <input type="text" placeholder="例：invoice 2024、发票、订单号、函数名…" value="eco" />
+              <label class="chk">
+                <input type="checkbox" checked />
+                仅当前会话
+              </label>
+              <button type="button" class="btn">搜索</button>
+            </div>
+          </div>
+          <div class="ocr-results">
+            <div class="result-count">共 2 条匹配（演示数据）</div>
+
+            <article class="hit-card">
+              <div class="hit-a">
+                <span class="tag">(a) 会话信息</span>
+                <dl class="kv">
+                  <dt>应用</dt>
+                  <dd>Cursor</dd>
+                  <dt>窗口标题</dt>
+                  <dd>timelines — timelines</dd>
+                  <dt>会话时间</dt>
+                  <dd>2026-04-03 14:00:57 — 14:18:22</dd>
+                  <dt>截图时间</dt>
+                  <dd>14:07:51.328</dd>
+                </dl>
+              </div>
+              <div class="hit-bc">
+                <div class="hit-b" style="position:relative;">
+                  <div class="shot">
+                    <span class="pin" style="position:absolute;">eco</span>
+                  </div>
+                  <span class="tag" style="position:absolute;top:10px;left:14px;font-size:9px;opacity:0.7;">(b) 识别图片</span>
+                </div>
+                <div class="hit-c">
+                  <span class="tag">(c) 文字信息</span>
+                  <div class="match-term">
+                    <span style="color:var(--dim);font-size:12px;">匹配词</span>
+                    <span class="pill hl">eco</span>
+                  </div>
+                  <div>
+                    <div style="font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">匹配片段（FTS）</div>
+                    <div class="snippet">
+                      … pub enum <mark>AggregationCmd</mark> { … 以及环境相关 <mark>eco</mark> 配置段落 …
+                    </div>
+                  </div>
+                  <div>
+                    <div style="font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">完整 OCR（节选）</div>
+                    <div class="full-ocr">
+                      use std::<mark>eco</mark>::Env;
+                      // …
+                      pub enum AggregationCmd { … }
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            <article class="hit-card">
+              <div class="hit-a">
+                <span class="tag">(a) 会话信息</span>
+                <dl class="kv">
+                  <dt>应用</dt>
+                  <dd>iTerm2</dd>
+                  <dt>窗口标题</dt>
+                  <dd>xzf@host — zsh</dd>
+                  <dt>会话时间</dt>
+                  <dd>2026-04-03 14:12:03 — 14:14:50</dd>
+                  <dt>截图时间</dt>
+                  <dd>14:13:08.102</dd>
+                </dl>
+              </div>
+              <div class="hit-bc">
+                <div class="hit-b" style="position:relative;">
+                  <div class="shot">
+                    <span class="pin" style="position:absolute;top:50%;left:40%;">eco</span>
+                  </div>
+                </div>
+                <div class="hit-c">
+                  <span class="tag">(c) 文字信息</span>
+                  <div class="match-term">
+                    <span style="color:var(--dim);font-size:12px;">匹配词</span>
+                    <span class="pill hl">eco</span>
+                  </div>
+                  <div class="snippet">
+                    $ cargo build — feature <mark>eco</mark>-telemetry enabled …
+                  </div>
+                  <div class="full-ocr">
+                    Last login: …
+                    $ export RUST_LOG=…
+                    <mark>eco</mark>_init()
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="note">
+      本文件为静态布局示意：<code>project/demo/timelens-sessions-ocr-demo.html</code> · 用浏览器直接打开即可。顶部「会话 / OCR 检索」可切换视图。
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      var buttons = document.querySelectorAll(".nav button[data-view]");
+      var sessionView = document.getElementById("view-session");
+      var ocrView = document.getElementById("view-ocr");
+      var subSession = document.getElementById("subbar-session");
+      var subOcr = document.getElementById("subbar-ocr");
+
+      function show(view) {
+        buttons.forEach(function (b) {
+          b.classList.toggle("active", b.getAttribute("data-view") === view);
+        });
+        var isSession = view === "session";
+        var isOcr = view === "ocr";
+        sessionView.classList.toggle("active", isSession);
+        ocrView.classList.toggle("active", isOcr);
+        subSession.classList.toggle("hidden", !isSession);
+        subOcr.classList.toggle("hidden", !isOcr);
+      }
+
+      buttons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var v = btn.getAttribute("data-view");
+          if (v === "session" || v === "ocr") show(v);
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,3 +1,11 @@
+/** 与 Rust `AppIntentAggregateDto` 对齐：按应用名 + Bundle 聚合 */
+export interface AppIntentAggregate {
+  appName: string;
+  bundleId: string | null;
+  sessionCount: number;
+  resolvedIntent: string | null;
+}
+
 export interface WindowSession {
   id: string;
   startMs: number;
@@ -63,7 +71,86 @@ export interface PipelineHealth {
   clipboard: EngineStatus;
   notifications: EngineStatus;
   ambientContext: EngineStatus;
+  ocr: EngineStatus;
   lastCheckMs: number;
+}
+
+/** 与 Rust `OcrPipelineConfig` 对齐（本地 Tesseract 管线） */
+export interface OcrPipelineConfig {
+  languages: string;
+  psm: number;
+  wordConfMin: number;
+  lineConfMin: number;
+  preprocessScale: boolean;
+  preprocessDarkInvert: boolean;
+}
+
+export interface OcrSettingsDto {
+  privacyAcknowledged: boolean;
+  enabled: boolean;
+  allowExportToAi: boolean;
+  showSessionSummary: boolean;
+  pipeline: OcrPipelineConfig;
+}
+
+/** 评估页列表行 */
+export interface OcrEvalSampleRow {
+  snapshotId: string;
+  sessionId: string;
+  capturedAtMs: number;
+  appName: string;
+  windowTitle: string;
+  filePath: string;
+  ocrStatus: string | null;
+  ocrTextPreview: string | null;
+  ocrMeta: string | null;
+}
+
+/** 单帧重新识别结果（不落库） */
+export interface OcrEvaluateSnapshotResult {
+  snapshotId: string;
+  ok: boolean;
+  errorMessage: string | null;
+  durationMs: number;
+  pipeline: OcrPipelineConfig;
+  finalText: string;
+  summaryLine: string | null;
+  gatedPreview: string;
+  lines: OcrEvalLine[];
+  ocrMeta: string | null;
+}
+
+export interface OcrEvalLine {
+  text: string;
+  avgConf: number;
+  kept: boolean;
+  dropReason?: string | null;
+}
+
+export interface OcrStatusDto {
+  enabled: boolean;
+  lastSuccessMs: number | null;
+  pendingJobs: number;
+  lastError: string | null;
+}
+
+export interface SessionOcrContextDto {
+  summaryLine: string | null;
+  summarySource: string | null;
+  emptyReason: string | null;
+}
+
+export interface OcrSearchHit {
+  snapshotId: string;
+  sessionId: string;
+  capturedAtMs: number;
+  /** FTS 片段，« » 标出匹配部分 */
+  matchedSnippet: string;
+  fullOcrText: string | null;
+  matchedKeywords: string[];
+  appName: string;
+  windowTitle: string;
+  sessionIntent: string | null;
 }
 
 export interface ActivityStats {

@@ -73,13 +73,32 @@ pub fn upsert_user_intent_rule(
     Ok(())
 }
 
+/// 删除用户为该应用键写入的规则（与 `upsert_user_intent_rule` 开头的 DELETE 语义一致，不插入新行）。
+pub fn remove_user_intent_rules(
+    conn: &mut Connection,
+    app_name: &str,
+    bundle_id: Option<&str>,
+) -> rusqlite::Result<()> {
+    conn.execute(
+        "DELETE FROM intent_mapping WHERE is_builtin = 0 AND match_field = 'app_name' AND match_pattern = ?1",
+        [app_name],
+    )?;
+    if let Some(b) = bundle_id.map(str::trim).filter(|s| !s.is_empty()) {
+        conn.execute(
+            "DELETE FROM intent_mapping WHERE is_builtin = 0 AND match_field = 'bundle_id' AND match_pattern = ?1",
+            [b],
+        )?;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use rusqlite::Connection;
 
     use crate::core::storage::migrations::run_migrations;
 
-    use super::{resolve_intent, upsert_user_intent_rule};
+    use super::{remove_user_intent_rules, resolve_intent, upsert_user_intent_rule};
 
     fn conn_migrated() -> Connection {
         let mut c = Connection::open_in_memory().unwrap();
@@ -112,5 +131,17 @@ mod tests {
         upsert_user_intent_rule(&mut c, "App", Some("com.x"), "来自包").unwrap();
         let r = resolve_intent(&c, "App", Some("com.x")).unwrap();
         assert_eq!(r.as_deref(), Some("来自包"));
+    }
+
+    #[test]
+    fn remove_user_rules_clears_resolution() {
+        let mut c = conn_migrated();
+        upsert_user_intent_rule(&mut c, "Note", Some("com.note"), "写笔记").unwrap();
+        assert_eq!(
+            resolve_intent(&c, "Note", Some("com.note")).unwrap().as_deref(),
+            Some("写笔记")
+        );
+        remove_user_intent_rules(&mut c, "Note", Some("com.note")).unwrap();
+        assert_eq!(resolve_intent(&c, "Note", Some("com.note")).unwrap(), None);
     }
 }

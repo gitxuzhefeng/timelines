@@ -14,6 +14,17 @@ const K_AI_BASE_URL: &str = "ai_base_url";
 const K_AI_MODEL: &str = "ai_model";
 const K_AI_API_KEY: &str = "ai_api_key";
 
+const K_OCR_ENABLED: &str = "ocr_enabled";
+const K_OCR_PRIVACY_ACK: &str = "ocr_privacy_acknowledged";
+const K_OCR_ALLOW_EXPORT: &str = "ocr_allow_export_to_ai";
+const K_OCR_SHOW_SUMMARY: &str = "ocr_show_session_summary";
+const K_OCR_LANGUAGES: &str = "ocr_languages";
+const K_OCR_PSM: &str = "ocr_psm";
+const K_OCR_WORD_CONF_MIN: &str = "ocr_word_conf_min";
+const K_OCR_LINE_CONF_MIN: &str = "ocr_line_conf_min";
+const K_OCR_PREPROCESS_SCALE: &str = "ocr_preprocess_scale";
+const K_OCR_PREPROCESS_INVERT: &str = "ocr_preprocess_dark_invert";
+
 const DEFAULT_AI_BASE_URL: &str = "https://api.openai.com/v1";
 const DEFAULT_AI_MODEL: &str = "gpt-4o-mini";
 
@@ -182,6 +193,127 @@ pub fn set_app_blacklist(conn: &mut Connection, apps: &[String]) -> rusqlite::Re
 }
 
 /// 与 Session / 前台采样中的 `app_name` **精确匹配**（trim 后非空项）；大小写敏感。
+pub fn get_ocr_enabled(conn: &Connection) -> bool {
+    get_bool(conn, K_OCR_ENABLED, false)
+}
+
+pub fn get_ocr_privacy_acknowledged(conn: &Connection) -> bool {
+    get_bool(conn, K_OCR_PRIVACY_ACK, false)
+}
+
+pub fn get_ocr_allow_export_to_ai(conn: &Connection) -> bool {
+    get_bool(conn, K_OCR_ALLOW_EXPORT, false)
+}
+
+pub fn get_ocr_show_session_summary(conn: &Connection) -> bool {
+    get_bool(conn, K_OCR_SHOW_SUMMARY, true)
+}
+
+pub fn set_ocr_enabled(conn: &mut Connection, v: bool) -> rusqlite::Result<()> {
+    set_flag(conn, K_OCR_ENABLED, v)
+}
+
+pub fn set_ocr_privacy_acknowledged(conn: &mut Connection, v: bool) -> rusqlite::Result<()> {
+    set_flag(conn, K_OCR_PRIVACY_ACK, v)
+}
+
+pub fn set_ocr_allow_export_to_ai(conn: &mut Connection, v: bool) -> rusqlite::Result<()> {
+    set_flag(conn, K_OCR_ALLOW_EXPORT, v)
+}
+
+pub fn set_ocr_show_session_summary(conn: &mut Connection, v: bool) -> rusqlite::Result<()> {
+    set_flag(conn, K_OCR_SHOW_SUMMARY, v)
+}
+
+fn get_setting_str(conn: &Connection, key: &str, default: &str) -> String {
+    conn.query_row(
+        "SELECT value FROM settings WHERE key = ?1",
+        [key],
+        |r| r.get::<_, String>(0),
+    )
+    .unwrap_or_else(|_| default.to_string())
+}
+
+fn set_setting_str(conn: &mut Connection, key: &str, value: &str) -> rusqlite::Result<()> {
+    let now = chrono::Utc::now().timestamp_millis();
+    conn.execute(
+        "INSERT INTO settings (key, value, updated_at) VALUES (?1, ?2, ?3)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+        params![key, value, now],
+    )?;
+    Ok(())
+}
+
+/// 当前 OCR 管线参数（环境变量可覆盖语言与 PSM）。
+pub fn get_ocr_pipeline_config(conn: &Connection) -> crate::core::ocr::OcrPipelineConfig {
+    use crate::core::ocr::OcrPipelineConfig;
+    let env_lang = std::env::var("TIMELENS_OCR_LANG").unwrap_or_default();
+    let languages = if !env_lang.trim().is_empty() {
+        env_lang
+    } else {
+        get_setting_str(conn, K_OCR_LANGUAGES, "chi_sim+eng")
+    };
+    let mut psm = get_setting_str(conn, K_OCR_PSM, "6")
+        .parse::<i32>()
+        .unwrap_or(6)
+        .clamp(0, 13);
+    if let Ok(ep) = std::env::var("TIMELENS_OCR_PSM") {
+        if let Ok(n) = ep.trim().parse::<i32>() {
+            psm = n.clamp(0, 13);
+        }
+    }
+    let word_conf = get_setting_str(conn, K_OCR_WORD_CONF_MIN, "60")
+        .parse::<f32>()
+        .unwrap_or(60.0)
+        .clamp(0.0, 100.0);
+    let line_conf = get_setting_str(conn, K_OCR_LINE_CONF_MIN, "45")
+        .parse::<f32>()
+        .unwrap_or(45.0)
+        .clamp(0.0, 100.0);
+    OcrPipelineConfig {
+        languages,
+        psm,
+        word_conf_min: word_conf,
+        line_conf_min: line_conf,
+        preprocess_scale: get_bool(conn, K_OCR_PREPROCESS_SCALE, false),
+        preprocess_dark_invert: get_bool(conn, K_OCR_PREPROCESS_INVERT, false),
+    }
+}
+
+/// 写入 OCR 管线高级参数（空字符串表示跳过该项）。
+pub fn apply_ocr_pipeline_overrides(
+    conn: &mut Connection,
+    languages: Option<&str>,
+    psm: Option<i32>,
+    word_conf_min: Option<f32>,
+    line_conf_min: Option<f32>,
+    preprocess_scale: Option<bool>,
+    preprocess_dark_invert: Option<bool>,
+) -> rusqlite::Result<()> {
+    if let Some(s) = languages {
+        let t = s.trim();
+        if !t.is_empty() {
+            set_setting_str(conn, K_OCR_LANGUAGES, t)?;
+        }
+    }
+    if let Some(n) = psm {
+        set_setting_str(conn, K_OCR_PSM, &n.to_string())?;
+    }
+    if let Some(f) = word_conf_min {
+        set_setting_str(conn, K_OCR_WORD_CONF_MIN, &format!("{f}"))?;
+    }
+    if let Some(f) = line_conf_min {
+        set_setting_str(conn, K_OCR_LINE_CONF_MIN, &format!("{f}"))?;
+    }
+    if let Some(v) = preprocess_scale {
+        set_flag(conn, K_OCR_PREPROCESS_SCALE, v)?;
+    }
+    if let Some(v) = preprocess_dark_invert {
+        set_flag(conn, K_OCR_PREPROCESS_INVERT, v)?;
+    }
+    Ok(())
+}
+
 pub fn app_name_blacklisted(name: &str, blacklist: &[String]) -> bool {
     blacklist.iter().any(|e| {
         let t = e.trim();
