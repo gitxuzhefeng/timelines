@@ -42,5 +42,6 @@
 
 ## 版本与分支
 
-- 建议 Git 分支：`v3`
-- 建议标签：与 `package.json` / Cargo 版本对齐后打 `v0.3.0` 或团队约定号段
+- Git 分支：`v3`（已推送 `origin/v3`）
+- 标签与制品版本：`v0.3.0`（`project/package.json`、Tauri `Cargo.toml` / `tauri.conf.json` 已对齐）
+- GitHub Release：<https://github.com/gitxuzhefeng/timelines/releases/tag/v0.3.0>
