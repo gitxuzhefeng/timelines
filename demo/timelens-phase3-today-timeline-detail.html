@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TimeLens · 今日完整时间线（三期下钻效果稿）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0908;
+      --bg-elev: #13110f;
+      --ink: #f4ede4;
+      --muted: #9c948a;
+      --line: rgba(244, 237, 228, 0.09);
+      --accent: #e35d48;
+      --accent-soft: rgba(227, 93, 72, 0.22);
+      --c-a: #3d9b8b;
+      --c-b: #7c6fd4;
+      --c-c: #d4a24c;
+      --c-d: #5a554d;
+      --radius: 18px;
+      --font-sans: "Noto Sans SC", "PingFang SC", system-ui, sans-serif;
+      --font-display: "Syne", var(--font-sans);
+      --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { -webkit-font-smoothing: antialiased; }
+
+    body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.55;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.04;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      z-index: 0;
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 1;
+      max-width: 640px;
+      margin: 0 auto;
+      padding: clamp(1rem, 3vw, 1.5rem) clamp(1rem, 4vw, 1.5rem) 3rem;
+    }
+
+    .back {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--muted);
+      text-decoration: none;
+      margin-bottom: 1.25rem;
+      letter-spacing: 0.02em;
+    }
+
+    .back:hover { color: var(--ink); }
+
+    .back::before {
+      content: "←";
+      font-size: 0.95rem;
+      opacity: 0.75;
+    }
+
+    .top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 0.68rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .page-h1 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      line-height: 1.25;
+      margin-top: 0.35rem;
+    }
+
+    .page-h1 span { color: var(--accent); }
+
+    .date-meta {
+      text-align: right;
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    .date-meta strong {
+      display: block;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--ink);
+      margin-bottom: 0.15rem;
+    }
+
+    /* 与「今日透视」同源的摘要条：从海报滑入详情的锚点 */
+    .bridge {
+      background: linear-gradient(160deg, var(--bg-elev) 0%, #0e0c0a 100%);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 1rem 1.1rem 1.05rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+    }
+
+    .bridge-label {
+      font-size: 0.6rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.55rem;
+    }
+
+    .bridge-bar {
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+      display: flex;
+      margin-bottom: 0.75rem;
+    }
+
+    .bridge-bar span { height: 100%; min-width: 3px; }
+    .b-a { flex: 40; background: var(--c-a); }
+    .b-b { flex: 26; background: var(--c-b); }
+    .b-c { flex: 21; background: var(--c-c); }
+    .b-d { flex: 13; background: var(--c-d); }
+
+    .bridge-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.65rem;
+    }
+
+    .bridge-total {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.35rem;
+      letter-spacing: -0.02em;
+    }
+
+    .bridge-total small {
+      display: block;
+      font-family: var(--font-sans);
+      font-size: 0.62rem;
+      font-weight: 500;
+      color: var(--muted);
+      margin-top: 0.2rem;
+      letter-spacing: 0.04em;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      justify-content: flex-end;
+    }
+
+    .chip {
+      font-size: 0.65rem;
+      padding: 0.28rem 0.5rem;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .chip strong { color: var(--ink); font-weight: 600; }
+
+    /* 24h 微型标尺：一眼对齐「这一天在时钟上的形状」 */
+    .ruler-wrap {
+      margin-bottom: 1.35rem;
+    }
+
+    .ruler-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.58rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 0.35rem;
+    }
+
+    .ruler {
+      height: 14px;
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.04);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ruler-seg {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      border-radius: 2px;
+      opacity: 0.92;
+    }
+
+    /* 08:00=33.33% day width from 08-24 = 16h; segment positions in % of [8,24] */
+    .ruler-seg { box-shadow: 0 0 0 1px rgba(0,0,0,0.2) inset; }
+
+    /* 全日刻度：08:00–24:00 映射到 0–100% */
+    .ruler-ticks {
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--font-mono);
+      font-size: 0.55rem;
+      color: var(--muted);
+      margin-top: 0.35rem;
+      opacity: 0.85;
+    }
+
+    /* 时间线主列表 */
+    .tl-section-title {
+      font-size: 0.62rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 1.5rem 0 0.65rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--line);
+    }
+
+    .tl-section-title:first-of-type {
+      border-top: none;
+      padding-top: 0;
+      margin-top: 0;
+    }
+
+    .tl {
+      position: relative;
+      padding-left: 0;
+    }
+
+    .tl::before {
+      content: "";
+      position: absolute;
+      left: 5.5rem;
+      top: 0.5rem;
+      bottom: 0.5rem;
+      width: 1px;
+      background: linear-gradient(180deg, var(--line), transparent 98%);
+    }
+
+    @media (max-width: 520px) {
+      .tl::before { left: 4.75rem; }
+    }
+
+    .tl-item {
+      display: grid;
+      grid-template-columns: 5rem 12px 1fr;
+      gap: 0.35rem 0.5rem;
+      align-items: start;
+      margin-bottom: 0.65rem;
+    }
+
+    @media (max-width: 520px) {
+      .tl-item { grid-template-columns: 4.25rem 10px 1fr; }
+    }
+
+    .tl-time {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      font-weight: 500;
+      color: var(--muted);
+      text-align: right;
+      padding-top: 0.65rem;
+      line-height: 1.35;
+    }
+
+    .tl-time .dur {
+      display: block;
+      font-size: 0.58rem;
+      font-weight: 400;
+      opacity: 0.85;
+    }
+
+    .tl-axis {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 0.85rem;
+    }
+
+    .tl-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      border: 2px solid var(--bg);
+      box-shadow: 0 0 0 1px var(--line);
+      flex-shrink: 0;
+    }
+
+    .tl-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0.65rem 0.75rem 0.7rem;
+      transition: border-color 0.12s ease, background 0.12s ease;
+    }
+
+    .tl-card:hover {
+      border-color: rgba(244, 237, 228, 0.14);
+      background: rgba(255, 255, 255, 0.045);
+    }
+
+    .tl-app {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .tl-app-name {
+      font-size: 0.82rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .tl-app-name .icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      display: grid;
+      place-items: center;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .tl-intent {
+      font-size: 0.58rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .intent-a { color: var(--c-a); background: rgba(61, 155, 139, 0.12); }
+    .intent-b { color: #a89ef0; background: rgba(124, 111, 212, 0.12); }
+    .intent-c { color: var(--c-c); background: rgba(212, 162, 76, 0.12); }
+    .intent-d { color: #a8a29a; background: rgba(90, 85, 77, 0.2); }
+
+    .tl-title {
+      font-size: 0.74rem;
+      color: var(--muted);
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .tl-meta {
+      margin-top: 0.45rem;
+      font-size: 0.62rem;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      opacity: 0.9;
+    }
+
+    .sub-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1rem;
+      margin-top: 1.75rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--line);
+    }
+
+    .sub-actions a {
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .sub-actions a:hover { text-decoration: underline; }
+
+    .sub-actions .quiet {
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    .trust {
+      margin-top: 1.25rem;
+      font-size: 0.6rem;
+      color: var(--muted);
+      text-align: center;
+      letter-spacing: 0.03em;
+    }
+
+    .demo-foot {
+      margin-top: 2rem;
+      font-size: 0.65rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .demo-foot a { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="timelens-phase3-today-lens-prd.html">返回今日透视</a>
+
+    <header class="top">
+      <div>
+        <div class="brand">TimeLens</div>
+        <h1 class="page-h1">今日<span>完整时间线</span></h1>
+      </div>
+      <div class="date-meta">
+        <strong>2026 年 4 月 3 日 · 周五</strong>
+        <span>按前台焦点段拼接 · 模拟数据</span>
+      </div>
+    </header>
+
+    <section class="bridge" aria-label="与今日透视同源的当日摘要">
+      <p class="bridge-label">与上一屏同一口径 · daily_analysis</p>
+      <div class="bridge-bar" title="意图占比与海报一致">
+        <span class="b-a"></span>
+        <span class="b-b"></span>
+        <span class="b-c"></span>
+        <span class="b-d"></span>
+      </div>
+      <div class="bridge-row">
+        <div class="bridge-total">
+          8h32m
+          <small>已记录前台时长</small>
+        </div>
+        <div class="chips">
+          <span class="chip"><strong>Cursor</strong> 2h48 · 33%</span>
+          <span class="chip"><strong>Chrome</strong> 1h56 · 23%</span>
+          <span class="chip"><strong>飞书</strong> 1h14 · 14%</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="ruler-wrap" aria-hidden="true">
+      <div class="ruler-label">
+        <span>今日活动密度</span>
+        <span>08:00 — 24:00</span>
+      </div>
+      <div class="ruler" role="presentation">
+        <!-- 左 8h 右 24h：每小时占 100/16 % -->
+        <span class="ruler-seg" style="left:0%;width:12.5%;background:var(--c-a);opacity:0.35"></span>
+        <span class="ruler-seg" style="left:12.5%;width:6.25%;background:var(--c-b)"></span>
+        <span class="ruler-seg" style="left:21.875%;width:18.75%;background:var(--c-a)"></span>
+        <span class="ruler-seg" style="left:43.75%;width:6.25%;background:var(--c-c)"></span>
+        <span class="ruler-seg" style="left:53.125%;width:12.5%;background:var(--c-b)"></span>
+        <span class="ruler-seg" style="left:68.75%;width:15.625%;background:var(--c-a)"></span>
+        <span class="ruler-seg" style="left:87.5%;width:9.375%;background:var(--c-d)"></span>
+      </div>
+      <div class="ruler-ticks">
+        <span>08</span><span>12</span><span>16</span><span>20</span><span>24</span>
+      </div>
+    </div>
+
+    <p style="font-size:0.78rem;color:var(--muted);line-height:1.55;margin-bottom:0.25rem">
+      下列为按时间顺序排列的<strong>前台会话段</strong>（与二期泳道同源字段示意）。点击单段可下钻到 Session 详情与关键帧（实现期承接既有路由）。
+    </p>
+
+    <h2 class="tl-section-title">上午</h2>
+    <div class="tl" role="list">
+      <article class="tl-item" role="listitem">
+        <div class="tl-time">09:12<span class="dur">28m</span></div>
+        <div class="tl-axis"><span class="tl-dot" style="background:var(--c-b)"></span></div>
+        <div class="tl-card">
+          <div class="tl-app">
+            <span class="tl-app-name"><span class="icon">飞</span>飞书</span>
+            <span class="tl-intent intent-b">协作沟通</span>
+          </div>
+          <p class="tl-title">站会 · 「TimeLens 三期范围对齐」</p>
+          <p class="tl-meta">session · feishu · win_focus</p>
+        </div>
+      </article>
+
+      <article class="tl-item" role="listitem">
+        <div class="tl-time">09:42<span class="dur">1h18m</span></div>
+        <div class="tl-axis"><span class="tl-dot" style="background:var(--c-a)"></span></div>
+        <div class="tl-card">
+          <div class="tl-app">
+            <span class="tl-app-name"><span class="icon">Cu</span>Cursor</span>
+            <span class="tl-intent intent-a">深度工作</span>
+          </div>
+          <p class="tl-title">timelens-phase3-today-lens-prd.html — 海报块与空态对齐 PRD</p>
+          <p class="tl-meta">window · 同一工作区 · 删改 47 次</p>
+        </div>
+      </article>
+
+      <article class="tl-item" role="listitem">
+        <div class="tl-time">11:05<span class="dur">22m</span></div>
+        <div class="tl-axis"><span class="tl-dot" style="background:var(--c-c)"></span></div>
+        <div class="tl-card">
+          <div class="tl-app">
+            <span class="tl-app-name"><span class="icon">Ch</span>Google Chrome</span>
+            <span class="tl-intent intent-c">浏览与学习</span>
+          </div>
+          <p class="tl-title">MDN · linear-gradient / conic-gradient — 堆叠条实现参考</p>
+          <p class="tl-meta">tab · 3 次 title_change</p>
+        </div>
+      </article>
+    </div>
+
+    <h2 class="tl-section-title">午间</h2>
+    <div class="tl">
+      <article class="tl-item">
+        <div class="tl-time">11:32<span class="dur">52m</span></div>
+        <div class="tl-axis"><span class="tl-dot" style="background:var(--c-d)"></span></div>
+        <div class="tl-card">
+          <div class="tl-app">
+            <span class="tl-app-name"><span class="icon">—</span>（低活跃）</span>
+            <span class="tl-intent intent-d">其他</span>
+          </div>
+          <p class="tl-title">锁屏 / 离开工位 · 无稳定前台焦点</p>
+          <p class="tl-meta">aggregated_gap · 不计入 Top 应用</p>
+        </div>
+      </article>
+    </div>
+
+    <h2 class="tl-section-title">下午</h2>
+    <div class="tl">
+      <article class="tl-item">
+        <div class="tl-time">13:05<span class="dur">48m</span></div>
+        <div class="tl-axis"><span class="tl-dot" style="background:var(--c-b)"></span></div>
+        <div class="tl-card">
+          <div class="tl-app">
+            <span class="tl-app-name"><span class="icon">飞</span>飞书</span>
+            <span class="tl-intent intent-b">协作沟通</span>
+          </div>
+          <p class="tl-title">1:1 评审 · 今日透视下钻与二期 Session 页衔接</p>
+          <p class="tl-meta">video · 麦克风活跃 36m</p>
+        </div>
+      </article>
+
+      <article class="tl-item">
+        <div class="tl-time">13:55<span class="dur">1h02m</span></div>
+        <div class="tl-axis"><span class="tl-dot" style="background:var(--c-a)"></span></div>
+        <div class="tl-card">
+          <div class="tl-app">
+            <span class="tl-app-name"><span class="icon">Cu</span>Cursor</span>
+            <span class="tl-intent intent-a">深度工作</span>
+          </div>
+          <p class="tl-title">timelens-phase3-today-timeline-detail.html — 时间线详情静态稿</p>
+          <p class="tl-meta">window · 与上段同一 App 簇</p>
+        </div>
+      </article>
+
+      <article class="tl-item">
+        <div class="tl-time">15:08<span class="dur">34m</span></div>
+        <div class="tl-axis"><span class="tl-dot" style="background:var(--c-c)"></span></div>
+        <div class="tl-card">
+          <div class="tl-app">
+            <span class="tl-app-name"><span class="icon">Ch</span>Google Chrome</span>
+            <span class="tl-intent intent-c">浏览与学习</span>
+          </div>
+          <p class="tl-title">GitHub · issue 时间线组件与 a11y 讨论</p>
+          <p class="tl-meta">clipboard → Cursor 配对 2 次</p>
+        </div>
+      </article>
+
+      <article class="tl-item">
+        <div class="tl-time">15:45<span class="dur">27m</span></div>
+        <div class="tl-axis"><span class="tl-dot" style="background:var(--c-b)"></span></div>
+        <div class="tl-card">
+          <div class="tl-app">
+            <span class="tl-app-name"><span class="icon">Sl</span>Slack</span>
+            <span class="tl-intent intent-b">协作沟通</span>
+          </div>
+          <p class="tl-title">#timelens-design · 海报扫读测试反馈线程</p>
+          <p class="tl-meta">notify 打断 4 次 · 归因切换 1 次</p>
+        </div>
+      </article>
+
+      <article class="tl-item">
+        <div class="tl-time">16:18<span class="dur">1h24m</span></div>
+        <div class="tl-axis"><span class="tl-dot" style="background:var(--c-a)"></span></div>
+        <div class="tl-card">
+          <div class="tl-app">
+            <span class="tl-app-name"><span class="icon">Cu</span>Cursor</span>
+            <span class="tl-intent intent-a">深度工作</span>
+          </div>
+          <p class="tl-title">联调 demo 链接与二期索引卡片（脚注一致性）</p>
+          <p class="tl-meta">长段 · KPM 峰值 21:12</p>
+        </div>
+      </article>
+
+      <article class="tl-item">
+        <div class="tl-time">17:45<span class="dur">19m</span></div>
+        <div class="tl-axis"><span class="tl-dot" style="background:var(--c-c)"></span></div>
+        <div class="tl-card">
+          <div class="tl-app">
+            <span class="tl-app-name"><span class="icon">Ch</span>Google Chrome</span>
+            <span class="tl-intent intent-c">浏览与学习</span>
+          </div>
+          <p class="tl-title">Notion · 三期验收原则速记</p>
+          <p class="tl-meta">短扫读 · 无剪贴板配对</p>
+        </div>
+      </article>
+    </div>
+
+    <h2 class="tl-section-title">晚间</h2>
+    <div class="tl">
+      <article class="tl-item">
+        <div class="tl-time">19:20<span class="dur">41m</span></div>
+        <div class="tl-axis"><span class="tl-dot" style="background:var(--c-d)"></span></div>
+        <div class="tl-card">
+          <div class="tl-app">
+            <span class="tl-app-name"><span class="icon">TV</span>Apple TV</span>
+            <span class="tl-intent intent-d">其他</span>
+          </div>
+          <p class="tl-title">（可选）非工作前台 · 演示用段</p>
+          <p class="tl-meta">实现期可由用户策略折叠此类目</p>
+        </div>
+      </article>
+    </div>
+
+    <nav class="sub-actions" aria-label="次级出口">
+      <a href="timelens-phase2-recap-mockup.html">打开今日事实报告（日终复盘）</a>
+      <a class="quiet" href="timelens-phase2-session-drilldown-mockup.html">示例：单段 Session 下钻</a>
+    </nav>
+
+    <p class="trust">本页为静态效果稿 · 段时长之和为示意结构，与顶部 8h32m 为同一叙事链；真机以库内分段为准。</p>
+
+    <footer class="demo-foot">
+      设计意图：从「今日透视」进入后，先看到<strong>同源摘要条</strong>锚定信任，再用<strong>微型日标尺 + 分段卡片</strong>完成「从海报走进账本」；主列表保持<strong>一条时间轴</strong>，不把二期整页仪表盘搬过来。<br />
+      <a href="timelens-phase3-today-lens-prd.html">今日透视 PRD 稿</a>
+      · <a href="timelens-phase2-index.html">二期索引</a>
+    </footer>
+  </div>
+</body>
+</html>

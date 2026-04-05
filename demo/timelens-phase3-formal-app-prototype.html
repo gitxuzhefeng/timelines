@@ -1,0 +1,2560 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>TimeLens</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700;900&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #07080c;
+      --bg-elev: #0e1018;
+      --surface: rgba(14, 16, 24, 0.85);
+      --ink: #e8f4f2;
+      --muted: #7a8f8c;
+      --line: rgba(0, 245, 212, 0.12);
+      --cyan: #00f5d4;
+      --cyan-dim: rgba(0, 245, 212, 0.45);
+      --cyan-glow: rgba(0, 245, 212, 0.35);
+      --purple: #9b7ed9;
+      --purple-bg: rgba(155, 126, 217, 0.12);
+      --purple-line: rgba(155, 126, 217, 0.45);
+      --accent: #00f5d4;
+      --accent-soft: rgba(0, 245, 212, 0.1);
+      --c-a: #2ee6c8;
+      --c-b: #9b7ed9;
+      --c-c: #e8c547;
+      --c-d: #5c6670;
+      --ok: #2ee6c8;
+      --poster-bg: #0a0d12;
+      --poster-ink: #e8f4f2;
+      --poster-muted: #6d8a85;
+      --sidebar-w: 278px;
+      --radius: 12px;
+      --font-sans: "Noto Sans SC", "PingFang SC", system-ui, sans-serif;
+      --font-display: "Syne", var(--font-sans);
+      --font-mono: "JetBrains Mono", ui-monospace, monospace;
+      --tl-purple: #a78bfa;
+      --tl-teal: #2dd4bf;
+      --tl-amber: #fbbf24;
+      --tl-gray: #9ca3af;
+      --tl-card-bg: rgba(26, 29, 38, 0.95);
+      --tl-rail: rgba(255, 255, 255, 0.1);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { -webkit-font-smoothing: antialiased; }
+
+    body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.55;
+      position: relative;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.035;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      z-index: 0;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.04;
+      background-image:
+        linear-gradient(rgba(0, 245, 212, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 245, 212, 0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+      z-index: 0;
+    }
+
+    #app { min-height: 100dvh; display: flex; flex-direction: column; position: relative; z-index: 1; }
+
+    .shell {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      max-width: 1320px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* —— 左侧边栏 —— */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      border-right: 1px solid var(--line);
+      background: rgba(10, 12, 18, 0.92);
+      backdrop-filter: blur(12px);
+      box-shadow: 4px 0 32px rgba(0, 0, 0, 0.35);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .sidebar-brand {
+      padding: 1rem 1rem 0.75rem;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .sidebar-brand .logo {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 0.68rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      text-shadow: 0 0 24px var(--cyan-glow);
+    }
+
+    .sidebar-brand .tag {
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      color: var(--muted);
+      margin-top: 0.35rem;
+      letter-spacing: 0.04em;
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.5rem 0.5rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .nav-label {
+      font-size: 0.58rem;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      padding: 0.5rem 0.6rem 0.25rem;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      width: 100%;
+      text-align: left;
+      padding: 0.55rem 0.65rem;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.84rem;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      position: relative;
+      transition: color 0.15s ease, background 0.15s ease;
+    }
+
+    .nav-item::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 3px;
+      height: 0;
+      border-radius: 0 2px 2px 0;
+      background: var(--cyan);
+      box-shadow: 0 0 12px var(--cyan-glow);
+      transition: height 0.2s ease;
+    }
+
+    .nav-item:hover {
+      background: rgba(0, 245, 212, 0.06);
+      color: var(--ink);
+    }
+
+    .nav-item.active {
+      background: rgba(0, 245, 212, 0.08);
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    .nav-item.active::before { height: 60%; }
+
+    .nav-item .ni-icon {
+      width: 1.25rem;
+      text-align: center;
+      opacity: 0.85;
+      font-size: 0.9rem;
+      color: var(--cyan-dim);
+    }
+
+    .nav-item.active .ni-icon { color: var(--cyan); }
+
+    /* —— 右侧主内容 —— */
+    .main-col {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(180deg, #080a10 0%, var(--bg) 40%);
+    }
+
+    .main-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.75rem 1.25rem;
+      border-bottom: 1px solid var(--line);
+      background: rgba(8, 10, 16, 0.75);
+      backdrop-filter: blur(10px);
+    }
+
+    .main-topbar h1 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .main-topbar .sub {
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      color: var(--muted);
+      margin-top: 0.2rem;
+    }
+
+    .main-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 1.25rem 1.25rem 2rem;
+    }
+
+    .view { display: none; animation: fadeIn 0.2s ease; }
+    .view.active { display: block; }
+    .view > .panel-light:first-child,
+    .view > #lensPanelReady:first-child { margin-top: 0; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes borderPulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
+
+    @keyframes scanline {
+      0% { background-position: 0% 0%; }
+      100% { background-position: 200% 0%; }
+    }
+
+    /* —— Insight / 海报主块 —— */
+    .poster-card {
+      position: relative;
+      background: linear-gradient(155deg, #12151c 0%, var(--poster-bg) 50%, #0a0c10 100%);
+      border-radius: 16px;
+      padding: 1.5rem 1.5rem 1.35rem;
+      margin-bottom: 1rem;
+      color: var(--poster-ink);
+      overflow: hidden;
+      box-shadow:
+        0 0 0 1px rgba(0, 245, 212, 0.15) inset,
+        0 24px 80px -24px rgba(0, 0, 0, 0.8),
+        0 0 60px -20px rgba(0, 245, 212, 0.12);
+    }
+
+    .poster-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 16px;
+      padding: 1px;
+      background: linear-gradient(135deg, rgba(0, 245, 212, 0.5), rgba(155, 126, 217, 0.35), rgba(0, 245, 212, 0.2));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+      animation: borderPulse 4s ease-in-out infinite;
+    }
+
+    .poster-card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(105deg, transparent 40%, rgba(0, 245, 212, 0.04) 50%, transparent 60%);
+      background-size: 200% 100%;
+      animation: scanline 8s linear infinite;
+      pointer-events: none;
+    }
+
+    .poster-card > * { position: relative; z-index: 1; }
+
+    .poster-card .poster-date {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      color: var(--cyan-dim);
+      letter-spacing: 0.06em;
+      margin-bottom: 0.65rem;
+    }
+
+    .poster-card .poster-headline {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: clamp(1.2rem, 2.4vw, 1.5rem);
+      line-height: 1.28;
+      letter-spacing: -0.02em;
+      margin-bottom: 1rem;
+      text-wrap: balance;
+    }
+
+    .poster-card .poster-headline span { color: var(--cyan); text-shadow: 0 0 20px var(--cyan-glow); }
+
+    .mono-caps {
+      font-family: var(--font-mono);
+      font-size: 0.55rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      margin-bottom: 0.45rem;
+    }
+
+    .insight-narrative {
+      font-size: 0.84rem;
+      line-height: 1.65;
+      color: rgba(232, 244, 242, 0.92);
+      margin-bottom: 1rem;
+      padding: 0.75rem 0.85rem;
+      border-radius: 10px;
+      border: 1px solid rgba(0, 245, 212, 0.2);
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    .perception-strip { margin-bottom: 1rem; }
+
+    .perception-viz {
+      padding: 0.85rem 0.95rem 0.95rem;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 245, 212, 0.16);
+      background: linear-gradient(165deg, rgba(0, 0, 0, 0.45) 0%, rgba(12, 14, 22, 0.55) 100%);
+    }
+
+    .perception-viz > .mono-caps:first-child {
+      margin-bottom: 0.65rem;
+    }
+
+    .pv-block {
+      margin-bottom: 1.05rem;
+    }
+
+    .pv-block:last-of-type { margin-bottom: 0; }
+
+    .pv-block-h {
+      display: flex;
+      align-items: baseline;
+      gap: 0.45rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: rgba(232, 244, 242, 0.95);
+      margin-bottom: 0.5rem;
+    }
+
+    .pv-idx {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: var(--purple);
+      letter-spacing: 0.06em;
+    }
+
+    /* ① 数据流向：节点 + 光束粒子 */
+    .flow-pipeline {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.25rem 0;
+      justify-content: space-between;
+    }
+
+    .fp-node {
+      flex: 0 0 auto;
+      min-width: 4.8rem;
+      max-width: 5.6rem;
+      padding: 0.4rem 0.45rem;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 245, 212, 0.22);
+      background: rgba(0, 245, 212, 0.06);
+      text-align: center;
+    }
+
+    .fp-node .fp-ico {
+      display: block;
+      font-size: 0.95rem;
+      line-height: 1;
+      margin-bottom: 0.2rem;
+      filter: drop-shadow(0 0 6px rgba(0, 245, 212, 0.35));
+    }
+
+    .fp-node .fp-lbl {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 0.5rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--cyan-dim);
+      line-height: 1.35;
+    }
+
+    .fp-node .fp-sub {
+      display: block;
+      font-size: 0.58rem;
+      color: rgba(232, 244, 242, 0.78);
+      margin-top: 0.15rem;
+      line-height: 1.3;
+    }
+
+    .fp-link {
+      flex: 1 1 18px;
+      min-width: 14px;
+      max-width: 100%;
+      height: 3px;
+      align-self: center;
+      margin: 0 1px;
+      border-radius: 2px;
+      background: linear-gradient(
+        90deg,
+        rgba(0, 245, 212, 0.08) 0%,
+        rgba(0, 245, 212, 0.22) 50%,
+        rgba(155, 126, 217, 0.2) 100%
+      );
+      position: relative;
+      overflow: hidden;
+    }
+
+    .fp-link .fp-beam {
+      position: absolute;
+      top: 0;
+      left: -40%;
+      width: 40%;
+      height: 100%;
+      border-radius: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      opacity: 0.85;
+      animation: fp-beam-slide 2.8s ease-in-out infinite;
+    }
+
+    .flow-pipeline > .fp-link:nth-child(2) .fp-beam { animation-delay: 0s; }
+    .flow-pipeline > .fp-link:nth-child(4) .fp-beam { animation-delay: 0.4s; }
+    .flow-pipeline > .fp-link:nth-child(6) .fp-beam { animation-delay: 0.8s; }
+    .flow-pipeline > .fp-link:nth-child(8) .fp-beam { animation-delay: 1.2s; }
+
+    @keyframes fp-beam-slide {
+      0% { left: -45%; opacity: 0; }
+      8% { opacity: 1; }
+      55% { left: 105%; opacity: 0.9; }
+      70% { opacity: 0; }
+      100% { left: 105%; opacity: 0; }
+    }
+
+    /* ② 五大板块心流 */
+    .fb-row {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+    }
+
+    .fb-seg {
+      flex: 1 1 calc(18% - 4px);
+      min-width: 3.2rem;
+      min-height: 46px;
+      padding: 0.35rem 0.3rem;
+      border-radius: 8px;
+      border: 1px solid rgba(0, 245, 212, 0.18);
+      background: rgba(0, 0, 0, 0.28);
+      font-size: 0.6rem;
+      line-height: 1.35;
+      text-align: center;
+      color: rgba(232, 244, 242, 0.88);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: fb-pulse 4.5s ease-in-out infinite;
+      animation-delay: calc(var(--fb-i, 0) * 0.65s);
+    }
+
+    @keyframes fb-pulse {
+      0%, 45%, 100% {
+        border-color: rgba(0, 245, 212, 0.15);
+        box-shadow: none;
+        transform: scale(1);
+        filter: brightness(1);
+      }
+      8%, 18% {
+        border-color: var(--purple-line);
+        box-shadow: 0 0 16px rgba(155, 126, 217, 0.35);
+        transform: scale(1.03);
+        filter: brightness(1.12);
+      }
+    }
+
+    /* ③ 剪贴板跨应用 */
+    .cb-anim {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .cb-app {
+      flex: 0 0 auto;
+      min-width: 5.5rem;
+      padding: 0.45rem 0.5rem;
+      border-radius: 8px;
+      border: 1px solid rgba(155, 126, 217, 0.35);
+      background: rgba(155, 126, 217, 0.08);
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-align: center;
+      color: #e8dff8;
+    }
+
+    .cb-app .cb-ico {
+      display: block;
+      font-size: 1rem;
+      margin-bottom: 0.15rem;
+    }
+
+    .cb-track {
+      flex: 1 1 120px;
+      min-height: 36px;
+      position: relative;
+      border-radius: 8px;
+      border: 1px dashed rgba(0, 245, 212, 0.25);
+      background: rgba(0, 0, 0, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .cb-packet {
+      position: absolute;
+      left: 8%;
+      top: 50%;
+      width: 22px;
+      height: 14px;
+      margin-top: -7px;
+      border-radius: 3px;
+      background: linear-gradient(135deg, var(--cyan), #5eead4);
+      box-shadow: 0 0 10px rgba(0, 245, 212, 0.55);
+      animation: cb-shuttle 3.2s ease-in-out infinite;
+    }
+
+    @keyframes cb-shuttle {
+      0% { left: 8%; opacity: 1; transform: scale(1); }
+      42% { left: calc(92% - 22px); opacity: 1; transform: scale(1.06); }
+      48% { left: calc(92% - 22px); opacity: 0.75; transform: scale(1); }
+      90% { left: 8%; opacity: 1; transform: scale(1); }
+      100% { left: 8%; opacity: 1; transform: scale(1); }
+    }
+
+    /* ④ 打断：基线 + 突起 */
+    .int-anim {
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 6px;
+      min-height: 52px;
+      padding: 0 2px 10px;
+    }
+
+    .int-baseline {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 8px;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(0, 245, 212, 0.2), transparent);
+      pointer-events: none;
+    }
+
+    .int-spike {
+      flex: 1;
+      max-width: 48px;
+      height: 12px;
+      margin: 0 auto;
+      border-radius: 4px 4px 2px 2px;
+      background: rgba(248, 113, 113, 0.25);
+      border: 1px solid rgba(248, 113, 113, 0.45);
+      animation: int-burst 3s ease-in-out infinite;
+      animation-delay: var(--int-d, 0s);
+      transform-origin: bottom center;
+    }
+
+    .int-anim > .int-spike:nth-child(2) { --int-d: 0s; }
+    .int-anim > .int-spike:nth-child(3) { --int-d: 0.55s; }
+    .int-anim > .int-spike:nth-child(4) { --int-d: 1.1s; }
+    .int-anim > .int-spike:nth-child(5) { --int-d: 1.75s; }
+
+    @keyframes int-burst {
+      0%, 55%, 100% { height: 10px; opacity: 0.4; filter: brightness(0.9); }
+      8%, 15% { height: 38px; opacity: 1; filter: brightness(1.2); box-shadow: 0 0 12px rgba(248, 113, 113, 0.35); }
+    }
+
+    .insight-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-bottom: 1rem;
+    }
+
+    .pill-tech {
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      font-weight: 500;
+      padding: 0.28rem 0.5rem;
+      border-radius: 999px;
+      background: var(--purple-bg);
+      border: 1px solid var(--purple-line);
+      color: #d4c4f0;
+      animation: pill-glint 4s ease-in-out infinite;
+      animation-delay: calc(var(--pi, 0) * 0.45s);
+    }
+
+    @keyframes pill-glint {
+      0%, 40%, 100% { border-color: var(--purple-line); box-shadow: none; }
+      15%, 25% { border-color: rgba(0, 245, 212, 0.45); box-shadow: 0 0 10px rgba(0, 245, 212, 0.12); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .fp-beam,
+      .fb-seg,
+      .cb-packet,
+      .int-spike,
+      .pill-tech {
+        animation: none !important;
+      }
+
+      .fp-beam { left: 50%; opacity: 0.5; animation: none; }
+      .cb-packet { left: 50%; margin-left: -11px; opacity: 0.9; }
+    }
+
+    .poster-card .poster-chart-label {
+      font-size: 0.55rem;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cyan-dim);
+      margin-bottom: 0.4rem;
+    }
+
+    .poster-card .stack-bar {
+      height: 22px;
+      border-radius: 11px;
+      overflow: hidden;
+      display: flex;
+      background: rgba(0, 0, 0, 0.35);
+      box-shadow: inset 0 1px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    .stack-seg { height: 100%; min-width: 4px; }
+    .seg-a { flex: 40; background: linear-gradient(180deg, #3ee6c8, #2a9d88); }
+    .seg-b { flex: 26; background: linear-gradient(180deg, #b49ef0, #7c6fd4); }
+    .seg-c { flex: 21; background: linear-gradient(180deg, #f0d060, #c49a2a); }
+    .seg-d { flex: 13; background: linear-gradient(180deg, #8899a8, #4a5560); }
+
+    .poster-card .poster-meta {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-top: 0.85rem;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .poster-card .poster-total {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.85rem;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      color: var(--poster-ink);
+      text-shadow: 0 0 28px rgba(0, 245, 212, 0.2);
+    }
+
+    .poster-card .poster-total small {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      font-weight: 500;
+      color: var(--poster-muted);
+      margin-top: 0.35rem;
+      letter-spacing: 0.08em;
+    }
+
+    .poster-card .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem 0.65rem;
+      font-size: 0.62rem;
+      font-family: var(--font-mono);
+      color: var(--poster-muted);
+    }
+
+    .poster-card .legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
+    .poster-card .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+    .panel-light {
+      background: rgba(12, 14, 22, 0.75);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 1rem 1.15rem;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.35);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .panel-light:hover {
+      border-color: rgba(0, 245, 212, 0.22);
+      box-shadow: 0 0 32px rgba(0, 245, 212, 0.06);
+    }
+
+    /* —— 今日透视 · 首次进入封面 —— */
+    .lens-cover-wrap {
+      margin-bottom: 1.15rem;
+    }
+
+    .lens-cover-card {
+      max-width: 520px;
+      margin: 0 auto;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid rgba(0, 245, 212, 0.18);
+      box-shadow:
+        0 0 0 1px rgba(155, 126, 217, 0.12) inset,
+        0 24px 80px -28px rgba(0, 0, 0, 0.75),
+        0 0 48px -20px rgba(0, 245, 212, 0.12);
+      background: linear-gradient(155deg, rgba(139, 126, 207, 0.14) 0%, rgba(10, 12, 18, 0.96) 45%, #080a10 100%);
+    }
+
+    .lens-cover-mast {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 1.1rem;
+      border-bottom: 1px solid var(--line);
+      font-family: var(--font-mono);
+      font-size: 0.55rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .lens-cover-mast b {
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    .lens-cover-hero {
+      min-height: 11rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem 1rem;
+      background: linear-gradient(180deg, rgba(26, 21, 18, 0.35) 0%, transparent 100%);
+    }
+
+    .lens-cover-hero span {
+      font-family: var(--font-sans);
+      font-size: clamp(3.2rem, 14vw, 5.5rem);
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      background: linear-gradient(125deg, var(--tl-teal) 0%, var(--purple) 42%, var(--cyan) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 0 28px rgba(0, 245, 212, 0.25));
+    }
+
+    .lens-cover-strap {
+      padding: 1.1rem 1.2rem 1.25rem;
+      border-top: 1px solid var(--line);
+      background: rgba(0, 0, 0, 0.32);
+    }
+
+    .lens-cover-eyebrow {
+      font-size: 0.58rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      letter-spacing: 0.14em;
+      color: var(--purple);
+      margin-bottom: 0.55rem;
+    }
+
+    .lens-cover-strap-title {
+      font-size: 1.08rem;
+      font-weight: 700;
+      line-height: 1.45;
+      color: rgba(232, 244, 242, 0.96);
+      margin-bottom: 0.75rem;
+    }
+
+    .lens-cover-fact {
+      font-size: 0.84rem;
+      line-height: 1.65;
+      color: rgba(232, 244, 242, 0.88);
+      padding: 0.75rem 0.9rem;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.35);
+      border-left: 3px solid var(--purple);
+      margin-bottom: 0.85rem;
+    }
+
+    .lens-cover-fact strong { color: var(--cyan); font-weight: 600; }
+
+    .lens-cover-bar {
+      display: flex;
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+      gap: 2px;
+      margin-bottom: 1rem;
+    }
+
+    .lens-cover-bar i {
+      display: block;
+      min-width: 4px;
+      border-radius: 2px;
+    }
+
+    .lens-cover-cta {
+      width: 100%;
+      padding: 0.88rem 1rem;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 245, 212, 0.35);
+      font-family: var(--font-sans);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: linear-gradient(135deg, rgba(0, 245, 212, 0.35), rgba(155, 126, 217, 0.25));
+      color: var(--ink);
+      box-shadow: 0 0 24px rgba(0, 245, 212, 0.18);
+      transition: box-shadow 0.2s ease, transform 0.15s ease;
+    }
+
+    .lens-cover-cta:hover {
+      box-shadow: 0 0 36px rgba(0, 245, 212, 0.28);
+      transform: translateY(-1px);
+    }
+
+    .takeaway {
+      font-size: 0.86rem;
+      line-height: 1.6;
+      padding: 0.85rem 0;
+      margin: 0.25rem 0 0.5rem;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      color: rgba(232, 244, 242, 0.9);
+    }
+
+    .takeaway em { font-style: normal; font-weight: 700; color: var(--cyan); }
+
+    .proof-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      color: var(--cyan-dim);
+      margin-bottom: 0.35rem;
+      letter-spacing: 0.06em;
+    }
+
+    .proof-list { list-style: none; }
+
+    .proof-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 0.84rem;
+    }
+
+    .proof-row:last-child { border-bottom: none; }
+
+    .proof-row .rank {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      color: var(--muted);
+      width: 1.1rem;
+    }
+
+    .proof-row .meta { font-size: 0.72rem; color: var(--muted); text-align: right; }
+    .proof-row .meta strong { color: var(--ink); }
+
+    .trust-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.45rem;
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 0.75rem;
+      padding-top: 0.65rem;
+      border-top: 1px solid var(--line);
+    }
+
+    .trust-row .badge {
+      flex-shrink: 0;
+      font-size: 0.5rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--cyan);
+      border: 1px solid var(--cyan-dim);
+      padding: 0.15rem 0.35rem;
+      border-radius: 4px;
+      box-shadow: 0 0 10px rgba(0, 245, 212, 0.15);
+    }
+
+    .link-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin-top: 0.85rem;
+    }
+
+    .link-btn {
+      font-size: 0.8rem;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      color: var(--cyan);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: none;
+      border-bottom: 1px solid var(--cyan-dim);
+      text-underline-offset: 3px;
+      transition: color 0.15s ease, text-shadow 0.2s ease;
+    }
+
+    .link-btn:hover {
+      color: #7fffeb;
+      text-shadow: 0 0 12px var(--cyan-glow);
+    }
+
+    /* 时间线：连续主轴 + 四时段 + 可点击会话详情 */
+    .panel-timeline {
+      position: relative;
+    }
+
+    .timeline-rail-root {
+      --tl-gutter: 0.55rem;
+      --tl-time-w: 3.15rem;
+      --tl-rail-w: 20px;
+      --tl-spine-nudge: 10px;
+      --tl-spine-x: calc(var(--tl-time-w) + var(--tl-gutter) + var(--tl-spine-nudge));
+      position: relative;
+      padding: 0.35rem 0 0.75rem;
+    }
+
+    .timeline-rail-root::before {
+      content: "";
+      position: absolute;
+      left: calc(var(--tl-spine-x) - 1px);
+      top: 0.35rem;
+      bottom: 0.5rem;
+      width: 2px;
+      border-radius: 2px;
+      z-index: 0;
+      background: linear-gradient(
+        180deg,
+        rgba(0, 245, 212, 0.45) 0%,
+        rgba(155, 126, 217, 0.35) 38%,
+        rgba(0, 245, 212, 0.28) 72%,
+        rgba(155, 126, 217, 0.22) 100%
+      );
+      box-shadow: 0 0 12px rgba(0, 245, 212, 0.12);
+    }
+
+    .daypart {
+      position: relative;
+      z-index: 1;
+      margin-bottom: 1.25rem;
+    }
+
+    .daypart:last-child { margin-bottom: 0; }
+
+    .daypart-open {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.2rem;
+      width: 100%;
+      margin-bottom: 0.65rem;
+      padding: 0.62rem 0.85rem 0.62rem calc(var(--tl-spine-x) + 14px);
+      text-align: left;
+      font: inherit;
+      cursor: pointer;
+      color: inherit;
+      border-radius: 11px;
+      border: 1px solid rgba(0, 245, 212, 0.14);
+      background: linear-gradient(105deg, rgba(0, 245, 212, 0.07) 0%, rgba(10, 12, 18, 0.65) 48%, rgba(155, 126, 217, 0.06) 100%);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+    }
+
+    .daypart-open:hover {
+      border-color: rgba(0, 245, 212, 0.32);
+      box-shadow: 0 0 28px rgba(0, 245, 212, 0.08);
+    }
+
+    .daypart-open:active {
+      transform: scale(0.995);
+    }
+
+    .daypart-h-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: rgba(232, 244, 242, 0.98);
+    }
+
+    .daypart-h-meta {
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      color: var(--cyan-dim);
+    }
+
+    .daypart-body { position: relative; z-index: 1; }
+
+    .daypart-empty {
+      font-size: 0.76rem;
+      color: var(--muted);
+      padding: 0.15rem 0 0.35rem calc(var(--tl-spine-x) + 14px);
+      margin: 0;
+    }
+
+    .tl-rail-row {
+      display: grid;
+      grid-template-columns: var(--tl-time-w) var(--tl-rail-w) minmax(0, 1fr);
+      gap: 0.45rem var(--tl-gutter);
+      align-items: start;
+      margin-bottom: 0.72rem;
+    }
+
+    .tl-rail-row:last-child { margin-bottom: 0; }
+
+    .tl-time-col {
+      text-align: right;
+      padding-top: 0.55rem;
+    }
+
+    .tl-start {
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: rgba(232, 244, 242, 0.92);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .tl-dur {
+      font-family: var(--font-mono);
+      font-size: 0.55rem;
+      color: var(--muted);
+      margin-top: 0.1rem;
+    }
+
+    .tl-rail-col {
+      position: relative;
+      width: var(--tl-rail-w);
+      min-height: 2.75rem;
+      justify-self: center;
+    }
+
+    .tl-dot {
+      position: absolute;
+      left: 50%;
+      top: 0.55rem;
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      transform: translate(-50%, 0);
+      z-index: 2;
+      border: 2px solid #0a0c12;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 0 14px currentColor;
+    }
+
+    .tl-card {
+      background: linear-gradient(145deg, rgba(28, 32, 44, 0.92) 0%, rgba(18, 20, 28, 0.96) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 0.72rem 0.9rem;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .tl-card:hover {
+      border-color: rgba(255, 255, 255, 0.14);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .tl-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 0.42rem;
+    }
+
+    .tl-app-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: rgba(232, 244, 242, 0.96);
+      min-width: 0;
+    }
+
+    .tl-ico {
+      font-size: 0.95rem;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .tl-cat-tag {
+      flex-shrink: 0;
+      font-size: 0.55rem;
+      font-weight: 600;
+      padding: 0.16rem 0.48rem;
+      border-radius: 999px;
+      border: 1px solid transparent;
+    }
+
+    .tl-rail-row.cat-collab .tl-dot { background: var(--tl-purple); color: var(--tl-purple); }
+    .tl-rail-row.cat-deep .tl-dot { background: var(--tl-teal); color: var(--tl-teal); }
+    .tl-rail-row.cat-browse .tl-dot { background: var(--tl-amber); color: var(--tl-amber); }
+    .tl-rail-row.cat-other .tl-dot { background: var(--tl-gray); color: var(--tl-gray); }
+
+    .tl-card.cat-collab {
+      border-left: 3px solid rgba(167, 139, 250, 0.65);
+    }
+
+    .tl-card.cat-deep {
+      border-left: 3px solid rgba(45, 212, 191, 0.65);
+    }
+
+    .tl-card.cat-browse {
+      border-left: 3px solid rgba(251, 191, 36, 0.55);
+    }
+
+    .tl-card.cat-other {
+      border-left: 3px solid rgba(156, 163, 175, 0.45);
+    }
+
+    .tl-card.cat-collab .tl-cat-tag {
+      background: rgba(139, 92, 246, 0.2);
+      border-color: rgba(139, 92, 246, 0.45);
+      color: #c4b5fd;
+    }
+
+    .tl-card.cat-deep .tl-cat-tag {
+      background: rgba(45, 212, 191, 0.16);
+      border-color: rgba(45, 212, 191, 0.42);
+      color: #5eead4;
+    }
+
+    .tl-card.cat-browse .tl-cat-tag {
+      background: rgba(251, 191, 36, 0.14);
+      border-color: rgba(251, 191, 36, 0.42);
+      color: #fcd34d;
+    }
+
+    .tl-card.cat-other .tl-cat-tag {
+      background: rgba(156, 163, 175, 0.12);
+      border-color: rgba(156, 163, 175, 0.32);
+      color: #d1d5db;
+    }
+
+    .tl-card-title {
+      font-size: 0.85rem;
+      font-weight: 500;
+      line-height: 1.5;
+      color: rgba(232, 244, 242, 0.96);
+      margin-bottom: 0.32rem;
+    }
+
+    .tl-card-meta {
+      font-family: var(--font-mono);
+      font-size: 0.56rem;
+      line-height: 1.55;
+      color: var(--muted);
+    }
+
+    /* 会话详情浮层 */
+    .session-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 200;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 1rem;
+      pointer-events: none;
+    }
+
+    /* display:flex 会覆盖 [hidden] 的默认 display:none，导致浮层误显且 pointer-events 仍为 none → 无法关闭 */
+    .session-overlay[hidden] {
+      display: none !important;
+    }
+
+    .session-overlay:not([hidden]) {
+      pointer-events: auto;
+    }
+
+    .session-overlay-bg {
+      position: absolute;
+      inset: 0;
+      background: rgba(4, 6, 10, 0.72);
+      backdrop-filter: blur(6px);
+    }
+
+    .session-sheet {
+      position: relative;
+      width: 100%;
+      max-width: 520px;
+      max-height: min(86vh, 720px);
+      display: flex;
+      flex-direction: column;
+      border-radius: 16px 16px 12px 12px;
+      border: 1px solid rgba(0, 245, 212, 0.2);
+      background: linear-gradient(180deg, #10141c 0%, #0a0c12 100%);
+      box-shadow: 0 -8px 48px rgba(0, 0, 0, 0.55), 0 0 40px rgba(0, 245, 212, 0.06);
+      overflow: hidden;
+      animation: session-in 0.28s ease-out;
+    }
+
+    @keyframes session-in {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .session-sheet-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.85rem 1rem;
+      border-bottom: 1px solid var(--line);
+      flex-shrink: 0;
+    }
+
+    .session-sheet-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      line-height: 1.35;
+      margin: 0;
+    }
+
+    .session-sheet-close {
+      flex-shrink: 0;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(0, 0, 0, 0.35);
+      color: var(--ink);
+      font-size: 1.35rem;
+      line-height: 1;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .session-sheet-close:hover {
+      border-color: rgba(0, 245, 212, 0.35);
+      background: rgba(0, 245, 212, 0.08);
+    }
+
+    .session-sheet-body {
+      padding: 1rem 1.05rem 1.25rem;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .session-empty {
+      font-size: 0.84rem;
+      color: var(--muted);
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .shot-card {
+      margin-bottom: 1.15rem;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+      background: rgba(0, 0, 0, 0.35);
+    }
+
+    .shot-card:last-child { margin-bottom: 0; }
+
+    .shot-thumb {
+      aspect-ratio: 16 / 10;
+      width: 100%;
+      background-size: cover;
+      background-position: center;
+      position: relative;
+    }
+
+    .shot-thumb::after {
+      content: "截屏预览";
+      position: absolute;
+      bottom: 0.45rem;
+      left: 0.55rem;
+      font-family: var(--font-mono);
+      font-size: 0.48rem;
+      letter-spacing: 0.12em;
+      color: rgba(255, 255, 255, 0.35);
+    }
+
+    .shot-meta {
+      font-family: var(--font-mono);
+      font-size: 0.56rem;
+      color: var(--cyan-dim);
+      padding: 0.55rem 0.75rem 0.35rem;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .shot-summary {
+      font-size: 0.82rem;
+      line-height: 1.6;
+      color: rgba(232, 244, 242, 0.9);
+      padding: 0.65rem 0.75rem 0.85rem;
+      margin: 0;
+    }
+
+    body.session-sheet-open {
+      overflow: hidden;
+    }
+
+    @media (min-width: 720px) {
+      .session-overlay {
+        align-items: center;
+      }
+
+      .session-sheet {
+        border-radius: 16px;
+        max-height: min(82vh, 680px);
+      }
+    }
+
+    /* 日报告 */
+    .report-doc {
+      max-width: 42rem;
+    }
+
+    .report-doc .report-h1 {
+      font-size: 1.12rem;
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+
+    .report-doc .report-meta {
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      color: var(--muted);
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .report-section {
+      margin-bottom: 1.15rem;
+      padding-left: 0.65rem;
+      border-left: 2px solid rgba(0, 245, 212, 0.25);
+    }
+
+    .report-section h2 {
+      font-size: 0.68rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: var(--cyan);
+      letter-spacing: 0.06em;
+      margin-bottom: 0.4rem;
+    }
+
+    .report-section p, .report-section li {
+      font-size: 0.86rem;
+      line-height: 1.65;
+      color: rgba(232, 244, 242, 0.92);
+    }
+
+    .report-section ul { margin: 0.35rem 0 0 1.1rem; }
+
+    /* 设置 */
+    .settings-block {
+      margin-bottom: 1.5rem;
+    }
+
+    .settings-block:last-child {
+      margin-bottom: 0;
+    }
+
+    .settings-block > h2 {
+      font-size: 0.92rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      padding-bottom: 0.35rem;
+      border-bottom: 1px solid var(--line);
+      color: var(--ink);
+    }
+
+    .settings-block h3 {
+      font-size: 0.78rem;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      margin: 1rem 0 0.45rem;
+      color: var(--cyan-dim);
+    }
+
+    .settings-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.65rem 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 0.86rem;
+    }
+
+    .toggle {
+      width: 46px;
+      height: 26px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--line);
+      position: relative;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .toggle.on {
+      background: rgba(0, 245, 212, 0.2);
+      border-color: var(--cyan-dim);
+      box-shadow: 0 0 14px rgba(0, 245, 212, 0.2);
+    }
+
+    .toggle::after {
+      content: "";
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #1a1d28;
+      border: 1px solid var(--line);
+      top: 2px;
+      left: 2px;
+      transition: transform 0.18s ease;
+    }
+
+    .toggle.on::after {
+      transform: translateX(20px);
+      background: var(--cyan);
+      border-color: var(--cyan);
+    }
+
+    .guide-steps {
+      list-style: none;
+      counter-reset: g;
+    }
+
+    .guide-steps li {
+      counter-increment: g;
+      position: relative;
+      padding: 0.65rem 0 0.65rem 2rem;
+      border-bottom: 1px solid var(--line);
+      font-size: 0.84rem;
+      line-height: 1.55;
+      color: rgba(232, 244, 242, 0.88);
+    }
+
+    .guide-steps li::before {
+      content: counter(g);
+      position: absolute;
+      left: 0;
+      top: 0.7rem;
+      width: 1.35rem;
+      height: 1.35rem;
+      border-radius: 50%;
+      background: rgba(0, 245, 212, 0.12);
+      border: 1px solid var(--cyan-dim);
+      color: var(--cyan);
+      font-size: 0.68rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .product-links a {
+      color: var(--cyan);
+      font-size: 0.84rem;
+      font-family: var(--font-mono);
+    }
+
+    .empty-panel { text-align: center; padding: 2rem 1rem; }
+    .empty-panel .icon { font-size: 1.5rem; opacity: 0.45; margin-bottom: 0.5rem; filter: grayscale(0.3); }
+    .empty-panel h2 { font-size: 1.05rem; margin: 0.35rem 0; color: var(--ink); }
+    .empty-panel p { font-size: 0.84rem; color: var(--muted); max-width: 320px; margin: 0 auto 1rem; }
+
+    .pill {
+      display: inline-block;
+      font-size: 0.55rem;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 0.15rem 0.4rem;
+      border-radius: 999px;
+      margin-bottom: 0.5rem;
+    }
+
+    .pill.warn { background: rgba(232, 180, 60, 0.12); color: #e8c547; border: 1px solid rgba(232, 180, 60, 0.35); }
+    .pill.neutral { background: rgba(255, 255, 255, 0.05); color: var(--muted); border: 1px solid var(--line); }
+    .pill.info { background: var(--purple-bg); color: #d4c4f0; border: 1px solid var(--purple-line); }
+
+    .cta-primary {
+      display: inline-block;
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--cyan-dim);
+      background: linear-gradient(135deg, rgba(0, 245, 212, 0.25), rgba(0, 245, 212, 0.08));
+      color: var(--ink);
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      margin: 0.25rem;
+      box-shadow: 0 0 20px rgba(0, 245, 212, 0.15);
+      transition: box-shadow 0.2s ease;
+    }
+
+    .cta-primary:hover { box-shadow: 0 0 28px rgba(0, 245, 212, 0.28); }
+
+    .cta-secondary {
+      display: inline-block;
+      padding: 0.55rem 0.85rem;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: var(--font-sans);
+      margin: 0.25rem;
+    }
+
+    @media (max-width: 900px) {
+      .shell { flex-direction: column; }
+      .sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--line);
+      }
+      .sidebar-nav { flex-direction: row; flex-wrap: wrap; }
+      .nav-label { width: 100%; }
+      .nav-item { flex: 1 1 auto; min-width: 44%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="shell">
+      <aside class="sidebar" aria-label="主导航">
+        <div class="sidebar-brand">
+          <div class="logo">TIMELENS</div>
+          <div class="tag">INSIGHT ENGINE</div>
+        </div>
+
+        <nav class="sidebar-nav" aria-label="功能模块">
+          <div class="nav-label">功能</div>
+          <button type="button" class="nav-item active" data-view="lens" id="navLens">
+            <span class="ni-icon">◉</span>今日透视
+          </button>
+          <button type="button" class="nav-item" data-view="timeline" id="navTimeline">
+            <span class="ni-icon">≡</span>时间线
+          </button>
+          <button type="button" class="nav-item" data-view="report" id="navReport">
+            <span class="ni-icon">¶</span>日报告
+          </button>
+          <button type="button" class="nav-item" data-view="settings" id="navSettings">
+            <span class="ni-icon">⚙</span>设置
+          </button>
+        </nav>
+      </aside>
+
+      <div class="main-col">
+        <header class="main-topbar">
+          <div>
+            <h1 id="headerTitle">今日透视</h1>
+            <div class="sub" id="headerSub"></div>
+          </div>
+        </header>
+
+        <div class="main-scroll">
+          <!-- 今日透视 -->
+          <section class="view active" id="viewLens" aria-label="今日透视">
+            <div class="lens-cover-wrap" id="lensCoverWrap" hidden>
+              <div class="lens-cover-card" role="dialog" aria-modal="true" aria-labelledby="lensCoverStrapTitle">
+                <div class="lens-cover-mast">
+                  <span><b>TIMELENS</b> · DAILY</span>
+                  <span id="lensCoverIssue">NO. 20260403</span>
+                </div>
+                <div class="lens-cover-hero"><span id="lensCoverHeroWord">今日</span></div>
+                <div class="lens-cover-strap">
+                  <p class="lens-cover-eyebrow" id="lensCoverEyebrow">TODAY LENS</p>
+                  <h2 class="lens-cover-strap-title" id="lensCoverStrapTitle">今日时间结构预览</h2>
+                  <p class="lens-cover-fact" id="lensCoverFact"></p>
+                  <div class="lens-cover-bar" id="lensCoverBar" aria-hidden="true"></div>
+                  <button type="button" class="lens-cover-cta" id="btnLensCoverEnter">进入完整今日透视</button>
+                </div>
+              </div>
+            </div>
+
+            <div id="lensPanelReady">
+              <div class="poster-card">
+                <p class="poster-date" id="lensDateLabel">2026年4月3日 · 周四</p>
+                <h2 class="poster-headline" id="lensHeadline"></h2>
+                <p class="mono-caps">自然语言洞察</p>
+                <p class="insight-narrative" id="lensNarrative"></p>
+                <div class="perception-strip perception-viz" role="region" aria-label="模型感知层">
+                  <p class="mono-caps">模型感知层</p>
+
+                  <div class="pv-block">
+                    <div class="pv-block-h"><span class="pv-idx">①</span> 数据流向</div>
+                    <div class="flow-pipeline" aria-hidden="true">
+                      <div class="fp-node">
+                        <span class="fp-ico" aria-hidden="true">▣</span>
+                        <span class="fp-lbl">Screen / OCR</span>
+                        <span class="fp-sub">截屏帧</span>
+                      </div>
+                      <div class="fp-link"><span class="fp-beam"></span></div>
+                      <div class="fp-node">
+                        <span class="fp-ico" aria-hidden="true">◇</span>
+                        <span class="fp-lbl">Window Meta</span>
+                        <span class="fp-sub">窗口标题</span>
+                      </div>
+                      <div class="fp-link"><span class="fp-beam"></span></div>
+                      <div class="fp-node">
+                        <span class="fp-ico" aria-hidden="true">≡</span>
+                        <span class="fp-lbl">Sessions</span>
+                        <span class="fp-sub">时序折叠</span>
+                      </div>
+                      <div class="fp-link"><span class="fp-beam"></span></div>
+                      <div class="fp-node">
+                        <span class="fp-ico" aria-hidden="true">◎</span>
+                        <span class="fp-lbl">Embedding</span>
+                        <span class="fp-sub">向量空间</span>
+                      </div>
+                      <div class="fp-link"><span class="fp-beam"></span></div>
+                      <div class="fp-node">
+                        <span class="fp-ico" aria-hidden="true">✦</span>
+                        <span class="fp-lbl">Policy / NL</span>
+                        <span class="fp-sub">策略与成文</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="pv-block">
+                    <div class="pv-block-h"><span class="pv-idx">②</span> 心流分段</div>
+                    <div class="fb-row" id="perceptionFlowBlocks"></div>
+                  </div>
+
+                  <div class="pv-block">
+                    <div class="pv-block-h"><span class="pv-idx">③</span> 剪贴板路径</div>
+                    <div class="cb-anim" aria-hidden="true">
+                      <div class="cb-app">
+                        <span class="cb-ico" aria-hidden="true">⬚</span>
+                        <span id="clipboardFromLabel">Chrome</span>
+                      </div>
+                      <div class="cb-track">
+                        <span class="cb-packet"></span>
+                      </div>
+                      <div class="cb-app">
+                        <span class="cb-ico" aria-hidden="true">▤</span>
+                        <span id="clipboardToLabel">Obsidian</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="pv-block">
+                    <div class="pv-block-h"><span class="pv-idx">④</span> 打断</div>
+                    <div class="int-anim" aria-hidden="true">
+                      <div class="int-baseline"></div>
+                      <div class="int-spike" title="打断 1"></div>
+                      <div class="int-spike" title="打断 2"></div>
+                      <div class="int-spike" title="打断 3"></div>
+                      <div class="int-spike" title="打断 4"></div>
+                    </div>
+                  </div>
+
+                </div>
+                <div class="insight-pills" id="lensPills"></div>
+                <p class="poster-chart-label">时间结构 · STRUCTURE</p>
+                <div class="stack-bar" id="lensStackBar" aria-hidden="true">
+                  <div class="stack-seg seg-a"></div>
+                  <div class="stack-seg seg-b"></div>
+                  <div class="stack-seg seg-c"></div>
+                  <div class="stack-seg seg-d"></div>
+                </div>
+                <div class="poster-meta">
+                  <div class="poster-total" id="lensHeroTotal"></div>
+                  <div class="legend" id="lensLegend"></div>
+                </div>
+              </div>
+
+              <div class="panel-light">
+                <p class="takeaway" id="lensTakeaway"></p>
+                <p class="proof-label">时间占比 Top 3</p>
+                <ul class="proof-list" id="lensTop3"></ul>
+                <div class="trust-row">
+                  <span class="badge">一致</span>
+                  <span>与时间线、日报告中的分类与时长口径一致。</span>
+                </div>
+                <div class="link-row">
+                  <button type="button" class="link-btn" id="ctaTimeline">打开时间线 →</button>
+                  <button type="button" class="link-btn" id="ctaReport">打开日报告 →</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel-light" id="lensPanelEmpty" hidden style="margin-top:0">
+              <div class="empty-panel">
+                <div class="icon">📭</div>
+                <span class="pill neutral" id="emptyPill">无当日分析</span>
+                <h2 id="emptyTitle">这一天还没有可用的透视</h2>
+                <p id="emptyDesc">尚未采集、权限未开或分析未生成。</p>
+                <button type="button" class="cta-primary" id="emptyActionPrimary">去设置检查权限</button>
+                <button type="button" class="cta-secondary" id="emptyActionSecondary">返回透视</button>
+              </div>
+            </div>
+
+            <div class="panel-light" id="lensPanelGenerating" hidden>
+              <div class="empty-panel">
+                <div class="icon">⏳</div>
+                <span class="pill info">分析生成中</span>
+                <h2>透视正在生成</h2>
+                <p>采集正常时请稍后再试，或于次日查看完整结果。</p>
+              </div>
+            </div>
+
+            <div class="panel-light" id="lensPanelIncomplete" hidden>
+              <div class="empty-panel">
+                <div class="icon">🧩</div>
+                <span class="pill warn">采集不完整</span>
+                <h2>仅部分时段有记录</h2>
+                <p>结论仅覆盖部分时段，完整度有限。</p>
+                <button type="button" class="cta-primary" id="incViewAnyway">查看当前内容</button>
+                <button type="button" class="cta-secondary" id="incSettings">打开设置</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- 时间线 -->
+          <section class="view" id="viewTimeline" aria-label="时间线">
+            <div class="panel-light panel-timeline">
+              <p class="proof-label" id="tlDateLabel">2026年4月3日</p>
+              <div id="timelineDayparts"></div>
+              <div class="link-row" style="margin-top:1rem">
+                <button type="button" class="link-btn" id="fromTlToReport">查看日报告 →</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- 日报告 -->
+          <section class="view" id="viewReport" aria-label="日报告">
+            <div class="panel-light report-doc">
+              <h2 class="report-h1" id="reportTitle">日报告</h2>
+              <p class="report-meta" id="rpDateLabel"></p>
+              <div id="reportBody"></div>
+              <div class="link-row">
+                <button type="button" class="link-btn" id="fromRpToTl">回到时间线 →</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- 设置 -->
+          <section class="view" id="viewSettings" aria-label="设置">
+            <div class="panel-light">
+              <div class="settings-block" id="settings-config">
+                <h2>偏好设置</h2>
+                <div class="settings-row">
+                  <span>屏幕采集权限</span>
+                  <span style="font-size:0.78rem;color:var(--ok)">已开启</span>
+                </div>
+                <div class="settings-row">
+                  <span>每日透视生成时刻</span>
+                  <span style="font-size:0.78rem;color:var(--muted)">次日 08:00</span>
+                </div>
+                <div class="settings-row">
+                  <span>空闲时同步截图</span>
+                  <button type="button" class="toggle on" aria-pressed="true" aria-label="同步"></button>
+                </div>
+              </div>
+
+              <div class="settings-block" id="settings-guide">
+                <h2>使用说明</h2>
+                <ol class="guide-steps">
+                  <li>完成系统授权后保持客户端在后台运行。</li>
+                  <li>正常使用设备；次日可在「今日透视」查看当日结构总结。</li>
+                  <li>在「时间线」核对应用与时段；需要长文时可打开「日报告」。</li>
+                </ol>
+              </div>
+
+              <div class="settings-block product-links" id="settings-product">
+                <h2>关于 TimeLens</h2>
+                <p style="font-size:0.86rem;line-height:1.65;margin:0;color:rgba(232,244,242,0.9)">
+                  在一天结束后快速理解时间去向：透视看结构，时间线可核对，日报告便于沉淀与分享。
+                </p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="session-overlay" id="sessionOverlay" hidden>
+          <div class="session-overlay-bg" id="sessionOverlayBg" aria-hidden="true"></div>
+          <div class="session-sheet" role="dialog" aria-modal="true" aria-labelledby="sessionSheetTitle">
+            <div class="session-sheet-head">
+              <h2 class="session-sheet-title" id="sessionSheetTitle">会话详情</h2>
+              <button type="button" class="session-sheet-close" id="sessionSheetClose" aria-label="关闭">×</button>
+            </div>
+            <div class="session-sheet-body" id="sessionSheetBody"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+(function () {
+  const TODAY = "2026-04-03";
+
+  const dayMeta = {
+    "2026-04-03": { state: "ready", label: "2026年4月3日 · 周四", short: "4月3日" },
+    "2026-04-02": { state: "ready", label: "2026年4月2日 · 周三", short: "4月2日" },
+    "2026-04-01": { state: "generating", label: "2026年4月1日 · 周二", short: "4月1日" },
+    "2026-03-31": { state: "empty", label: "2026年3月31日 · 周一", short: "3月31日" },
+    "2026-03-30": { state: "incomplete", label: "2026年3月30日 · 周日", short: "3月30日" },
+  };
+
+  const CAT_DEF = {
+    collab: "协作沟通",
+    deep: "深度工作",
+    browse: "浏览与学习",
+    other: "其他",
+  };
+
+  const DAYPART_ORDER = [
+    { key: "morning", label: "上午" },
+    { key: "midday", label: "中午" },
+    { key: "afternoon", label: "下午" },
+    { key: "evening", label: "晚上" },
+  ];
+
+  const timelineDetailed = {
+    "2026-04-03": {
+      morning: [
+        {
+          start: "07:10",
+          dur: "18m",
+          cat: "other",
+          icon: "☕",
+          app: "系统 / 通知中心",
+          title: "早间唤醒与日程扫一眼",
+          meta: "通知与日程",
+        },
+        {
+          start: "09:10",
+          dur: "1h25m",
+          cat: "deep",
+          icon: "⌨",
+          app: "Cursor",
+          title: "功能开发与代码编辑",
+          meta: "编辑与终端",
+        },
+        {
+          start: "10:40",
+          dur: "35m",
+          cat: "collab",
+          icon: "💬",
+          app: "Feishu / 飞书",
+          title: "与设计同步范围与里程碑",
+          meta: "即时沟通",
+        },
+        {
+          start: "11:20",
+          dur: "55m",
+          cat: "browse",
+          icon: "🌐",
+          app: "Google Chrome",
+          title: "文档阅读与资料查阅",
+          meta: "浏览器 · 文档",
+        },
+      ],
+      midday: [
+        {
+          start: "12:25",
+          dur: "32m",
+          cat: "other",
+          icon: "○",
+          app: "—",
+          title: "低活跃 / 离开工位",
+          meta: "午休",
+        },
+      ],
+      afternoon: [
+        {
+          start: "13:30",
+          dur: "1h10m",
+          cat: "collab",
+          icon: "📹",
+          app: "Notion · Google Meet",
+          title: "需求评审与待办同步",
+          meta: "会议与文档",
+        },
+        {
+          start: "14:45",
+          dur: "1h20m",
+          cat: "browse",
+          icon: "📝",
+          app: "Chrome · Obsidian",
+          title: "文章阅读与笔记整理",
+          meta: "浏览器与笔记",
+        },
+        {
+          start: "16:10",
+          dur: "40m",
+          cat: "other",
+          icon: "✉",
+          app: "Mail · 系统设置",
+          title: "邮件与系统设置",
+          meta: "邮件",
+        },
+      ],
+      evening: [
+        {
+          start: "19:20",
+          dur: "50m",
+          cat: "browse",
+          icon: "💬",
+          app: "微信 · Safari",
+          title: "消息与资讯浏览",
+          meta: "社交与阅读",
+        },
+      ],
+    },
+    "2026-04-02": {
+      morning: [
+        {
+          start: "10:00",
+          dur: "2h",
+          cat: "collab",
+          icon: "📹",
+          app: "Google Meet · Chrome",
+          title: "客户方案沟通",
+          meta: "视频会议",
+        },
+      ],
+      midday: [],
+      afternoon: [
+        {
+          start: "14:00",
+          dur: "1h30m",
+          cat: "deep",
+          icon: "⌨",
+          app: "Typora · Finder",
+          title: "会议纪要整理与附件归档",
+          meta: "写作与文件",
+        },
+      ],
+      evening: [],
+    },
+  };
+
+  const SHOT_GRAD = {
+    ide: "linear-gradient(135deg,#0f172a 0%,#1e3a5f 40%,#0c4a6e 100%)",
+    meet: "linear-gradient(145deg,#1a1030 0%,#312e81 50%,#1e1b4b 100%)",
+    web: "linear-gradient(145deg,#14532d 0%,#166534 45%,#0f172a 100%)",
+    afk: "linear-gradient(145deg,#1c1917 0%,#292524 50%,#0c0a09 100%)",
+    note: "linear-gradient(145deg,#422006 0%,#713f12 40%,#1c1917 100%)",
+    msg: "linear-gradient(145deg,#134e4a 0%,#115e59 50%,#042f2e 100%)",
+    write: "linear-gradient(145deg,#1e293b 0%,#334155 50%,#0f172a 100%)",
+  };
+
+  const sessionDetailByDay = {
+    "2026-04-03": {
+      morning: {
+        shots: [
+          {
+            bg: SHOT_GRAD.afk,
+            meta: "07:12 · 1440×900",
+            summary: "锁屏与通知为主，前台应用焦点较少，偏短时唤醒。",
+          },
+          {
+            bg: SHOT_GRAD.ide,
+            meta: "09:24 · 1440×900",
+            summary: "代码编辑器多标签与终端并存，为连续工作块。",
+          },
+          {
+            bg: SHOT_GRAD.ide,
+            meta: "10:52 · 1440×900",
+            summary: "协作软件前置，群组与消息线程活跃。",
+          },
+          {
+            bg: SHOT_GRAD.web,
+            meta: "11:38 · 1440×900",
+            summary: "浏览器中文档阅读与滚动占主导。",
+          },
+        ],
+      },
+      midday: {
+        shots: [
+          {
+            bg: SHOT_GRAD.afk,
+            meta: "12:31 · 1440×900",
+            summary: "长时间无稳定前台窗口，符合午休或离开工位。",
+          },
+        ],
+      },
+      afternoon: {
+        shots: [
+          {
+            bg: SHOT_GRAD.meet,
+            meta: "13:45 · 1440×900",
+            summary: "视频会议与文档并排，评审类协作为主。",
+          },
+          {
+            bg: SHOT_GRAD.note,
+            meta: "15:02 · 1440×900",
+            summary: "浏览器与笔记应用交替使用，阅读与摘录并存。",
+          },
+          {
+            bg: SHOT_GRAD.web,
+            meta: "16:18 · 1440×900",
+            summary: "邮件与系统设置切换，偏事务整理。",
+          },
+        ],
+      },
+      evening: {
+        shots: [
+          {
+            bg: SHOT_GRAD.msg,
+            meta: "19:35 · 1440×900",
+            summary: "社交与资讯应用交错，停留偏短、切换较多。",
+          },
+        ],
+      },
+    },
+    "2026-04-02": {
+      morning: {
+        shots: [
+          {
+            bg: SHOT_GRAD.meet,
+            meta: "10:22 · 1440×900",
+            summary: "视频会议全屏，沟通时长集中。",
+          },
+        ],
+      },
+      afternoon: {
+        shots: [
+          {
+            bg: SHOT_GRAD.write,
+            meta: "14:18 · 1440×900",
+            summary: "写作软件长时间聚焦，偶发文件管理。",
+          },
+        ],
+      },
+    },
+  };
+
+  const reportByDay = {
+    "2026-04-03": `
+      <div class="report-section">
+        <h2>一、今日摘要</h2>
+        <p>有效记录约 <strong>9.2 小时</strong>，结构以<strong>深度工作</strong>与<strong>沟通协作</strong>为主；午后会议与文档占比上升。</p>
+      </div>
+      <div class="report-section">
+        <h2>二、时间结构</h2>
+        <ul>
+          <li>深度工作约 40%，集中在上午连续块。</li>
+          <li>沟通（会议与即时消息）约 26%，午后更密。</li>
+          <li>学习与阅读约 21%，多为文档与文章。</li>
+        </ul>
+      </div>
+      <div class="report-section">
+        <h2>三、时段回顾</h2>
+        <p>上午以开发与终端为主；午间阅读与低活跃；下午会议、笔记与邮件交错。细节可在时间线中核对。</p>
+      </div>
+      <div class="report-section">
+        <h2>四、节奏提示</h2>
+        <p>若希望上午更大块专注，可尝试将协作会议集中到午后固定时段（仅供参考）。</p>
+      </div>
+    `,
+    "2026-04-02": `
+      <div class="report-section">
+        <h2>一、今日摘要</h2>
+        <p>以<strong>客户沟通</strong>与<strong>写作整理</strong>为主。</p>
+      </div>
+      <div class="report-section">
+        <h2>二、结构</h2>
+        <p>与当日透视、时间线中的分类与时长一致。</p>
+      </div>
+    `,
+  };
+
+  const LENS_COVER_STORAGE = "timelens_p3_lens_cover_seen_v1";
+
+  const lensReadyDefaults = {
+    headline: "今天你的时间，主要在 <span>深度工作</span> 与 <span>沟通</span> 之间切换。",
+    coverHero: "今日",
+    coverEyebrow: "TODAY LENS",
+    coverStrapTitle: "今天的时间，主要在深度工作与沟通之间切换。",
+    coverFact:
+      "进入后可查看<strong>自然语言总结</strong>、<strong>模型感知层</strong>与<strong>时间结构</strong>及占比 Top 3。",
+    hours: "9.2",
+    narrative:
+      "午后阅读与笔记时段约 47 分钟，节奏较连贯；协作类应用打断约 4 次，其中部分导致离开编辑器较久。",
+    pills: ["连续工作块偏多", "剪贴板 Chrome → Obsidian 约 12 次", "协作类打断约 4 次"],
+    takeaway:
+      "结构要点：<em>深度工作</em> 在上午成块出现；<em>会议与即时消息</em> 午后更密。整体偏产出型节奏。",
+    legend: [
+      { color: "#3ee6c8", text: "深度工作 40%" },
+      { color: "#b49ef0", text: "沟通 26%" },
+      { color: "#f0d060", text: "学习 21%" },
+      { color: "#8899a8", text: "其他 13%" },
+    ],
+    top3: [
+      { name: "深度工作", h: "3.7", pct: "40" },
+      { name: "沟通协作", h: "2.4", pct: "26" },
+      { name: "学习与阅读", h: "1.9", pct: "21" },
+    ],
+    stack: [40, 26, 21, 13],
+    perceptionFlowBlocks: ["晨间深工", "协作沟通", "午后阅读", "块级写作", "傍晚整理"],
+    clipboardFrom: "Chrome",
+    clipboardTo: "Obsidian",
+  };
+
+  const lensReadyByDay = {
+    "2026-04-02": {
+      headline: "这一天更偏向 <span>对外沟通</span> 与 <span>整理输出</span>。",
+      coverHero: "沟通",
+      coverEyebrow: "TODAY LENS",
+      coverStrapTitle: "这一天更偏向对外沟通与整理输出。",
+      coverFact: "客户会议与写作时段较突出，可在<strong>时间线</strong>与<strong>日报告</strong>中核对。",
+      hours: "3.5",
+      narrative:
+        "上午为客户会议；下午以写作与整理为主，剪贴板在会议软件与文档间有迁移。",
+      pills: ["会议约 2 小时", "写作约 1.5 小时", "午后单任务为主"],
+      takeaway: "<em>客户会议</em> 占大头，下午以写作为主。",
+      legend: [
+        { color: "#b49ef0", text: "沟通 57%" },
+        { color: "#3ee6c8", text: "写作 43%" },
+      ],
+      top3: [
+        { name: "客户沟通", h: "2.0", pct: "57" },
+        { name: "写作与整理", h: "1.5", pct: "43" },
+      ],
+      stack: [43, 57, 0, 0],
+      perceptionFlowBlocks: ["客户会议", "沟通缓冲", "Typora 写作", "邮件处理", "日终整理"],
+      clipboardFrom: "Meet",
+      clipboardTo: "Typora",
+    },
+  };
+
+  let selectedDate = TODAY;
+  let view = "lens";
+  const forceReadyDates = new Set();
+
+  const els = {
+    views: {
+      lens: document.getElementById("viewLens"),
+      timeline: document.getElementById("viewTimeline"),
+      report: document.getElementById("viewReport"),
+      settings: document.getElementById("viewSettings"),
+    },
+    headerTitle: document.getElementById("headerTitle"),
+    headerSub: document.getElementById("headerSub"),
+    navItems: document.querySelectorAll(".nav-item"),
+    panels: {
+      ready: document.getElementById("lensPanelReady"),
+      empty: document.getElementById("lensPanelEmpty"),
+      generating: document.getElementById("lensPanelGenerating"),
+      incomplete: document.getElementById("lensPanelIncomplete"),
+    },
+    lensDateLabel: document.getElementById("lensDateLabel"),
+    lensHeadline: document.getElementById("lensHeadline"),
+    lensHeroTotal: document.getElementById("lensHeroTotal"),
+    lensLegend: document.getElementById("lensLegend"),
+    lensTakeaway: document.getElementById("lensTakeaway"),
+    lensTop3: document.getElementById("lensTop3"),
+    lensStackBar: document.getElementById("lensStackBar"),
+    lensNarrative: document.getElementById("lensNarrative"),
+    lensPills: document.getElementById("lensPills"),
+    emptyPill: document.getElementById("emptyPill"),
+    emptyTitle: document.getElementById("emptyTitle"),
+    emptyDesc: document.getElementById("emptyDesc"),
+    tlDateLabel: document.getElementById("tlDateLabel"),
+    timelineDayparts: document.getElementById("timelineDayparts"),
+    sessionOverlay: document.getElementById("sessionOverlay"),
+    sessionOverlayBg: document.getElementById("sessionOverlayBg"),
+    sessionSheetTitle: document.getElementById("sessionSheetTitle"),
+    sessionSheetBody: document.getElementById("sessionSheetBody"),
+    sessionSheetClose: document.getElementById("sessionSheetClose"),
+    rpDateLabel: document.getElementById("rpDateLabel"),
+    reportTitle: document.getElementById("reportTitle"),
+    reportBody: document.getElementById("reportBody"),
+    lensCoverWrap: document.getElementById("lensCoverWrap"),
+    lensCoverIssue: document.getElementById("lensCoverIssue"),
+    lensCoverHeroWord: document.getElementById("lensCoverHeroWord"),
+    lensCoverEyebrow: document.getElementById("lensCoverEyebrow"),
+    lensCoverStrapTitle: document.getElementById("lensCoverStrapTitle"),
+    lensCoverFact: document.getElementById("lensCoverFact"),
+    lensCoverBar: document.getElementById("lensCoverBar"),
+    perceptionFlowBlocks: document.getElementById("perceptionFlowBlocks"),
+    clipboardFromLabel: document.getElementById("clipboardFromLabel"),
+    clipboardToLabel: document.getElementById("clipboardToLabel"),
+  };
+
+  function effectiveState(dateStr) {
+    if (forceReadyDates.has(dateStr)) return "ready";
+    const m = dayMeta[dateStr];
+    return m ? m.state : "empty";
+  }
+
+  function updateHeader() {
+    const meta = dayMeta[selectedDate];
+    const dateLine = meta ? meta.label : selectedDate;
+    if (view === "lens") {
+      els.headerTitle.textContent = selectedDate === TODAY ? "今日透视" : "日透视";
+      const st = effectiveState(selectedDate);
+      const coverOn =
+        st === "ready" && localStorage.getItem(LENS_COVER_STORAGE) !== "1";
+      els.headerSub.textContent = coverOn ? dateLine + " · 摘要入口" : dateLine;
+    } else if (view === "timeline") {
+      els.headerTitle.textContent = "时间线";
+      els.headerSub.textContent = dateLine;
+    } else if (view === "report") {
+      els.headerTitle.textContent = "日报告";
+      els.headerSub.textContent = dateLine;
+    } else if (view === "settings") {
+      els.headerTitle.textContent = "设置";
+      els.headerSub.textContent = "偏好与关于";
+    }
+  }
+
+  function showView(name) {
+    if (els.sessionOverlay && !els.sessionOverlay.hidden) closeSessionSheet();
+    view = name;
+    Object.keys(els.views).forEach((k) => {
+      els.views[k].classList.toggle("active", k === name);
+    });
+    els.navItems.forEach((btn) => {
+      const v = btn.dataset.view;
+      if (!v) return;
+      btn.classList.toggle("active", v === name);
+    });
+    updateHeader();
+    updateLensPanels();
+    if (name === "timeline") renderTimeline();
+    if (name === "report") renderReport();
+  }
+
+  const COVER_BAR_COLORS = ["#3ee6c8", "#b49ef0", "#f0d060", "#8899a8"];
+
+  function renderLensCover() {
+    const base = { ...lensReadyDefaults, ...(lensReadyByDay[selectedDate] || {}) };
+    els.lensCoverIssue.textContent = "NO. " + selectedDate.replace(/-/g, "");
+    els.lensCoverHeroWord.textContent = base.coverHero || "今日";
+    els.lensCoverEyebrow.textContent = base.coverEyebrow || "TODAY LENS";
+    els.lensCoverStrapTitle.textContent = base.coverStrapTitle || "今日时间结构";
+    els.lensCoverFact.innerHTML = base.coverFact || "";
+    const flex = base.stack || [25, 25, 25, 25];
+    const parts = [];
+    flex.forEach((v, i) => {
+      if (v > 0) {
+        parts.push(`<i style="flex:${v};background:${COVER_BAR_COLORS[i] || "#5c6670"}"></i>`);
+      }
+    });
+    els.lensCoverBar.innerHTML = parts.join("");
+    els.lensCoverBar.style.display = parts.length ? "flex" : "none";
+  }
+
+  function renderLensReady() {
+    const base = { ...lensReadyDefaults, ...(lensReadyByDay[selectedDate] || {}) };
+    els.lensHeadline.innerHTML = base.headline;
+    els.lensHeroTotal.innerHTML = `${base.hours}<small>小时有效记录</small>`;
+    els.lensTakeaway.innerHTML = base.takeaway;
+    els.lensNarrative.textContent = base.narrative || "";
+    els.lensPills.innerHTML = (base.pills || [])
+      .map((t, i) => `<span class="pill-tech" style="--pi:${i}">${t}</span>`)
+      .join("");
+    const flowLabels = base.perceptionFlowBlocks || [];
+    if (els.perceptionFlowBlocks) {
+      els.perceptionFlowBlocks.innerHTML = flowLabels
+        .map((t, i) => `<div class="fb-seg" style="--fb-i:${i}">${esc(t)}</div>`)
+        .join("");
+    }
+    if (els.clipboardFromLabel) els.clipboardFromLabel.textContent = base.clipboardFrom || "Chrome";
+    if (els.clipboardToLabel) els.clipboardToLabel.textContent = base.clipboardTo || "Obsidian";
+    els.lensLegend.innerHTML = base.legend
+      .map((L) => `<span><i class="dot" style="background:${L.color}"></i>${L.text}</span>`)
+      .join("");
+    els.lensTop3.innerHTML = base.top3
+      .map(
+        (row, i) =>
+          `<li class="proof-row"><span><span class="rank">${i + 1}</span>${row.name}</span><span class="meta"><strong>${row.h}h</strong> · ${row.pct}%</span></li>`
+      )
+      .join("");
+    const segs = els.lensStackBar.querySelectorAll(".stack-seg");
+    const flex = base.stack || [25, 25, 25, 25];
+    flex.forEach((v, i) => {
+      const el = segs[i];
+      if (!el) return;
+      if (v <= 0) {
+        el.style.display = "none";
+        el.style.flex = "0";
+      } else {
+        el.style.display = "";
+        el.style.flex = String(v);
+      }
+    });
+  }
+
+  function updateLensPanels() {
+    const st = effectiveState(selectedDate);
+    const showReady = st === "ready";
+    const showLensCover = showReady && localStorage.getItem(LENS_COVER_STORAGE) !== "1";
+
+    els.panels.ready.hidden = !showReady || showLensCover;
+    els.panels.empty.hidden = st !== "empty";
+    els.panels.generating.hidden = st !== "generating";
+    els.panels.incomplete.hidden = st !== "incomplete";
+
+    if (els.lensCoverWrap) els.lensCoverWrap.hidden = !showLensCover;
+
+    const meta = dayMeta[selectedDate];
+    if (els.lensDateLabel && meta) els.lensDateLabel.textContent = meta.label;
+    else if (els.lensDateLabel) els.lensDateLabel.textContent = selectedDate;
+
+    if (showReady) {
+      if (showLensCover) renderLensCover();
+      else renderLensReady();
+    }
+
+    if (st === "empty") {
+      els.emptyDesc.textContent = "请检查采集权限与分析是否已完成。";
+    }
+  }
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function renderTimelineRow(b) {
+    const cat = b.cat && CAT_DEF[b.cat] ? b.cat : "deep";
+    const tag = b.tag || CAT_DEF[cat];
+    return `<div class="tl-rail-row cat-${cat}">
+      <div class="tl-time-col">
+        <div class="tl-start">${esc(b.start)}</div>
+        <div class="tl-dur">${esc(b.dur)}</div>
+      </div>
+      <div class="tl-rail-col">
+        <span class="tl-dot" aria-hidden="true"></span>
+      </div>
+      <div class="tl-card cat-${cat}">
+        <div class="tl-card-head">
+          <span class="tl-app-row"><span class="tl-ico">${b.icon || "▸"}</span>${esc(b.app)}</span>
+          <span class="tl-cat-tag">${esc(tag)}</span>
+        </div>
+        <div class="tl-card-title">${esc(b.title)}</div>
+        <div class="tl-card-meta">${esc(b.meta)}</div>
+      </div>
+    </div>`;
+  }
+
+  function renderDaypartSection(key, label, blocks) {
+    const list = blocks || [];
+    const rows = list.map((b) => renderTimelineRow(b)).join("");
+    const emptyLine = list.length
+      ? ""
+      : `<p class="daypart-empty">本时段暂无会话记录。</p>`;
+    const countHint = list.length ? `${list.length} 条会话` : "无记录";
+    return `<section class="daypart" data-period="${esc(key)}">
+      <button type="button" class="daypart-open" data-period="${esc(key)}">
+        <span class="daypart-h-title">${esc(label)}</span>
+        <span class="daypart-h-meta">${esc(countHint)} · 查看截屏与说明</span>
+      </button>
+      <div class="daypart-body">${rows}${emptyLine}</div>
+    </section>`;
+  }
+
+  function renderTimeline() {
+    const meta = dayMeta[selectedDate];
+    els.tlDateLabel.textContent = meta ? meta.label.split(" · ")[0] : selectedDate;
+    const data = timelineDetailed[selectedDate];
+    if (!data) {
+      els.timelineDayparts.innerHTML =
+        "<p style=\"font-size:0.84rem;color:var(--muted)\">该日暂无时间线数据。</p>";
+      return;
+    }
+    let partsHtml = `<div class="timeline-rail-root">`;
+    DAYPART_ORDER.forEach(({ key, label }) => {
+      const blocks = data[key];
+      partsHtml += renderDaypartSection(key, label, blocks);
+    });
+    partsHtml += "</div>";
+    els.timelineDayparts.innerHTML = partsHtml;
+  }
+
+  function renderSessionShots(shots) {
+    return shots
+      .map(
+        (s) => `<article class="shot-card">
+        <div class="shot-thumb" style="background-image:${s.bg};background-color:#111"></div>
+        <div class="shot-meta">${esc(s.meta)}</div>
+        <p class="shot-summary">${esc(s.summary)}</p>
+      </article>`
+      )
+      .join("");
+  }
+
+  function openSessionSheet(periodKey) {
+    const meta = dayMeta[selectedDate];
+    const label = DAYPART_ORDER.find((d) => d.key === periodKey)?.label || periodKey;
+    const pack = sessionDetailByDay[selectedDate]?.[periodKey];
+    const titleBase = meta ? meta.short || selectedDate : selectedDate;
+    els.sessionSheetTitle.textContent = `${titleBase} · ${label} · 会话详情`;
+    if (pack && pack.shots && pack.shots.length) {
+      els.sessionSheetBody.innerHTML = renderSessionShots(pack.shots);
+    } else {
+      els.sessionSheetBody.innerHTML =
+        "<p class=\"session-empty\">该时段暂无截屏或说明。</p>";
+    }
+    els.sessionOverlay.hidden = false;
+    document.body.classList.add("session-sheet-open");
+    if (els.sessionSheetClose) els.sessionSheetClose.focus();
+  }
+
+  function closeSessionSheet() {
+    els.sessionOverlay.hidden = true;
+    document.body.classList.remove("session-sheet-open");
+  }
+
+  els.timelineDayparts.addEventListener("click", (e) => {
+    const btn = e.target.closest(".daypart-open");
+    if (!btn || !btn.dataset.period) return;
+    openSessionSheet(btn.dataset.period);
+  });
+
+  els.sessionSheetClose.addEventListener("click", closeSessionSheet);
+  els.sessionOverlayBg.addEventListener("click", closeSessionSheet);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && els.sessionOverlay && !els.sessionOverlay.hidden) closeSessionSheet();
+  });
+
+  function renderReport() {
+    const meta = dayMeta[selectedDate];
+    els.rpDateLabel.textContent = meta ? meta.label : selectedDate;
+    els.reportTitle.textContent = "日报告 · " + (meta ? meta.short : selectedDate);
+    const html = reportByDay[selectedDate];
+    els.reportBody.innerHTML = html
+      ? html
+      : `<div class="report-section"><p>该日暂无日报告。</p></div>`;
+  }
+
+  els.navItems.forEach((btn) => {
+    const v = btn.dataset.view;
+    if (!v) return;
+    btn.addEventListener("click", () => showView(v));
+  });
+
+  document.getElementById("ctaTimeline").addEventListener("click", () => showView("timeline"));
+  document.getElementById("ctaReport").addEventListener("click", () => showView("report"));
+  document.getElementById("fromTlToReport").addEventListener("click", () => showView("report"));
+  document.getElementById("fromRpToTl").addEventListener("click", () => showView("timeline"));
+
+  document.getElementById("emptyActionPrimary").addEventListener("click", () => showView("settings"));
+  document.getElementById("emptyActionSecondary").addEventListener("click", () => {
+    showView("lens");
+  });
+
+  document.getElementById("incViewAnyway").addEventListener("click", () => {
+    forceReadyDates.add(selectedDate);
+    if (!timelineDetailed[selectedDate]) {
+      timelineDetailed[selectedDate] = {
+        morning: [
+          {
+            start: "10:00",
+            dur: "45m",
+            cat: "other",
+            icon: "◇",
+            app: "备忘录",
+            title: "部分时段有记录",
+            meta: "采集不完整",
+          },
+        ],
+        midday: [],
+        afternoon: [],
+        evening: [],
+      };
+    }
+    if (!reportByDay[selectedDate]) {
+      reportByDay[selectedDate] =
+        `<div class="report-section"><p>当日采集不完整，报告仅反映已覆盖时段。</p></div>`;
+    }
+    showView("lens");
+  });
+
+  document.getElementById("incSettings").addEventListener("click", () => showView("settings"));
+
+  document.getElementById("btnLensCoverEnter").addEventListener("click", () => {
+    try {
+      localStorage.setItem(LENS_COVER_STORAGE, "1");
+    } catch (_) {}
+    updateHeader();
+    updateLensPanels();
+  });
+
+  showView("lens");
+})();
+  </script>
+</body>
+</html>

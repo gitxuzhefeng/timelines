@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>V04 杂志封面 · TimeLens</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&family=Syne:wght@800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="timelens-phase3-poster-shared.css" />
+  <style>
+    .cover {
+      max-width: 560px;
+      margin: 0 auto;
+      min-height: 78vh;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(180deg, #1a1512 0%, #0c0b09 55%);
+    }
+    .mast {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.85rem 1.1rem;
+      border-bottom: 1px solid var(--line);
+      font-size: 0.58rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .mast b { color: var(--ink); }
+    .hero-word {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+    .hero-word span {
+      font-size: clamp(3.5rem, 18vw, 7rem);
+      font-weight: 900;
+      line-height: 0.95;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, var(--c-dev) 0%, var(--accent-2) 40%, var(--accent) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .strap {
+      padding: 1rem 1.25rem 1.25rem;
+      background: rgba(0,0,0,0.35);
+      border-top: 1px solid var(--line);
+    }
+    .strap h2 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.4rem; }
+    .strap p { font-size: 0.82rem; color: var(--muted); line-height: 1.55; }
+    .bar {
+      display: flex;
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 0.85rem;
+      gap: 2px;
+    }
+    .bar i:nth-child(1) { flex: 42; background: var(--c-dev); }
+    .bar i:nth-child(2) { flex: 28; background: var(--c-meet); }
+    .bar i:nth-child(3) { flex: 18; background: var(--c-browse); }
+    .bar i:nth-child(4) { flex: 12; background: var(--c-other); }
+    .cta {
+      margin: 1rem auto 0;
+      max-width: 560px;
+      width: 100%;
+      padding: 0.9rem;
+      border-radius: 12px;
+      border: none;
+      background: var(--ink);
+      color: var(--bg);
+      font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="p3-page">
+    <span class="p3-demo-badge">V04 · 模拟封面</span>
+    <div class="cover">
+      <div class="mast"><span><b>TIMELENS</b> DAILY</span><span>NO. 20260403</span></div>
+      <div class="hero-word"><span>开发</span></div>
+      <div class="strap">
+        <h2>今日封面词 · 来自前台时长第一意图</h2>
+        <p>演示数据中，「深度开发」以 42% 居首。真实产品可取当日 Top Intent 一字或两字作封面，下方条带为结构速写。</p>
+        <div class="bar" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      </div>
+    </div>
+    <button type="button" class="cta">读内页：完整时间线</button>
+    <p class="p3-back" style="max-width:560px;margin-left:auto;margin-right:auto;"><a href="timelens-phase3-poster-gallery.html">← 方案库</a></p>
+  </div>
+</body>
+</html>

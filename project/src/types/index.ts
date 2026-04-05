@@ -197,6 +197,53 @@ export interface DailyReportDto {
   aiPromptHash: string | null;
 }
 
+/** 与 Rust `DailyAnalysisDto`（serde camelCase）对齐 */
+export interface DailyAnalysisDto {
+  id: string;
+  analysisDate: string;
+  generatedAtMs: number;
+  version: number;
+  totalActiveMs: number;
+  intentBreakdown: string;
+  topApps: string;
+  totalSwitches: number;
+  switchesPerHour: string;
+  topSwitchPairs: string;
+  deepWorkSegments: string;
+  deepWorkTotalMs: number;
+  fragmentationPct: number;
+  notificationCount: number;
+  topInterrupters: string;
+  interruptsInDeep: number;
+  avgKpm: number | null;
+  kpmByHour: string;
+  avgDeleteRatio: number | null;
+  flowScoreAvg: number | null;
+  struggleScoreAvg: number | null;
+  clipboardPairs: number | null;
+  topFlows: string | null;
+  sceneBreakdown: string | null;
+  degradedSections: string;
+}
+
+export interface DailyAnalysisTopAppRow {
+  app: string;
+  duration_ms: number;
+}
+
+export interface DailyAnalysisDeepSegment {
+  start_ms: number;
+  end_ms: number;
+  duration_ms: number;
+  intent: string;
+}
+
+export interface DailyAnalysisClipboardFlow {
+  from: string;
+  to: string;
+  count: number;
+}
+
 export interface AiSettingsDto {
   privacyAcknowledged: boolean;
   baseUrl: string;

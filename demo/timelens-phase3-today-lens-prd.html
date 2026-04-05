@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TimeLens · 今日透视（三期 PRD 效果稿）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0a0908;
+      --bg-elev: #13110f;
+      --ink: #f4ede4;
+      --muted: #9c948a;
+      --line: rgba(244, 237, 228, 0.09);
+      --accent: #e35d48;
+      --accent-soft: rgba(227, 93, 72, 0.22);
+      --c-a: #3d9b8b;
+      --c-b: #7c6fd4;
+      --c-c: #d4a24c;
+      --c-d: #5a554d;
+      --radius: 18px;
+      --font-sans: "Noto Sans SC", "PingFang SC", system-ui, sans-serif;
+      --font-display: "Syne", var(--font-sans);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { -webkit-font-smoothing: antialiased; }
+
+    body {
+      min-height: 100vh;
+      min-height: 100dvh;
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.55;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.04;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      z-index: 0;
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 1;
+      max-width: 560px;
+      margin: 0 auto;
+      padding: clamp(1.25rem, 4vw, 2rem) clamp(1rem, 4vw, 1.5rem) 3rem;
+    }
+
+    .doc-tag {
+      font-size: 0.65rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .page-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      margin-bottom: 0.35rem;
+    }
+
+    .page-desc {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 1.75rem;
+      line-height: 1.6;
+    }
+
+    .scenario {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin: 2rem 0 0.75rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--line);
+    }
+
+    .scenario:first-of-type {
+      border-top: none;
+      padding-top: 0;
+      margin-top: 0;
+    }
+
+    /* —— 有数据面板 —— */
+    .masthead {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.1rem;
+      padding-bottom: 0.9rem;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 0.7rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .column-tag {
+      font-size: 0.66rem;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.1em;
+      margin-top: 0.2rem;
+    }
+
+    .date-block {
+      text-align: right;
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+
+    .date-block strong {
+      display: block;
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--ink);
+      margin-bottom: 0.12rem;
+    }
+
+    .promise {
+      font-size: 0.62rem;
+      margin-top: 0.3rem;
+      letter-spacing: 0.04em;
+    }
+
+    .panel {
+      background: linear-gradient(160deg, var(--bg-elev) 0%, #0e0c0a 55%, var(--bg-elev) 100%);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 1.5rem 1.35rem 1.35rem;
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.03) inset,
+        0 20px 70px -28px rgba(0, 0, 0, 0.9),
+        0 0 48px -24px var(--accent-soft);
+    }
+
+    .headline {
+      font-size: 1.28rem;
+      font-weight: 700;
+      line-height: 1.32;
+      letter-spacing: 0.02em;
+      margin-bottom: 1.25rem;
+      text-wrap: balance;
+    }
+
+    .headline span { color: var(--accent); }
+
+    /* C · 唯一主图：横向堆叠条（与环图二选一，此处演示堆叠条） */
+    .hero {
+      margin-bottom: 1.35rem;
+    }
+
+    .hero-label {
+      font-size: 0.64rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.55rem;
+    }
+
+    .stack-bar {
+      height: 22px;
+      border-radius: 11px;
+      overflow: hidden;
+      display: flex;
+      background: rgba(255, 255, 255, 0.04);
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+    }
+
+    .stack-seg {
+      height: 100%;
+      min-width: 4px;
+      transition: filter 0.15s ease;
+    }
+
+    .stack-seg:hover { filter: brightness(1.12); }
+
+    .seg-a { flex: 40; background: var(--c-a); }
+    .seg-b { flex: 26; background: var(--c-b); }
+    .seg-c { flex: 21; background: var(--c-c); }
+    .seg-d { flex: 13; background: var(--c-d); }
+
+    .hero-meta {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-top: 0.85rem;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .hero-total {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.65rem;
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+
+    .hero-total small {
+      display: block;
+      font-family: var(--font-sans);
+      font-size: 0.65rem;
+      font-weight: 500;
+      color: var(--muted);
+      margin-top: 0.35rem;
+      letter-spacing: 0.06em;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem 0.75rem;
+      justify-content: flex-end;
+      font-size: 0.66rem;
+      color: var(--muted);
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* E · 模板摘要 */
+    .takeaway {
+      font-size: 0.9rem;
+      font-weight: 500;
+      line-height: 1.62;
+      padding: 0.95rem 1rem;
+      margin-bottom: 1.15rem;
+      background: rgba(255, 255, 255, 0.035);
+      border-radius: 10px;
+      border-left: 3px solid var(--accent);
+    }
+
+    .takeaway em {
+      font-style: normal;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    /* D · Top 3 */
+    .proof-label {
+      font-size: 0.62rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.55rem;
+    }
+
+    .proof-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      margin-bottom: 1.1rem;
+    }
+
+    .proof-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.65rem;
+      padding: 0.5rem 0.6rem;
+      background: rgba(255, 255, 255, 0.025);
+      border-radius: 10px;
+      border: 1px solid var(--line);
+    }
+
+    .proof-row .name {
+      font-size: 0.82rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .proof-row .rank {
+      font-family: var(--font-display);
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: var(--muted);
+      width: 1.2rem;
+    }
+
+    .proof-row .meta {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .proof-row .meta strong {
+      color: var(--ink);
+      font-weight: 600;
+    }
+
+    /* 可选 AI：折叠，不抢主层级 */
+    .ai-fold {
+      margin-bottom: 1rem;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.02);
+      overflow: hidden;
+    }
+
+    .ai-fold summary {
+      cursor: pointer;
+      list-style: none;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--muted);
+      padding: 0.55rem 0.75rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .ai-fold summary::-webkit-details-marker { display: none; }
+
+    .ai-fold summary::after {
+      content: "＋";
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    .ai-fold[open] summary::after { content: "－"; }
+
+    .ai-fold .ai-body {
+      padding: 0 0.75rem 0.65rem;
+      font-size: 0.74rem;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    /* F · 信任 */
+    .trust {
+      font-size: 0.62rem;
+      color: var(--muted);
+      text-align: center;
+      letter-spacing: 0.03em;
+      margin-bottom: 1rem;
+    }
+
+    /* G · CTA */
+    .cta {
+      display: block;
+      width: 100%;
+      text-align: center;
+      font-family: var(--font-sans);
+      font-size: 0.86rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      padding: 0.9rem 1.1rem;
+      border: none;
+      border-radius: 11px;
+      background: linear-gradient(180deg, #ef6b58 0%, var(--accent) 100%);
+      color: #fff;
+      text-decoration: none;
+      cursor: pointer;
+      box-shadow: 0 4px 22px var(--accent-soft);
+      transition: transform 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .cta:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 28px var(--accent-soft);
+    }
+
+    /* —— 空态 H —— */
+    .empty-panel {
+      border: 1px dashed rgba(244, 237, 228, 0.18);
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: var(--radius);
+      padding: 1.75rem 1.35rem 1.5rem;
+      text-align: center;
+    }
+
+    .empty-icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 1rem;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      opacity: 0.85;
+    }
+
+    .empty-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .empty-copy {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.65;
+      margin-bottom: 1.25rem;
+      text-align: left;
+    }
+
+    .empty-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .btn-ghost {
+      display: block;
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--ink);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      cursor: pointer;
+      font-family: var(--font-sans);
+    }
+
+    .btn-ghost.secondary {
+      font-weight: 500;
+      color: var(--muted);
+      background: transparent;
+    }
+
+    .empty-trust {
+      margin-top: 1.1rem;
+      font-size: 0.6rem;
+      color: var(--muted);
+      letter-spacing: 0.03em;
+    }
+
+    .footnote {
+      margin-top: 2rem;
+      font-size: 0.65rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .footnote a { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <p class="doc-tag">Static mock · PRD v2.1</p>
+    <h1 class="page-title">三期「今日透视」最终呈现效果（静态稿）</h1>
+    <p class="page-desc">
+      依据 <code style="font-size:0.72em;opacity:0.9">prd/PRD_三期_数据洞察与体验完善.md</code>：单面板、默认今日、一主图、Top 3、模板摘要、单一主出口；下方为模拟数据，非真实采集。
+    </p>
+
+    <!-- —— 场景一：有当日 daily_analysis —— -->
+    <p class="scenario">场景一 · 有当日分析</p>
+
+    <header class="masthead" aria-label="报头">
+      <div>
+        <div class="brand">TimeLens</div>
+        <div class="column-tag">今日透视</div>
+      </div>
+      <div class="date-block">
+        <strong>2026 年 4 月 3 日 · 周五</strong>
+        <span>复盘日 · 与本机日历一致</span>
+        <div class="promise">自动记录 · 本地可查</div>
+      </div>
+    </header>
+
+    <article class="panel" aria-labelledby="hl-today">
+      <!-- B · 主标题 -->
+      <h2 id="hl-today" class="headline">今天，<span>你的时间</span>主要在这里</h2>
+
+      <!-- C · 唯一主视觉：今日时间结构（堆叠条） -->
+      <div class="hero" role="group" aria-label="今日意图时长占比">
+        <p class="hero-label">今日时间结构 · 意图维度</p>
+        <div class="stack-bar" title="深度工作 40% · 协作沟通 26% · 浏览与学习 21% · 其他 13%">
+          <span class="stack-seg seg-a" aria-hidden="true"></span>
+          <span class="stack-seg seg-b" aria-hidden="true"></span>
+          <span class="stack-seg seg-c" aria-hidden="true"></span>
+          <span class="stack-seg seg-d" aria-hidden="true"></span>
+        </div>
+        <div class="hero-meta">
+          <div class="hero-total">
+            8h32m
+            <small>今日已记录前台时长（模拟）</small>
+          </div>
+          <div class="legend" aria-hidden="true">
+            <span><span class="dot" style="background:var(--c-a)"></span>深度工作 40%</span>
+            <span><span class="dot" style="background:var(--c-b)"></span>协作沟通 26%</span>
+            <span><span class="dot" style="background:var(--c-c)"></span>浏览与学习 21%</span>
+            <span><span class="dot" style="background:var(--c-d)"></span>其他 13%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- E · 读得懂的摘要（固定模板 + 事实字段） -->
+      <p class="takeaway">
+        今日以 <em>「深度工作」</em>为主，<em>「协作沟通」</em>次之；两者合计约占今日前台时长的 <em>六成以上</em>。与下方 Top 3 应用时长同源、可核对。
+      </p>
+
+      <!-- D · 证据条 Top 3 -->
+      <p class="proof-label">按时长 · 应用 Top 3</p>
+      <ul class="proof-list">
+        <li class="proof-row">
+          <span class="name"><span class="rank">01</span>Cursor</span>
+          <span class="meta"><strong>2h48m</strong> · 33%</span>
+        </li>
+        <li class="proof-row">
+          <span class="name"><span class="rank">02</span>Google Chrome</span>
+          <span class="meta"><strong>1h56m</strong> · 23%</span>
+        </li>
+        <li class="proof-row">
+          <span class="name"><span class="rank">03</span>飞书</span>
+          <span class="meta"><strong>1h14m</strong> · 14%</span>
+        </li>
+      </ul>
+
+      <!-- 二期 AI：同屏次要，非 P0 依赖 -->
+      <details class="ai-fold">
+        <summary>AI 解读（可选 · 已开启二期时）</summary>
+        <div class="ai-body">
+          此处为占位：实际产品可将 <strong>fact_only</strong> 同源数据下的语气化短评放在折叠区内，不替代上方数字与模板句，也不新增未出现在事实层的类目。
+        </div>
+      </details>
+
+      <!-- F · 信任角标 -->
+      <p class="trust">数据基于本机记录 · 与今日事实报告（fact_only）同源</p>
+
+      <!-- G · 唯一主 CTA -->
+      <a class="cta" href="timelens-phase3-today-timeline-detail.html">查看今日完整时间线</a>
+    </article>
+
+    <!-- —— 场景二：无当日分析（诚实空态） —— -->
+    <p class="scenario">场景二 · 无当日分析（空态）</p>
+
+    <header class="masthead" style="margin-bottom:0.85rem">
+      <div>
+        <div class="brand">TimeLens</div>
+        <div class="column-tag">今日透视</div>
+      </div>
+      <div class="date-block">
+        <strong>2026 年 4 月 3 日 · 周五</strong>
+        <span>尚无当日聚合</span>
+      </div>
+    </header>
+
+    <section class="empty-panel" aria-label="今日透视空态">
+      <div class="empty-icon" aria-hidden="true">◇</div>
+      <h2 class="empty-title">今天的答案还在路上</h2>
+      <p class="empty-copy">
+        当前没有可用于「今日透视」的日终分析数据。我们不会用示例图占位，避免误导。<br /><br />
+        你仍可在时间线中查看原始记录；当本机采集覆盖主要时段并生成当日 <strong>daily_analysis</strong> 后，这里会自动出现今日结构图与一句话摘要。
+      </p>
+      <div class="empty-actions">
+        <button type="button" class="btn-ghost">继续后台采集，明日再来</button>
+        <button type="button" class="btn-ghost secondary">检查采集与权限设置</button>
+      </div>
+      <p class="empty-trust">本地处理 · 未生成分析前不外传汇总</p>
+    </section>
+
+    <footer class="footnote">
+      对照 PRD 验收：一屏可读主战场、单一主图、Top 3 与模板句可核对、一处进入时间线/日报告、空态不造假图。<br />
+      <a href="timelens-phase3-today-timeline-detail.html">今日完整时间线（下钻页）</a>
+      · <a href="timelens-phase3-poster-ideal.html">理想海报定稿演示</a>
+      · <a href="timelens-phase3-poster-gallery.html">多方案画廊</a>
+      · <a href="timelens-phase2-index.html">二期演示索引</a>
+    </footer>
+  </div>
+</body>
+</html>

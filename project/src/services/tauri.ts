@@ -3,6 +3,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
   ActivityStats,
   AiSettingsDto,
+  DailyAnalysisDto,
   DailyReportDto,
   EngineFlagsResponse,
   AppIntentAggregate,
@@ -241,6 +242,12 @@ export async function setAppBlacklist(apps: string[]): Promise<void> {
 
 export async function generateDailyAnalysis(date: string): Promise<string> {
   return invoke<string>("generate_daily_analysis", { date });
+}
+
+export async function getDailyAnalysis(
+  date: string,
+): Promise<DailyAnalysisDto | null> {
+  return invoke<DailyAnalysisDto | null>("get_daily_analysis", { date });
 }
 
 export async function generateDailyReport(

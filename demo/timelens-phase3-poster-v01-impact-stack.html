@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>V01 冲击标题塔 · TimeLens 今日透视</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700;900&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="timelens-phase3-poster-shared.css" />
+  <style>
+    .wrap { max-width: 540px; margin: 0 auto; }
+    .hook {
+      font-size: clamp(1.65rem, 5vw, 2.15rem);
+      font-weight: 900;
+      line-height: 1.2;
+      letter-spacing: 0.02em;
+      margin-bottom: 0.65rem;
+    }
+    .hook em { font-style: normal; color: var(--accent); }
+    .sub {
+      font-size: 0.88rem;
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.65;
+    }
+    .hero { display: flex; flex-direction: column; align-items: center; margin: 1.5rem 0; }
+    .donut-box { position: relative; width: 200px; height: 200px; }
+    .donut-box .p3-donut { width: 100%; height: 100%; }
+    .hole {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; pointer-events: none;
+    }
+    .hole .n { font-family: var(--font-display); font-weight: 800; font-size: 1.75rem; }
+    .hole .l { font-size: 0.65rem; color: var(--muted); margin-top: 0.25rem; letter-spacing: 0.06em; }
+    .nail {
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 0.9rem 1rem;
+      border-left: 3px solid var(--accent);
+      background: rgba(255,255,255,0.03);
+      border-radius: 0 10px 10px 0;
+      margin: 1.25rem 0;
+    }
+    .nail strong { color: var(--accent-2); }
+    .cta {
+      width: 100%; padding: 0.95rem; border: none; border-radius: 12px;
+      background: linear-gradient(180deg, #f06b5a, var(--accent)); color: #fff;
+      font-weight: 600; font-size: 0.88rem; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="p3-page wrap">
+    <span class="p3-demo-badge">V01 · 模拟数据</span>
+    <p style="font-size:0.7rem;color:var(--muted);margin-bottom:1rem;">2026年4月3日 · 周五</p>
+    <h1 class="hook">今天，<em>时间没有</em><br />均匀摊开。</h1>
+    <p class="sub">记忆会把一天揉成「好像都在忙」— 而这条环，是你前台时长真实的形状。</p>
+    <div class="hero">
+      <div class="donut-box">
+        <div class="p3-donut" style="--ring: 26px"></div>
+        <div class="hole"><span class="n">8h54m</span><span class="l">今日前台</span></div>
+      </div>
+    </div>
+    <p class="nail">主战场是 <strong>深度开发 42%</strong>；会议与沟通吃掉 <strong>28%</strong>。剩下才是浏览与其它碎片。</p>
+    <button type="button" class="cta">沿时间线核对每一笔</button>
+    <p class="p3-back"><a href="timelens-phase3-poster-gallery.html">← 方案库</a></p>
+  </div>
+</body>
+</html>
