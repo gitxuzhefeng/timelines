@@ -1,10 +1,20 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   AiSettingsDto,
   EngineFlagsResponse,
   OcrPipelineConfig,
   OcrSettingsDto,
 } from "../types";
+import { SystemPermissionPanel } from "./SystemPermissionPanel";
+import {
+  detectClientDesktopOs,
+  ocrDependencySummary,
+  ocrLanguagesFieldCaption,
+  ocrLanguagesFieldHint,
+  ocrPipelineDetailsIntro,
+  ocrPsmFieldCaption,
+  ocrPsmFieldHint,
+} from "../lib/platform";
 import * as api from "../services/tauri";
 
 type SettingsFormProps = {
@@ -26,6 +36,7 @@ export function SettingsForm({ className }: SettingsFormProps) {
   const [ocrPrivacyOpen, setOcrPrivacyOpen] = useState(false);
   const [ocrMsg, setOcrMsg] = useState<string | null>(null);
   const [ocrPipe, setOcrPipe] = useState<OcrPipelineConfig | null>(null);
+  const clientOs = useMemo(() => detectClientDesktopOs(), []);
 
   const refreshFlags = useCallback(async () => {
     const [flags, aicfg, ocrcfg] = await Promise.all([
@@ -201,6 +212,17 @@ export function SettingsForm({ className }: SettingsFormProps) {
     >
       {err && <p className="mb-3 text-sm text-rose-300">{err}</p>}
 
+      <section className="mb-6 rounded border border-zinc-800 bg-zinc-900/40 p-4">
+        <h2 className="text-sm font-medium text-zinc-400">系统权限</h2>
+        <p className="mt-1 text-xs text-zinc-500">
+          采集、截图与通知依赖系统授权；下方按钮会打开当前系统对应的设置页（macOS
+          与 Windows 文案不同属正常）。
+        </p>
+        <div className="mt-3">
+          <SystemPermissionPanel variant="both" />
+        </div>
+      </section>
+
       {ocrPrivacyOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
@@ -310,18 +332,7 @@ export function SettingsForm({ className }: SettingsFormProps) {
 
       <section className="mb-6 space-y-3 rounded border border-zinc-800 bg-zinc-900/40 p-4">
         <h2 className="text-sm font-medium text-zinc-400">屏幕文字（OCR，默认关闭）</h2>
-        <p className="text-xs text-zinc-500">
-          依赖本机安装{" "}
-          <a
-            href="https://github.com/tesseract-ocr/tesseract"
-            className="text-sky-400 underline"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Tesseract
-          </a>
-          ；未安装时任务会失败并在状态中提示。
-        </p>
+        <p className="text-xs text-zinc-500">{ocrDependencySummary(clientOs)}</p>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -369,20 +380,15 @@ export function SettingsForm({ className }: SettingsFormProps) {
               OCR 管线参数（语言 / PSM / 闸门 / 预处理）
             </summary>
             <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">
-              均作用于本机 Tesseract。行内拼接时，相邻汉字（及数字与汉字/数字）之间
+              {ocrPipelineDetailsIntro(clientOs)} 行内拼接时，相邻汉字（及数字与汉字/数字）之间
               <span className="text-zinc-400">不再插入空格</span>
-              ，避免「微 信」式断字导致关键词搜不到。环境变量{" "}
-              <code className="text-zinc-400">TIMELENS_OCR_LANG</code>、
-              <code className="text-zinc-400">TIMELENS_OCR_PSM</code>{" "}
-              可覆盖下方的语言与 PSM。
+              ，避免「微 信」式断字导致关键词搜不到。
             </p>
             <div className="mt-3 grid max-w-xl gap-3 text-xs">
               <label className="grid gap-1">
-                <span className="text-zinc-400">languages</span>
+                <span className="text-zinc-400">{ocrLanguagesFieldCaption(clientOs)}</span>
                 <p className="text-[11px] leading-relaxed text-zinc-500">
-                  传给 Tesseract 的 <code className="text-zinc-400">-l</code>
-                  ，如 <code className="text-zinc-400">chi_sim+eng</code>
-                  ；须本机已安装对应语言包。
+                  {ocrLanguagesFieldHint(clientOs)}
                 </p>
                 <input
                   className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 font-mono text-zinc-200"
@@ -393,13 +399,9 @@ export function SettingsForm({ className }: SettingsFormProps) {
                 />
               </label>
               <label className="grid gap-1">
-                <span className="text-zinc-400">PSM（0–13）</span>
+                <span className="text-zinc-400">{ocrPsmFieldCaption(clientOs)}</span>
                 <p className="text-[11px] leading-relaxed text-zinc-500">
-                  页面分割模式（<code className="text-zinc-400">--psm</code>
-                  ）。整屏一大块文字常用{" "}
-                  <span className="font-mono text-zinc-400">6</span>
-                  ；字少、散在边角可试{" "}
-                  <span className="font-mono text-zinc-400">11</span>。
+                  {ocrPsmFieldHint(clientOs)}
                 </p>
                 <input
                   type="number"
@@ -527,6 +529,11 @@ export function SettingsForm({ className }: SettingsFormProps) {
         <h2 className="text-sm font-medium text-zinc-400">应用黑名单（M5 / M4-05）</h2>
         <p className="text-xs text-zinc-500">
           每行一个前台应用名（与系统前台 `app_name` **精确匹配**，大小写敏感）。命中时：不写 raw / 切换 / Session / 截图；剪贴板流水也不会在黑名单前台落库。
+          {clientOs === "windows" ? (
+            <span className="mt-1 block text-zinc-600">
+              Windows 下 `app_name` 多来自前台进程可执行文件名（不含路径），与任务栏标题可能不一致，请以会话列表中显示的名称为准。
+            </span>
+          ) : null}
         </p>
         <textarea
           value={blacklistText}

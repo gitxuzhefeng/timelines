@@ -1,3 +1,5 @@
+import { usesCustomProtocolLocalhostWorkaround } from "../lib/platform";
+
 /** 与 Rust `AppIntentAggregateDto` 对齐：按应用名 + Bundle 聚合 */
 export interface AppIntentAggregate {
   appName: string;
@@ -259,11 +261,6 @@ export interface AiSettingsDto {
  * 由运行时拦截并还原为 `timelens://localhost/…` 再交给自定义协议处理器。
  * @see https://github.com/tauri-apps/wry/blob/dev/src/custom_protocol_workaround.rs
  */
-function usesCustomProtocolLocalhostWorkaround(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /Windows NT|Android/i.test(navigator.userAgent);
-}
-
 export function snapshotTimelensUrl(snapshotId: string): string {
   const path = `snapshot/${snapshotId}`;
   if (usesCustomProtocolLocalhostWorkaround()) {

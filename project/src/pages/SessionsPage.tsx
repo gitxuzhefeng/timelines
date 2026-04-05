@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Virtuoso } from "react-virtuoso";
+import { SystemPermissionPanel } from "../components/SystemPermissionPanel";
 import { useAppStore } from "../stores/appStore";
 import * as api from "../services/tauri";
 import { snapshotTimelensUrl } from "../types";
@@ -98,37 +99,13 @@ export default function SessionsPage() {
           {isAfk && (
             <span className="rounded bg-amber-900/50 px-2 py-0.5 text-amber-200">AFK</span>
           )}
-          {permissions && (
-            <>
-              <span
-                className={`rounded px-2 py-0.5 ${
-                  permissions.accessibilityGranted
-                    ? "bg-emerald-900/40 text-emerald-300"
-                    : "bg-rose-900/40 text-rose-200"
-                }`}
-              >
-                辅助功能
-              </span>
-              <span
-                className={`rounded px-2 py-0.5 ${
-                  permissions.screenRecordingGranted
-                    ? "bg-emerald-900/40 text-emerald-300"
-                    : "bg-rose-900/40 text-rose-200"
-                }`}
-              >
-                屏幕录制
-              </span>
-              <span
-                className={`rounded px-2 py-0.5 ${
-                  permissions.notificationListenerGranted
-                    ? "bg-emerald-900/40 text-emerald-300"
-                    : "bg-rose-900/40 text-rose-200"
-                }`}
-              >
-                通知监听
-              </span>
-            </>
-          )}
+          {permissions ? (
+            <SystemPermissionPanel
+              variant="badges"
+              permissions={permissions}
+              onPermissionsChange={setPermissions}
+            />
+          ) : null}
         </div>
         <div className="flex w-full flex-wrap items-center justify-end gap-3 sm:w-auto sm:ml-auto">
         <Link
@@ -356,40 +333,11 @@ export default function SessionsPage() {
           >
             保留清理
           </button>
-          <button
-            type="button"
-            className="rounded border border-zinc-600 px-3 py-1.5 text-sm hover:bg-zinc-800"
-            onClick={() => void api.checkPermissions().then(setPermissions)}
-          >
-            刷新权限
-          </button>
-          {permissions && !permissions.accessibilityGranted && (
-            <button
-              type="button"
-              className="rounded border border-rose-800/50 px-3 py-1.5 text-sm text-rose-200"
-              onClick={() => void api.openAccessibilitySettings()}
-            >
-              辅助功能设置
-            </button>
-          )}
-          {permissions && !permissions.screenRecordingGranted && (
-            <button
-              type="button"
-              className="rounded border border-rose-800/50 px-3 py-1.5 text-sm text-rose-200"
-              onClick={() => void api.openScreenRecordingSettings()}
-            >
-              屏幕录制设置
-            </button>
-          )}
-          {permissions && !permissions.notificationListenerGranted && (
-            <button
-              type="button"
-              className="rounded border border-rose-800/50 px-3 py-1.5 text-sm text-rose-200"
-              onClick={() => void api.openNotificationSettings()}
-            >
-              通知权限设置
-            </button>
-          )}
+          <SystemPermissionPanel
+            variant="actions"
+            permissions={permissions}
+            onPermissionsChange={setPermissions}
+          />
           <button
             type="button"
             className="ml-auto rounded border border-zinc-600 px-3 py-1.5 text-sm hover:bg-zinc-800"

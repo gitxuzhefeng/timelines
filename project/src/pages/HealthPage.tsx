@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { SystemPermissionPanel } from "../components/SystemPermissionPanel";
+import { detectClientDesktopOs, pipelineHealthPlatformNote } from "../lib/platform";
 import type { PipelineHealth } from "../types";
 import * as api from "../services/tauri";
 
@@ -7,9 +9,23 @@ function fmtTs(ms: number | null): string {
   return new Date(ms).toLocaleString();
 }
 
+function engineStatusLabel(status: string): string {
+  switch (status) {
+    case "running":
+      return "正常";
+    case "degraded":
+      return "降级";
+    case "stopped":
+      return "已停止";
+    default:
+      return status;
+  }
+}
+
 export default function HealthPage() {
   const [h, setH] = useState<PipelineHealth | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const clientOs = useMemo(() => detectClientDesktopOs(), []);
 
   const refresh = useCallback(async () => {
     try {
@@ -54,6 +70,19 @@ export default function HealthPage() {
         )}
       </div>
       {err && <p className="mb-2 text-sm text-rose-300">{err}</p>}
+
+      <div className="mb-6 max-w-2xl rounded border border-zinc-800 bg-zinc-900/30 p-4">
+        <h2 className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+          系统权限
+        </h2>
+        <div className="mt-2">
+          <SystemPermissionPanel variant="both" />
+        </div>
+        <p className="mt-3 text-xs leading-relaxed text-zinc-600">
+          {pipelineHealthPlatformNote(clientOs)}
+        </p>
+      </div>
+
       <table className="w-full max-w-2xl border-collapse text-sm">
         <thead>
           <tr className="border-b border-zinc-700 text-left text-zinc-400">
@@ -79,7 +108,7 @@ export default function HealthPage() {
                             : "text-zinc-500"
                       }
                     >
-                      {eng.status}
+                      {engineStatusLabel(eng.status)}
                     </span>
                   </td>
                   <td className="py-2 text-zinc-500">{fmtTs(eng.lastDataMs)}</td>

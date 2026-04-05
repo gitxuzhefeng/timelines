@@ -8,7 +8,9 @@
     "build": "npm run build --prefix project",
     "preview": "npm run preview --prefix project",
     "tauri": "npm run tauri --prefix project",
+    "tauri:build": "npm run tauri --prefix project -- build",
     "test": "npm run test --prefix project",
-    "release": "bash scripts/release.sh"
+    "release": "bash scripts/release.sh",
+    "release:macos": "bash scripts/release.sh"
   }
 }
