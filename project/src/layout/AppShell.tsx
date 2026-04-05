@@ -1,11 +1,14 @@
+import { useCallback, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAppStore } from "../stores/appStore";
 import { useDevModeStore } from "../stores/devModeStore";
+import * as api from "../services/tauri";
 
 const MAIN_NAV = [
   { to: "/lens", label: "今日透视", icon: "◉" },
   { to: "/timeline", label: "时间线", icon: "≡" },
   { to: "/report", label: "日报告", icon: "¶" },
+  { to: "/intents", label: "应用分组", icon: "⌗" },
   { to: "/settings", label: "设置", icon: "⚙" },
 ] as const;
 
@@ -14,7 +17,6 @@ const DEV_NAV = [
   { to: "/sessions", label: "会话" },
   { to: "/ocr", label: "OCR 检索" },
   { to: "/ocr-eval", label: "OCR 评估" },
-  { to: "/intents", label: "Intent" },
   { to: "/health", label: "健康" },
 ] as const;
 
@@ -23,6 +25,12 @@ function titleForPath(pathname: string): { title: string; sub?: string } {
   if (pathname.startsWith("/timeline")) return { title: "时间线", sub: "按时段核对会话" };
   if (pathname.startsWith("/report")) return { title: "日报告", sub: "事实层 / AI 增强" };
   if (pathname.startsWith("/settings")) return { title: "设置", sub: "权限 · 引擎 · OCR · AI" };
+  if (pathname.startsWith("/recap")) return { title: "复盘（旧入口）", sub: "开发工具" };
+  if (pathname.startsWith("/sessions")) return { title: "会话", sub: "开发工具 · 会话与截图" };
+  if (pathname.startsWith("/ocr-eval")) return { title: "OCR 评估", sub: "开发工具" };
+  if (pathname.startsWith("/ocr")) return { title: "OCR 检索", sub: "开发工具" };
+  if (pathname.startsWith("/intents")) return { title: "应用分组", sub: "批量管理 · 内置建议" };
+  if (pathname.startsWith("/health")) return { title: "健康", sub: "开发工具" };
   return { title: "TimeLens" };
 }
 
@@ -40,7 +48,22 @@ export default function AppShell() {
   const { title, sub } = titleForPath(location.pathname);
   const date = useAppStore((s) => s.date);
   const setDate = useAppStore((s) => s.setDate);
+  const isTracking = useAppStore((s) => s.isTracking);
   const devEnabled = useDevModeStore((s) => s.enabled);
+  const [captureBusy, setCaptureBusy] = useState(false);
+
+  const toggleCapture = useCallback(async () => {
+    if (captureBusy) return;
+    setCaptureBusy(true);
+    try {
+      if (isTracking) await api.stopTracking();
+      else await api.startTracking();
+    } catch (e) {
+      useAppStore.setState({ error: String(e) });
+    } finally {
+      setCaptureBusy(false);
+    }
+  }, [captureBusy, isTracking]);
 
   return (
     <div className="tl-app flex h-screen min-h-0 flex-col bg-[var(--tl-bg)] text-[var(--tl-ink)]">
@@ -93,21 +116,48 @@ export default function AppShell() {
 
         <div className="flex min-w-0 min-h-0 flex-1 flex-col bg-gradient-to-b from-[#080a10] to-[var(--tl-bg)]">
           <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--tl-line)] bg-[rgba(8,10,16,0.75)] px-5 py-3 backdrop-blur-md">
-            <div>
+            <div className="min-w-0 flex-1">
               <h1 className="text-[1.05rem] font-bold tracking-wide">{title}</h1>
               {sub ? (
                 <p className="mt-0.5 font-mono text-[0.72rem] text-[var(--tl-muted)]">{sub}</p>
               ) : null}
             </div>
-            <label className="flex items-center gap-2 font-mono text-xs text-[var(--tl-muted)]">
-              日期
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="rounded-lg border border-[var(--tl-line)] bg-[rgba(14,16,24,0.9)] px-2 py-1.5 text-[var(--tl-ink)]"
-              />
-            </label>
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => void toggleCapture()}
+                disabled={captureBusy}
+                aria-pressed={isTracking}
+                title={isTracking ? "点击停止采集" : "点击开始采集"}
+                className={[
+                  "flex min-w-[9.5rem] flex-col items-stretch rounded-lg border px-3 py-2 text-left transition-colors disabled:opacity-50",
+                  isTracking
+                    ? "border-emerald-800/70 bg-emerald-950/35 hover:bg-emerald-950/50"
+                    : "border-[var(--tl-line)] bg-[rgba(14,16,24,0.85)] hover:bg-[rgba(20,22,32,0.95)]",
+                ].join(" ")}
+              >
+                <span className="font-mono text-[0.58rem] font-semibold uppercase tracking-[0.12em] text-[var(--tl-muted)]">
+                  采集状态
+                </span>
+                <span
+                  className={[
+                    "mt-0.5 text-sm font-semibold",
+                    isTracking ? "text-emerald-300" : "text-[var(--tl-muted)]",
+                  ].join(" ")}
+                >
+                  {captureBusy ? "…" : isTracking ? "采集中" : "停止采集"}
+                </span>
+              </button>
+              <label className="flex items-center gap-2 font-mono text-xs text-[var(--tl-muted)]">
+                日期
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="rounded-lg border border-[var(--tl-line)] bg-[rgba(14,16,24,0.9)] px-2 py-1.5 text-[var(--tl-ink)]"
+                />
+              </label>
+            </div>
           </header>
           <main className="min-h-0 flex-1 overflow-hidden">
             <Outlet />

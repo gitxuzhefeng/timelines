@@ -5,36 +5,71 @@ use rusqlite::{params, Connection, OptionalExtension};
 const PRIORITY_USER_APP: i32 = 100;
 const PRIORITY_USER_BUNDLE: i32 = 110;
 
+/// 当前生效规则来源（用于 UI）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IntentRuleSource {
+    None,
+    Builtin,
+    User,
+}
+
+impl IntentRuleSource {
+    pub fn as_api_str(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::Builtin => "builtin",
+            Self::User => "user",
+        }
+    }
+}
+
+/// 按 `priority` 降序、`id` 降序取第一条匹配规则，并区分内置 / 用户。
+pub fn resolve_intent_detail(
+    conn: &Connection,
+    app_name: &str,
+    bundle_id: Option<&str>,
+) -> rusqlite::Result<(Option<String>, IntentRuleSource)> {
+    let bundle = bundle_id.map(str::trim).filter(|s| !s.is_empty());
+    let row: Option<(String, i32)> = if let Some(b) = bundle {
+        conn.query_row(
+            "SELECT intent, is_builtin FROM intent_mapping \
+             WHERE (match_field = 'bundle_id' AND match_pattern = ?1) \
+                OR (match_field = 'app_name' AND match_pattern = ?2) \
+             ORDER BY priority DESC, id DESC LIMIT 1",
+            params![b, app_name],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .optional()?
+    } else {
+        conn.query_row(
+            "SELECT intent, is_builtin FROM intent_mapping \
+             WHERE match_field = 'app_name' AND match_pattern = ?1 \
+             ORDER BY priority DESC, id DESC LIMIT 1",
+            [app_name],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .optional()?
+    };
+    Ok(match row {
+        None => (None, IntentRuleSource::None),
+        Some((intent, is_builtin)) => {
+            let src = if is_builtin != 0 {
+                IntentRuleSource::Builtin
+            } else {
+                IntentRuleSource::User
+            };
+            (Some(intent), src)
+        }
+    })
+}
+
 /// 按 `priority` 降序、`id` 降序取第一条匹配规则。
 pub fn resolve_intent(
     conn: &Connection,
     app_name: &str,
     bundle_id: Option<&str>,
 ) -> rusqlite::Result<Option<String>> {
-    let bundle = bundle_id.map(str::trim).filter(|s| !s.is_empty());
-    if let Some(b) = bundle {
-        let row: Option<String> = conn
-            .query_row(
-                "SELECT intent FROM intent_mapping \
-                 WHERE (match_field = 'bundle_id' AND match_pattern = ?1) \
-                    OR (match_field = 'app_name' AND match_pattern = ?2) \
-                 ORDER BY priority DESC, id DESC LIMIT 1",
-                params![b, app_name],
-                |r| r.get(0),
-            )
-            .optional()?;
-        return Ok(row);
-    }
-    let row: Option<String> = conn
-        .query_row(
-            "SELECT intent FROM intent_mapping \
-             WHERE match_field = 'app_name' AND match_pattern = ?1 \
-             ORDER BY priority DESC, id DESC LIMIT 1",
-            [app_name],
-            |r| r.get(0),
-        )
-        .optional()?;
-    Ok(row)
+    Ok(resolve_intent_detail(conn, app_name, bundle_id)?.0)
 }
 
 /// 用户纠错后写入/覆盖非内置规则（同 app / bundle 仅保留当前 intent）。

@@ -1,16 +1,25 @@
 # PRD：三期 — 用户场景与正式壳（V3）
 
+**修订记录**
+
+| 日期 | 摘要 |
+|------|------|
+| 2026-04-05 | **四期对齐**：「应用分组」`/intents` 已提升为**主导航**第五项，不再列入开发模式隐藏路由。详见 `prd/PRD_四期_体验优化与分组管理.md`。 |
+
 ## 1. 目标
 
 以「一天的时间结构可被快速理解」为核心，用**正式应用壳**（侧栏四模块）服务日常用户；一期/二期能力全部保留，但**默认隐藏入口**，由**开发模式**解锁，避免干扰主路径。
 
 ## 2. 信息架构（主导航）
 
+> **四期起**：下表含第五项「应用分组」。若需三期原始「四模块」快照，以本文件 Git 历史中 2026-04-05 之前版本为准。
+
 | 路由（建议） | 模块 | 用户目标 |
-|-------------|------|----------|
+| ------------ | ---- | -------- |
 | `/lens` | 今日透视 | 一眼看到当日结构、关键指标、管线健康；无分析时明确引导生成或检查权限 |
 | `/timeline` | 时间线 | 按上午/中午/下午/晚上核对会话与应用 |
 | `/report` | 日报告 | 阅读事实层 / AI 增强 Markdown，生成与导出 |
+| `/intents` | 应用分组 | 按应用管理 Intent、批量操作、内置/手动来源（**四期纳入主导航**） |
 | `/settings` | 设置 | 权限、引擎、OCR、AI、存储、黑名单等 |
 
 默认 `/` → `/lens`。
@@ -20,7 +29,9 @@
 以下路由**保留**，不在主导航展示：
 
 - `/recap` — 旧版复盘直达（可与 `/report` 并存）
-- `/sessions`、`/ocr`、`/ocr-eval`、`/intents`、`/health`
+- `/sessions`、`/ocr`、`/ocr-eval`、`/health`
+
+（**四期**：`/intents` 已移出本列表，见 `PRD_四期_体验优化与分组管理.md`。）
 
 ### 2.2 开发模式
 
@@ -32,17 +43,19 @@
 
 ### 3.1 今日透视
 
-| UI 区域 | 数据来源 | 说明 |
-|---------|----------|------|
-| 标题/日期 | 所选 `date` + 本地化星期 | 与全局日期一致 |
-| 自然语言洞察 | `get_daily_report(date, fact_only)` 正文截取或首段 | 无报告时不杜撰长文 |
-| 管线节点状态 | `get_pipeline_health()` | 映射 tracker / capture / ocr 等 running/degraded/stopped |
-| 心流/占比条 | `daily_analysis.intent_breakdown`（JSON） | 按 intent 聚合时长占比 |
-| Top 应用 | `daily_analysis.top_apps`（JSON） | 列表与时长 |
-| 剪贴板路径 | `top_flows` + `clipboard_pairs` | 无数据时显示「暂无剪贴板流」 |
-| 打断 | `notification_count`、`top_interrupters`、`interrupts_in_deep` | 可视化强度与数据可用性一致 |
-| 降级说明 | `degraded_sections`（JSON 数组） | 可读标签 + 简短说明 |
-| 空态 | 无 `daily_analysis` | 引导「生成分析」或「去设置」 |
+
+| UI 区域  | 数据来源                                                         | 说明                                                    |
+| ------ | ------------------------------------------------------------ | ----------------------------------------------------- |
+| 标题/日期  | 所选 `date` + 本地化星期                                            | 与全局日期一致                                               |
+| 自然语言洞察 | `get_daily_report(date, fact_only)` 正文截取或首段                  | 无报告时不杜撰长文                                             |
+| 管线节点状态 | `get_pipeline_health()`                                      | 映射 tracker / capture / ocr 等 running/degraded/stopped |
+| 心流/占比条 | `daily_analysis.intent_breakdown`（JSON）                      | 按 intent 聚合时长占比                                       |
+| Top 应用 | `daily_analysis.top_apps`（JSON）                              | 列表与时长                                                 |
+| 剪贴板路径  | `top_flows` + `clipboard_pairs`                              | 无数据时显示「暂无剪贴板流」                                        |
+| 打断     | `notification_count`、`top_interrupters`、`interrupts_in_deep` | 可视化强度与数据可用性一致                                         |
+| 降级说明   | `degraded_sections`（JSON 数组）                                 | 可读标签 + 简短说明                                           |
+| 空态     | 无 `daily_analysis`                                           | 引导「生成分析」或「去设置」                                        |
+
 
 生成流程与二期一致：`generate_daily_analysis` → `generate_daily_report`（事实 / AI）。
 
@@ -70,3 +83,4 @@
 
 - 默认仅四主导航；开发模式控制 dev 分组显隐且刷新后保持。
 - 有/无 `daily_analysis` 时透视页状态正确；构建无 TS 错误；`cargo test` 通过。
+

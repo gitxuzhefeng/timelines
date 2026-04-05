@@ -5,6 +5,7 @@ use parking_lot::Mutex;
 use rusqlite::{Connection, OpenFlags};
 
 use super::migrations::run_migrations;
+use crate::core::intent_builtin_catalog::ensure_builtin_catalog;
 
 pub fn open_write(path: &Path) -> rusqlite::Result<Connection> {
     let mut conn = Connection::open(path)?;
@@ -17,6 +18,7 @@ pub fn open_write(path: &Path) -> rusqlite::Result<Connection> {
     "#,
     )?;
     run_migrations(&mut conn)?;
+    ensure_builtin_catalog(&mut conn)?;
     Ok(conn)
 }
 

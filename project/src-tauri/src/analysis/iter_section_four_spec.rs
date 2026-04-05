@@ -263,15 +263,17 @@ fn tc19_report_markdown_sections_four_six_seven() {
         Some(r#"{"scene_ms":{"办公室":30000},"dnd_ms":0,"sample_interval_ms":30000}"#),
     );
     assert!(
-        md.contains("## 6. 信息流向"),
+        md.contains("## 6. 复制粘贴与信息流动"),
         "missing §6: {}",
         &md[..md.len().min(200)]
     );
-    assert!(md.contains("完成搬运对数"));
-    assert!(md.contains("Top 5 应用间流向"));
-    assert!(md.contains("## 7. 环境上下文"));
-    assert!(md.contains("scene_ms"));
-    assert!(md.contains("平均恢复成本（通知类切换后回到原前台，ms）"));
+    assert!(md.contains("复制"));
+    assert!(md.contains("粘贴"));
+    assert!(md.contains("最常见的复制粘贴路径"));
+    assert!(md.contains("## 7. 环境与场景"));
+    assert!(md.contains("办公室"));
+    assert!(md.contains("回到原应用"));
+    assert!(md.contains("约 1 分钟"));
     assert!(
         !md.contains("P1：`clipboard_flows` 聚合未在本版本展开"),
         "should not use legacy P1 clipboard placeholder"
@@ -300,8 +302,8 @@ fn tc19_report_markdown_sections_four_six_seven() {
         None,
         None,
     );
-    assert!(md_deg_clip.contains("剪贴板流水不可用"));
-    assert!(md_deg_clip.contains("按降级策略跳过"));
+    assert!(md_deg_clip.contains("剪贴板流水"));
+    assert!(md_deg_clip.contains("从略"));
 }
 
 /// TC-20：`daily_reports` 对同一日多条 `fact_only`，`ORDER BY generated_at_ms DESC LIMIT 1` 取最新正文。

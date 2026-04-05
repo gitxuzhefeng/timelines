@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use chrono::{Local, Utc};
 use rusqlite::params;
 use rusqlite::OptionalExtension;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
@@ -823,6 +823,8 @@ pub struct AppIntentAggregateDto {
     pub session_count: i64,
     /// 当前 `intent_mapping` 解析结果（含内置与用户规则）。
     pub resolved_intent: Option<String>,
+    /// `none` | `builtin` | `user`
+    pub intent_source: String,
 }
 
 /// 列出所有出现过的 (app_name, bundle_id) 组合及会话数、解析到的 Intent。
@@ -842,36 +844,35 @@ pub fn list_app_intent_aggregates(state: State<'_, AppState>) -> Result<Vec<AppI
         let app_name: String = r.get(0).map_err(|e| e.to_string())?;
         let bundle_id: Option<String> = r.get(1).map_err(|e| e.to_string())?;
         let session_count: i64 = r.get(2).map_err(|e| e.to_string())?;
-        let resolved_intent = intent_mapping::resolve_intent(&g, &app_name, bundle_id.as_deref())
-            .map_err(|e| e.to_string())?;
+        let (resolved_intent, src) =
+            intent_mapping::resolve_intent_detail(&g, &app_name, bundle_id.as_deref())
+                .map_err(|e| e.to_string())?;
         out.push(AppIntentAggregateDto {
             app_name,
             bundle_id,
             session_count,
             resolved_intent,
+            intent_source: src.as_api_str().to_string(),
         });
     }
     Ok(out)
 }
 
 /// 为同一应用键批量设置 Intent：写入 `intent_mapping`（新 Session 自动匹配），并更新所有已存在 Session 的 `intent` 字段。
-#[tauri::command]
-pub fn set_intent_for_app_aggregate(
-    state: State<'_, AppState>,
-    app_name: String,
-    bundle_id: Option<String>,
-    intent: Option<String>,
+fn apply_intent_for_app_aggregate_conn(
+    c: &mut rusqlite::Connection,
+    app_name: &str,
+    bundle_id: Option<&String>,
+    intent: Option<&String>,
 ) -> Result<i64, String> {
-    let mut c = open_db_rw(&state.0.paths.db_path)?;
     let bundle_norm = bundle_id
-        .as_ref()
         .map(|s| s.trim())
         .filter(|s| !s.is_empty())
         .map(|s| s.to_string());
-    let intent_trim = intent.as_ref().map(|s| s.trim()).filter(|s| !s.is_empty());
+    let intent_trim = intent.map(|s| s.trim()).filter(|s| !s.is_empty());
 
     let updated: i64 = if let Some(ref t) = intent_trim {
-        intent_mapping::upsert_user_intent_rule(&mut c, &app_name, bundle_norm.as_deref(), t)
+        intent_mapping::upsert_user_intent_rule(c, app_name, bundle_norm.as_deref(), t)
             .map_err(|e| e.to_string())?;
         if let Some(ref b) = bundle_norm {
             c.execute(
@@ -888,7 +889,7 @@ pub fn set_intent_for_app_aggregate(
         }
         .map_err(|e| e.to_string())? as i64
     } else {
-        intent_mapping::remove_user_intent_rules(&mut c, &app_name, bundle_norm.as_deref())
+        intent_mapping::remove_user_intent_rules(c, app_name, bundle_norm.as_deref())
             .map_err(|e| e.to_string())?;
         if let Some(ref b) = bundle_norm {
             c.execute(
@@ -906,6 +907,90 @@ pub fn set_intent_for_app_aggregate(
         .map_err(|e| e.to_string())? as i64
     };
     Ok(updated)
+}
+
+#[tauri::command]
+pub fn set_intent_for_app_aggregate(
+    state: State<'_, AppState>,
+    app_name: String,
+    bundle_id: Option<String>,
+    intent: Option<String>,
+) -> Result<i64, String> {
+    let mut c = open_db_rw(&state.0.paths.db_path)?;
+    apply_intent_for_app_aggregate_conn(&mut c, &app_name, bundle_id.as_ref(), intent.as_ref())
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppIntentBatchItem {
+    pub app_name: String,
+    pub bundle_id: Option<String>,
+    pub intent: Option<String>,
+}
+
+/// 批量为多个应用键设置 Intent（单事务）。
+#[tauri::command]
+pub fn set_intent_for_app_aggregates_batch(
+    state: State<'_, AppState>,
+    items: Vec<AppIntentBatchItem>,
+) -> Result<i64, String> {
+    let mut c = open_db_rw(&state.0.paths.db_path)?;
+    let mut total: i64 = 0;
+    for item in items {
+        let n = apply_intent_for_app_aggregate_conn(
+            &mut c,
+            &item.app_name,
+            item.bundle_id.as_ref(),
+            item.intent.as_ref(),
+        )?;
+        total += n;
+    }
+    Ok(total)
+}
+
+/// 将「尚无 Intent」的历史会话按当前映射规则（含内置字典）补齐。
+#[tauri::command]
+pub fn backfill_session_intents_from_mappings(state: State<'_, AppState>) -> Result<i64, String> {
+    let mut c = open_db_rw(&state.0.paths.db_path)?;
+    let mut stmt = c
+        .prepare(
+            "SELECT DISTINCT app_name, \
+             CASE WHEN trim(coalesce(bundle_id,'')) = '' THEN NULL ELSE trim(bundle_id) END AS bid \
+             FROM window_sessions WHERE intent IS NULL OR trim(intent) = ''",
+        )
+        .map_err(|e| e.to_string())?;
+    let pairs: Vec<(String, Option<String>)> = stmt
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+        .map_err(|e| e.to_string())?
+        .collect::<Result<_, _>>()
+        .map_err(|e| e.to_string())?;
+    drop(stmt);
+
+    let mut total: i64 = 0;
+    for (app_name, bundle_id) in pairs {
+        let resolved = intent_mapping::resolve_intent(&c, &app_name, bundle_id.as_deref())
+            .map_err(|e| e.to_string())?;
+        if let Some(ref t) = resolved {
+            let n = if let Some(ref b) = bundle_id {
+                c.execute(
+                    "UPDATE window_sessions SET intent = ?1 \
+                     WHERE (intent IS NULL OR trim(intent) = '') \
+                     AND app_name = ?2 AND trim(coalesce(bundle_id,'')) = ?3",
+                    params![t, app_name, b],
+                )
+            } else {
+                c.execute(
+                    "UPDATE window_sessions SET intent = ?1 \
+                     WHERE (intent IS NULL OR trim(intent) = '') \
+                     AND app_name = ?2 AND trim(coalesce(bundle_id,'')) = ''",
+                    params![t, app_name],
+                )
+            }
+            .map_err(|e| e.to_string())? as i64;
+            total += n;
+        }
+    }
+    Ok(total)
 }
 
 #[tauri::command]

@@ -234,7 +234,7 @@ fn get_setting_str(conn: &Connection, key: &str, default: &str) -> String {
     .unwrap_or_else(|_| default.to_string())
 }
 
-fn set_setting_str(conn: &mut Connection, key: &str, value: &str) -> rusqlite::Result<()> {
+pub fn set_setting_str(conn: &mut Connection, key: &str, value: &str) -> rusqlite::Result<()> {
     let now = chrono::Utc::now().timestamp_millis();
     conn.execute(
         "INSERT INTO settings (key, value, updated_at) VALUES (?1, ?2, ?3)

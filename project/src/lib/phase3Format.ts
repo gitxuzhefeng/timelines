@@ -3,7 +3,7 @@ export type Daypart = "morning" | "midday" | "afternoon" | "evening";
 
 export const DAYPART_ORDER: { key: Daypart; label: string }[] = [
   { key: "morning", label: "上午" },
-  { key: "midday", label: "中午" },
+  { key: "midday", label: "午间" },
   { key: "afternoon", label: "下午" },
   { key: "evening", label: "晚上" },
 ];
@@ -24,6 +24,16 @@ export function formatDurationMs(ms: number): string {
   const h = Math.floor(m / 60);
   const mm = m % 60;
   return `${h} 小时 ${mm} 分`;
+}
+
+/** 时间线卡片副行：如 28分、1时18分 */
+export function formatDurationShortMs(ms: number): string {
+  const m = Math.floor(ms / 60000);
+  if (m < 1) return "<1分";
+  if (m < 60) return `${m}分`;
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  return mm === 0 ? `${h}时` : `${h}时${mm}分`;
 }
 
 export function zhDateLabel(isoDate: string): string {

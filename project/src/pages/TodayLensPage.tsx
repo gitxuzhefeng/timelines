@@ -10,6 +10,11 @@ import {
   parseTopInterrupters,
 } from "../lib/dailyAnalysisParsed";
 import {
+  buildLensNarrativeInput,
+  LENS_NARRATIVE_SCENES,
+  type LensNarrativeSceneId,
+} from "../lib/lensNarrativeTemplates";
+import {
   extractReportNarrativeSnippet,
   formatDurationMs,
   zhDateLabel,
@@ -53,6 +58,15 @@ export default function TodayLensPage() {
   const [analysis, setAnalysis] = useState<DailyAnalysisDto | null | undefined>(undefined);
   const [health, setHealth] = useState<PipelineHealth | null>(null);
   const [snippet, setSnippet] = useState("");
+  const [narrativeScene, setNarrativeScene] = useState<LensNarrativeSceneId>(() => {
+    try {
+      const v = localStorage.getItem("timelens_lens_narrative_scene");
+      if (v === "focus_blocks" || v === "interruptions" || v === "apps_flow") return v;
+    } catch {
+      /* ignore */
+    }
+    return "focus_blocks";
+  });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -101,6 +115,17 @@ export default function TodayLensPage() {
     () => (analysis ? parseTopInterrupters(analysis).slice(0, 5) : []),
     [analysis],
   );
+
+  const narrativeInput = useMemo(
+    () => (analysis ? buildLensNarrativeInput(analysis) : null),
+    [analysis],
+  );
+
+  const narrativeBody = useMemo(() => {
+    if (!narrativeInput) return "";
+    const scene = LENS_NARRATIVE_SCENES.find((s) => s.id === narrativeScene);
+    return scene ? scene.body(narrativeInput) : "";
+  }, [narrativeInput, narrativeScene]);
 
   const intentEntries = useMemo(() => {
     return Object.entries(intents)
@@ -152,11 +177,11 @@ export default function TodayLensPage() {
           <div className="mb-3 text-3xl opacity-80">📭</div>
           <h2 className="text-lg font-semibold text-[var(--tl-ink)]">这一天还没有可用的透视</h2>
           <p className="mt-2 text-sm text-[var(--tl-muted)]">
-            尚未生成当日 daily_analysis，或当日无会话数据。可先检查采集与权限，再生成分析。
+            尚未生成当日分析汇总，或这一天没有会话记录。可先检查采集与权限，再重新生成。
           </p>
           {activity && (
-            <p className="mt-2 font-mono text-xs text-[var(--tl-muted)]">
-              当日计数 · Session {activity.sessionCount} · 截图 {activity.snapshotCount}
+            <p className="mt-2 text-xs text-[var(--tl-muted)]">
+              当日已有记录：工作片段 {activity.sessionCount} 段 · 截图 {activity.snapshotCount} 张
             </p>
           )}
           {err && <p className="mt-3 text-sm text-rose-300">{err}</p>}
@@ -200,11 +225,54 @@ export default function TodayLensPage() {
         </p>
         <h2 className="mb-3 text-xl font-bold leading-snug tracking-tight md:text-2xl">{headline}</h2>
         <p className="mb-1 font-mono text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-[var(--tl-cyan)]">
-          自然语言洞察
+          语言洞察
         </p>
-        <p className="mb-4 rounded-lg border border-[rgba(0,245,212,0.2)] bg-black/25 p-3 text-sm leading-relaxed text-[var(--tl-ink)]/90">
-          {snippet || "暂无事实报告正文。可在「日报告」页生成事实层后回到此处刷新。"}
+        <p className="mb-2 text-[0.65rem] leading-relaxed text-[var(--tl-muted)]">
+          基于当日已采集指标自动组句，无需 AI；三种读法对应不同关注点，可切换查看。
         </p>
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {LENS_NARRATIVE_SCENES.map((s) => {
+            const on = narrativeScene === s.id;
+            return (
+              <button
+                key={s.id}
+                type="button"
+                title={s.blurb}
+                onClick={() => {
+                  setNarrativeScene(s.id);
+                  try {
+                    localStorage.setItem("timelens_lens_narrative_scene", s.id);
+                  } catch {
+                    /* ignore */
+                  }
+                }}
+                className={`rounded-lg border px-2.5 py-1.5 text-left text-[0.72rem] transition-colors ${
+                  on
+                    ? "border-[rgba(0,245,212,0.45)] bg-[rgba(0,245,212,0.12)] text-[var(--tl-ink)]"
+                    : "border-[var(--tl-line)] bg-black/20 text-[var(--tl-muted)] hover:border-[rgba(0,245,212,0.25)] hover:text-[var(--tl-ink)]/85"
+                }`}
+              >
+                <span className="block font-medium text-[var(--tl-ink)]">{s.title}</span>
+                <span className="mt-0.5 block text-[0.62rem] text-[var(--tl-muted)]">{s.blurb}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="mb-4 whitespace-pre-line rounded-lg border border-[rgba(0,245,212,0.2)] bg-black/25 p-3 text-sm leading-relaxed text-[var(--tl-ink)]/90">
+          {narrativeBody}
+        </p>
+        {snippet ? (
+          <div className="mb-4 rounded-lg border border-[var(--tl-line)] bg-black/15 p-3">
+            <p className="mb-1 font-mono text-[0.5rem] font-semibold uppercase tracking-[0.12em] text-[var(--tl-muted)]">
+              事实报告摘录
+            </p>
+            <p className="text-sm leading-relaxed text-[var(--tl-ink)]/80">{snippet}</p>
+          </div>
+        ) : (
+          <p className="mb-4 text-[0.65rem] text-[var(--tl-muted)]">
+            尚未生成事实层报告时，以上摘要仅来自透视指标；可在「日报告」生成事实层后在此对照阅读。
+          </p>
+        )}
 
         <p className="mb-2 font-mono text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-[var(--tl-cyan)]">
           数据管线
@@ -316,8 +384,8 @@ export default function TodayLensPage() {
           </p>
         )}
 
-        <p className="mb-2 text-[0.72rem] font-medium uppercase tracking-wider text-[var(--tl-muted)]">
-          时间结构 · INTENT
+        <p className="mb-2 text-[0.72rem] font-medium tracking-wide text-[var(--tl-muted)]">
+          时间结构 · 按事项类型
         </p>
         <div className="flex h-3 w-full overflow-hidden rounded-md bg-black/40">
           {totalIntentMs > 0

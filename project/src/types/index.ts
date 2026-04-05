@@ -6,6 +6,8 @@ export interface AppIntentAggregate {
   bundleId: string | null;
   sessionCount: number;
   resolvedIntent: string | null;
+  /** `none` | `builtin` | `user` */
+  intentSource: string;
 }
 
 export interface WindowSession {

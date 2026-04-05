@@ -232,6 +232,24 @@ export async function setIntentForAppAggregate(
   });
 }
 
+export interface AppIntentBatchItem {
+  appName: string;
+  bundleId: string | null;
+  intent: string | null;
+}
+
+/** 批量设置；返回累计更新的会话行数 */
+export async function setIntentForAppAggregatesBatch(
+  items: AppIntentBatchItem[],
+): Promise<number> {
+  return invoke<number>("set_intent_for_app_aggregates_batch", { items });
+}
+
+/** 为尚无 Intent 的历史会话按当前规则（含内置词表）写入分组 */
+export async function backfillSessionIntentsFromMappings(): Promise<number> {
+  return invoke<number>("backfill_session_intents_from_mappings");
+}
+
 export async function getAppBlacklist(): Promise<string[]> {
   return invoke<string[]>("get_app_blacklist");
 }

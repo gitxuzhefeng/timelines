@@ -129,7 +129,7 @@ export default function OcrSearchPage() {
             to="/intents"
             className="text-xs text-zinc-400 underline-offset-2 hover:underline"
           >
-            Intent 管理
+            应用分组
           </Link>
           <Link
             to="/sessions"

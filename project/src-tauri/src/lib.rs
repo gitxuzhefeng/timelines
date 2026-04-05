@@ -118,7 +118,11 @@ pub fn run() {
             let ocr_last_success_ms = Arc::new(AtomicI64::new(-1));
             let ocr_last_error = Arc::new(Mutex::new(None));
             let ocr_pending = Arc::new(AtomicUsize::new(0));
-            let tracking = Arc::new(AtomicBool::new(false));
+            // 桌面端启动后默认开启采集（与产品预期一致）；无采集能力的平台保持 false。
+            let tracking = Arc::new(AtomicBool::new(cfg!(any(
+                target_os = "macos",
+                target_os = "windows"
+            ))));
             let running = Arc::new(AtomicBool::new(true));
             let is_afk = Arc::new(AtomicBool::new(false));
             let screen_ok = Arc::new(AtomicBool::new(false));
@@ -235,6 +239,14 @@ pub fn run() {
                 ocr_pending,
             }));
             app.manage(state);
+            if let Some(s) = handle.try_state::<AppState>() {
+                if s.0.tracking.load(Ordering::Relaxed) {
+                    let _ = handle.emit(
+                        "tracking_state_changed",
+                        serde_json::json!({ "isRunning": true }),
+                    );
+                }
+            }
             #[cfg(all(desktop, any(target_os = "macos", target_os = "windows")))]
             if let Some(win) = app.get_webview_window("main") {
                 win.on_window_event(move |e| {
@@ -342,6 +354,8 @@ pub fn run() {
             api::update_session_intent,
             api::list_app_intent_aggregates,
             api::set_intent_for_app_aggregate,
+            api::set_intent_for_app_aggregates_batch,
+            api::backfill_session_intents_from_mappings,
             api::get_app_blacklist,
             api::set_app_blacklist,
             api::generate_daily_analysis,

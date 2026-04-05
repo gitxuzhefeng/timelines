@@ -1,5 +1,6 @@
 pub mod aggregation;
 pub mod collection;
+pub mod intent_builtin_catalog;
 pub mod intent_mapping;
 pub mod ocr;
 pub mod models;

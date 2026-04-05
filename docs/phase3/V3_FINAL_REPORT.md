@@ -7,6 +7,7 @@
 ## 文档与入口
 
 - 产品说明：[prd/PRD_三期_用户场景与正式壳.md](../../prd/PRD_三期_用户场景与正式壳.md)
+- **四期（三期之后）**：[prd/PRD_四期_体验优化与分组管理.md](../../prd/PRD_四期_体验优化与分组管理.md)（主导航扩展、采集顶栏、应用分组与内置词表等；三期 PRD 已修订对齐）
 - UI 参考原型：[demo/timelens-phase3-formal-app-prototype.html](../../demo/timelens-phase3-formal-app-prototype.html)
 
 ## 主要变更

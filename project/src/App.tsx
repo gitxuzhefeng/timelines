@@ -19,12 +19,6 @@ import TimelinePage from "./pages/TimelinePage";
 import DailyReportPage from "./pages/DailyReportPage";
 import SettingsShellPage from "./pages/SettingsShellPage";
 
-function LegacyWrap({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="h-screen overflow-hidden bg-zinc-950 text-zinc-100">{children}</div>
-  );
-}
-
 export default function App() {
   const refreshAll = useAppStore((s) => s.refreshAll);
   const setTracking = useAppStore((s) => s.setTracking);
@@ -90,56 +84,13 @@ export default function App() {
           <Route path="/timeline" element={<TimelinePage />} />
           <Route path="/report" element={<DailyReportPage />} />
           <Route path="/settings" element={<SettingsShellPage />} />
+          <Route path="/recap" element={<RecapPage />} />
+          <Route path="/sessions" element={<SessionsPage />} />
+          <Route path="/ocr" element={<OcrSearchPage />} />
+          <Route path="/ocr-eval" element={<OcrEvalPage />} />
+          <Route path="/intents" element={<IntentManagePage />} />
+          <Route path="/health" element={<HealthPage />} />
         </Route>
-
-        <Route
-          path="/recap"
-          element={
-            <LegacyWrap>
-              <RecapPage />
-            </LegacyWrap>
-          }
-        />
-        <Route
-          path="/sessions"
-          element={
-            <LegacyWrap>
-              <SessionsPage />
-            </LegacyWrap>
-          }
-        />
-        <Route
-          path="/ocr"
-          element={
-            <LegacyWrap>
-              <OcrSearchPage />
-            </LegacyWrap>
-          }
-        />
-        <Route
-          path="/ocr-eval"
-          element={
-            <LegacyWrap>
-              <OcrEvalPage />
-            </LegacyWrap>
-          }
-        />
-        <Route
-          path="/intents"
-          element={
-            <LegacyWrap>
-              <IntentManagePage />
-            </LegacyWrap>
-          }
-        />
-        <Route
-          path="/health"
-          element={
-            <LegacyWrap>
-              <HealthPage />
-            </LegacyWrap>
-          }
-        />
 
         <Route path="*" element={<Navigate to="/lens" replace />} />
       </Routes>
