@@ -4,6 +4,9 @@
  */
 export type ClientDesktopOs = "windows" | "macos" | "other";
 
+/** 与 `src-tauri/tauri.conf.json` 的 `identifier` 保持一致，用于 macOS 权限排障文案（TCC 按此 ID 记录授权）。 */
+export const MACOS_APP_BUNDLE_ID = "com.timelens.desktop";
+
 export function detectClientDesktopOs(): ClientDesktopOs {
   if (typeof navigator === "undefined") return "other";
   const ua = navigator.userAgent;

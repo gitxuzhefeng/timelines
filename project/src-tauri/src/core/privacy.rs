@@ -107,7 +107,7 @@ mod tests {
     #[test]
     fn should_redact_keychain_bundle() {
         assert!(should_redact_bundle("com.apple.keychainaccess"));
-        assert!(!should_redact_bundle("com.timelens.app"));
+        assert!(!should_redact_bundle("com.timelens.desktop"));
     }
 
     #[test]
