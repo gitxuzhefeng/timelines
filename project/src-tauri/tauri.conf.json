@@ -39,10 +39,7 @@
     ],
     "macOS": {
       "minimumSystemVersion": "12.0",
-      "infoPlist": {
-        "NSScreenCaptureUsageDescription": "TimeLens 需要屏幕录制权限以进行会话截图与活动记录。",
-        "NSAccessibilityUsageDescription": "TimeLens 需要辅助功能权限以读取当前窗口标题并进行前台应用追踪。"
-      }
+      "infoPlist": "Info.plist"
     }
   }
 }

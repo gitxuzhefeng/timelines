@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSScreenCaptureUsageDescription</key>
+	<string>TimeLens 需要屏幕录制权限以进行会话截图与活动记录。</string>
+	<key>NSAccessibilityUsageDescription</key>
+	<string>TimeLens 需要辅助功能权限以读取当前窗口标题并进行前台应用追踪。</string>
+</dict>
+</plist>
