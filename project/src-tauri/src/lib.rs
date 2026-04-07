@@ -89,6 +89,15 @@ pub fn run() {
 
     tauri::Builder::default()
         .register_uri_scheme_protocol("timelens", timelens_uri_response)
+        .on_window_event(|window, event| {
+            if window.label() != "main" {
+                return;
+            }
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        })
         .setup(|app| {
             let paths = core::storage::DataPaths::new().map_err(|e| format!("{e}"))?;
             paths.ensure_dirs().map_err(|e| format!("{e}"))?;
@@ -259,9 +268,40 @@ pub fn run() {
                 });
             }
             let wh = handle.clone();
-            std::thread::spawn(move || loop {
-                std::thread::sleep(std::time::Duration::from_secs(10));
-                let _ = wh.emit("writer_stats_updated", wm_emit.snapshot(0));
+            std::thread::spawn(move || {
+                let mut tick: u64 = 0;
+                loop {
+                    std::thread::sleep(std::time::Duration::from_secs(10));
+                    tick += 1;
+                    let _ = wh.emit("writer_stats_updated", wm_emit.snapshot(0));
+                    if tick % 3 != 0 {
+                        continue;
+                    }
+                    #[cfg(any(target_os = "macos", target_os = "windows"))]
+                    {
+                        let sr = core::acquisition::screen_capture_granted();
+                        if let Some(s) = wh.try_state::<AppState>() {
+                            s.0.screen_ok.store(sr, Ordering::Relaxed);
+                        }
+                        let ax = {
+                            #[cfg(target_os = "macos")]
+                            {
+                                core::acquisition::ax_trusted()
+                            }
+                            #[cfg(not(target_os = "macos"))]
+                            {
+                                true
+                            }
+                        };
+                        let ps = core::models::PermissionStatus {
+                            accessibility_granted: ax,
+                            screen_recording_granted: sr,
+                            notification_listener_granted:
+                                core::acquisition::notifications_listener_access_granted(),
+                        };
+                        let _ = wh.emit("permissions_required", ps);
+                    }
+                }
             });
             let ps = core::models::PermissionStatus {
                 accessibility_granted: core::acquisition::ax_trusted(),

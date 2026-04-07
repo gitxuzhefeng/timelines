@@ -64,6 +64,7 @@ objc2-user-notifications = "0.3"
 objc2-vision = { version = "0.3", features = ["VNRecognizeTextRequest"] }
 battery = "0.7"
 block2 = "0.6"
+dispatch = "0.2"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows = { version = "0.58", features = [

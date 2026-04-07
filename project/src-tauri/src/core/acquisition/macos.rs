@@ -1,7 +1,10 @@
+use core::ptr::NonNull;
 use core_foundation::base::{CFRelease, CFTypeRef, TCFType};
 use core_foundation::string::CFString;
+use dispatch::Queue;
 use libc::pid_t;
-use core::ptr::NonNull;
+use std::fs;
+use std::process::Command;
 
 use block2::RcBlock;
 use objc2::rc::Retained;
@@ -89,8 +92,19 @@ pub fn active_display_count() -> i32 {
     }
 }
 
+fn macos_on_main_thread() -> bool {
+    unsafe { libc::pthread_main_np() != 0 }
+}
+
+/// `AXIsProcessTrusted` 在部分环境（如 Tauri 从非主线程 invoke）下会误报未授权；
+/// 与系统设置不一致时，应在主队列上检测。
 pub fn ax_trusted() -> bool {
-    unsafe { AXIsProcessTrusted() != 0 }
+    let probe = || unsafe { AXIsProcessTrusted() != 0 };
+    if macos_on_main_thread() {
+        probe()
+    } else {
+        Queue::main().exec_sync(probe)
+    }
 }
 
 pub fn idle_seconds() -> f64 {
@@ -102,16 +116,43 @@ pub fn idle_seconds() -> f64 {
     }
 }
 
+/// 系统设置里已打开「屏幕录制」后，`CGPreflightScreenCaptureAccess` 仍可能长期返回 false（Apple 论坛多次确认），
+/// 而 `screencapture` 与真实截图链路一致；故在 preflight 为 false 时做一次轻量探针对齐真实能力。
+fn screen_capture_probe_screencapture() -> bool {
+    let tmp = std::env::temp_dir().join(format!(
+        "tl_scr_probe_{}_{}.png",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis())
+            .unwrap_or(0)
+    ));
+    let _ = fs::remove_file(&tmp);
+    let ok = match Command::new("/usr/sbin/screencapture")
+        .args(["-x", "-t", "png", "-D", "1"])
+        .arg(&tmp)
+        .status()
+    {
+        Ok(st) if st.success() => fs::metadata(&tmp).map(|m| m.len() > 200).unwrap_or(false),
+        _ => false,
+    };
+    let _ = fs::remove_file(&tmp);
+    ok
+}
+
 pub fn screen_capture_granted() -> bool {
-    unsafe { CGPreflightScreenCaptureAccess() != 0 }
+    if unsafe { CGPreflightScreenCaptureAccess() != 0 } {
+        return true;
+    }
+    screen_capture_probe_screencapture()
 }
 
 /// 请求屏幕录制权限并重新检测。应在用户点击「刷新权限」或从系统设置返回后调用。
 pub fn screen_capture_refresh_access() -> bool {
     unsafe {
         let _ = CGRequestScreenCaptureAccess();
-        CGPreflightScreenCaptureAccess() != 0
     }
+    screen_capture_granted()
 }
 
 unsafe fn ax_copy_attr(element: AXUIElementRef, key: &str) -> Option<CFTypeRef> {
