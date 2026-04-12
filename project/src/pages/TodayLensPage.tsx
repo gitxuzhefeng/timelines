@@ -31,9 +31,9 @@ const PIPE_KEYS = [
 ];
 
 function engineDot(status: string): string {
-  if (status === "running") return "text-emerald-400";
-  if (status === "degraded") return "text-amber-400";
-  return "text-zinc-500";
+  if (status === "running") return "text-[var(--tl-status-ok)]";
+  if (status === "degraded") return "text-[var(--tl-status-warn)]";
+  return "text-[var(--tl-muted)]";
 }
 
 const SEG_COLORS = [
@@ -184,12 +184,12 @@ export default function TodayLensPage() {
               当日已有记录：工作片段 {activity.sessionCount} 段 · 截图 {activity.snapshotCount} 张
             </p>
           )}
-          {err && <p className="mt-3 text-sm text-rose-300">{err}</p>}
+          {err && <p className="mt-3 text-sm text-[var(--tl-status-bad)]">{err}</p>}
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             <button
               type="button"
               disabled={busy}
-              className="rounded-lg bg-[rgba(0,245,212,0.15)] px-4 py-2 text-sm font-medium text-[var(--tl-cyan)] ring-1 ring-[var(--tl-line)] hover:bg-[rgba(0,245,212,0.22)] disabled:opacity-40"
+              className="rounded-lg bg-[var(--tl-accent-15)] px-4 py-2 text-sm font-medium text-[var(--tl-cyan)] ring-1 ring-[var(--tl-line)] hover:bg-[var(--tl-accent-22)] disabled:opacity-40"
               onClick={async () => {
                 setBusy(true);
                 try {
@@ -248,8 +248,8 @@ export default function TodayLensPage() {
                 }}
                 className={`rounded-lg border px-2.5 py-1.5 text-left text-[0.72rem] transition-colors ${
                   on
-                    ? "border-[rgba(0,245,212,0.45)] bg-[rgba(0,245,212,0.12)] text-[var(--tl-ink)]"
-                    : "border-[var(--tl-line)] bg-black/20 text-[var(--tl-muted)] hover:border-[rgba(0,245,212,0.25)] hover:text-[var(--tl-ink)]/85"
+                    ? "border-[var(--tl-accent-45)] bg-[var(--tl-accent-12)] text-[var(--tl-ink)]"
+                    : "border-[var(--tl-line)] bg-[var(--tl-glass-20)] text-[var(--tl-muted)] hover:border-[var(--tl-accent-25)] hover:text-[var(--tl-ink)]/85"
                 }`}
               >
                 <span className="block font-medium text-[var(--tl-ink)]">{s.title}</span>
@@ -258,11 +258,11 @@ export default function TodayLensPage() {
             );
           })}
         </div>
-        <p className="mb-4 whitespace-pre-line rounded-lg border border-[rgba(0,245,212,0.2)] bg-black/25 p-3 text-sm leading-relaxed text-[var(--tl-ink)]/90">
+        <p className="mb-4 whitespace-pre-line rounded-lg border border-[var(--tl-accent-20)] bg-[var(--tl-glass-25)] p-3 text-sm leading-relaxed text-[var(--tl-ink)]/90">
           {narrativeBody}
         </p>
         {snippet ? (
-          <div className="mb-4 rounded-lg border border-[var(--tl-line)] bg-black/15 p-3">
+          <div className="mb-4 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-glass-15)] p-3">
             <p className="mb-1 font-mono text-[0.5rem] font-semibold uppercase tracking-[0.12em] text-[var(--tl-muted)]">
               事实报告摘录
             </p>
@@ -282,7 +282,7 @@ export default function TodayLensPage() {
             const st = health?.[p.k]?.status ?? "stopped";
             return (
               <div key={p.k} className="contents">
-                <div className="min-w-[4.5rem] max-w-[5.5rem] flex-1 rounded-lg border border-[rgba(0,245,212,0.22)] bg-[rgba(0,245,212,0.06)] px-1.5 py-2 text-center">
+                <div className="min-w-[4.5rem] max-w-[5.5rem] flex-1 rounded-lg border border-[var(--tl-accent-22)] bg-[var(--tl-accent-06)] px-1.5 py-2 text-center">
                   <span className={`block text-lg ${engineDot(st)}`}>{p.icon}</span>
                   <span className="block font-mono text-[0.5rem] font-semibold uppercase tracking-wider text-[var(--tl-cyan-dim)]">
                     {p.label}
@@ -308,7 +308,7 @@ export default function TodayLensPage() {
               <span
                 key={key}
                 title="该数据源当日缺失或降级，相关模块指标可能不完整"
-                className="rounded-md border border-amber-500/30 bg-amber-950/40 px-2 py-0.5 text-[0.65rem] text-amber-200/90"
+                className="rounded-md border border-[var(--tl-warn-amber-border)] bg-[var(--tl-warn-amber-bg)] px-2 py-0.5 text-[0.65rem] text-[var(--tl-warn-amber-text)]"
               >
                 降级 · {DEGRADED_LABELS[key] ?? key}
               </span>
@@ -326,7 +326,7 @@ export default function TodayLensPage() {
             deepSegs.map((s) => (
               <span
                 key={`${s.start_ms}-${s.end_ms}`}
-                className="rounded-lg border border-[rgba(0,245,212,0.18)] bg-black/30 px-2 py-1 text-center text-[0.65rem] text-[var(--tl-ink)]/90"
+                className="rounded-lg border border-[var(--tl-accent-18)] bg-[var(--tl-glass-30)] px-2 py-1 text-center text-[0.65rem] text-[var(--tl-ink)]/90"
               >
                 {s.intent} · {formatDurationMs(s.duration_ms)}
               </span>
@@ -342,11 +342,11 @@ export default function TodayLensPage() {
             <span className="text-[var(--tl-muted)]">暂无 copy→paste 流（或当日剪贴板流水降级）</span>
           ) : (
             <>
-              <span className="rounded-lg border border-[rgba(155,126,217,0.35)] bg-[rgba(155,126,217,0.08)] px-2 py-1.5 text-center text-[0.7rem] text-violet-100">
+              <span className="rounded-lg border border-[var(--tl-violet-35)] bg-[var(--tl-violet-08)] px-2 py-1.5 text-center text-[0.7rem] text-[var(--tl-purple)]">
                 {topFlows[0].from}
               </span>
               <span className="text-[var(--tl-muted)]">→</span>
-              <span className="rounded-lg border border-[rgba(155,126,217,0.35)] bg-[rgba(155,126,217,0.08)] px-2 py-1.5 text-center text-[0.7rem] text-violet-100">
+              <span className="rounded-lg border border-[var(--tl-violet-35)] bg-[var(--tl-violet-08)] px-2 py-1.5 text-center text-[0.7rem] text-[var(--tl-purple)]">
                 {topFlows[0].to}
               </span>
               <span className="font-mono text-xs text-[var(--tl-muted)]">×{topFlows[0].count}</span>
@@ -357,7 +357,7 @@ export default function TodayLensPage() {
         <p className="mb-2 font-mono text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-[var(--tl-cyan)]">
           打断来源
         </p>
-        <div className="mb-4 flex min-h-[52px] items-end gap-1 border-b border-[rgba(0,245,212,0.15)] pb-2">
+        <div className="mb-4 flex min-h-[52px] items-end gap-1 border-b border-[var(--tl-accent-15b)] pb-2">
           {interrupters.length === 0 ? (
             <span className="text-sm text-[var(--tl-muted)]">暂无通知类打断统计</span>
           ) : (
@@ -387,7 +387,7 @@ export default function TodayLensPage() {
         <p className="mb-2 text-[0.72rem] font-medium tracking-wide text-[var(--tl-muted)]">
           时间结构 · 按事项类型
         </p>
-        <div className="flex h-3 w-full overflow-hidden rounded-md bg-black/40">
+        <div className="flex h-3 w-full overflow-hidden rounded-md bg-[var(--tl-glass-40)]">
           {totalIntentMs > 0
             ? intentEntries.slice(0, 6).map(([label, ms], i) => (
                 <div
@@ -450,14 +450,14 @@ export default function TodayLensPage() {
         <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--tl-line)] pt-4">
           <button
             type="button"
-            className="rounded-lg border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-cyan)] hover:bg-[rgba(0,245,212,0.08)]"
+            className="rounded-lg border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-cyan)] hover:bg-[var(--tl-accent-08)]"
             onClick={() => navigate("/timeline")}
           >
             打开时间线 →
           </button>
           <button
             type="button"
-            className="rounded-lg border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-cyan)] hover:bg-[rgba(0,245,212,0.08)]"
+            className="rounded-lg border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-cyan)] hover:bg-[var(--tl-accent-08)]"
             onClick={() => navigate("/report")}
           >
             打开日报告 →

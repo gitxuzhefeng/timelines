@@ -2,19 +2,20 @@
 
 **一句话**：TimeLens 是一款**本地优先**的桌面应用，在 **macOS / Windows** 上**被动采集**前台窗口与应用使用、配合**智能截图**做情境回溯，把碎片时间还原成可复盘的工作会话，数据默认留在本机。
 
-<div align="center">
 
-[![GitHub Repo stars](https://img.shields.io/github/stars/gitxuzhefeng/timelines?style=social&label=Star)](https://github.com/gitxuzhefeng/timelines)
-[![产品宣传页](https://img.shields.io/badge/产品宣传页-在线预览-000000?style=flat&logo=vercel&logoColor=white)](https://timelens-pi.vercel.app/)
-[![Download](https://img.shields.io/github/v/release/gitxuzhefeng/timelines?label=Download&logo=github)](https://github.com/gitxuzhefeng/timelines/releases/latest)
 
-<br />
+[GitHub Repo stars](https://github.com/gitxuzhefeng/timelines)
+[产品宣传页](https://timelens-pi.vercel.app/)
+[Download](https://github.com/gitxuzhefeng/timelines/releases/latest)
 
-<img src="docs/assets/image.png" alt="TimeLens macOS 客户端真实界面：Session 列表、截图预览、RAW 日志与采集控制" width="920" />
+  
 
-<sub><strong>真实效果图</strong> · 本地验证看板：左侧会话流、中央截图预览、右侧当前 Session、底部 RAW 日志与 Writer 延迟等指标。产品与路线图的可视化讲解见 <a href="https://timelens-pi.vercel.app/">产品宣传页</a>。</sub>
 
-</div>
+
+
+**真实效果图** · 本地验证看板：左侧会话流、中央截图预览、右侧当前 Session、底部 RAW 日志与 Writer 延迟等指标。产品与路线图的可视化讲解见 [产品宣传页](https://timelens-pi.vercel.app/)。
+
+
 
 ---
 
@@ -26,10 +27,12 @@
 
 ## 宣传页与下载
 
-| 入口 | 说明 |
-|------|------|
-| [**产品宣传页**](https://timelens-pi.vercel.app/) | 一期数据管道、五大引擎示意、二期 AI 洞察与三期路线图 —— 适合对外介绍与分享。 |
-| [**GitHub Releases**](https://github.com/gitxuzhefeng/timelines/releases/latest) | macOS 安装包（DMG）发布后将在此提供；暂无 Release 时可先 [本地构建](#快速开始开发者) 或参考 [DMG 打包指南](docs/DMG打包指南.md)。 |
+
+| 入口                                                                               | 说明                                                                                      |
+| -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| **[产品宣传页](https://timelens-pi.vercel.app/)**                                     | 一期数据管道、五大引擎示意、二期 AI 洞察与三期路线图 —— 适合对外介绍与分享。                                              |
+| **[GitHub Releases](https://github.com/gitxuzhefeng/timelines/releases/latest)** | macOS 安装包（DMG）发布后将在此提供；暂无 Release 时可先 [本地构建](#快速开始开发者) 或参考 [DMG 打包指南](docs/DMG打包指南.md)。 |
+
 
 ---
 
@@ -41,12 +44,14 @@
 
 ## 为什么选择 TimeLens
 
-| 常见困扰 | TimeLens 的做法 |
-|----------|----------------|
-| 感觉忙了一天，产出却对不上 | 会话聚合 + 应用/窗口时长，用数据说话 |
-| 想复盘「昨天下午三点在干什么」 | 切换即记录，配合智能截图回溯情境 |
-| 担心监控类工具碰隐私、上云 | **本地优先**：数据在设备上，不做键盘/剪贴板采集 |
-| 传统时间追踪要不停点「开始/结束」 | **被动采集**：后台静默运行，不打断心流 |
+
+| 常见困扰              | TimeLens 的做法               |
+| ----------------- | -------------------------- |
+| 感觉忙了一天，产出却对不上     | 会话聚合 + 应用/窗口时长，用数据说话       |
+| 想复盘「昨天下午三点在干什么」   | 切换即记录，配合智能截图回溯情境           |
+| 担心监控类工具碰隐私、上云     | **本地优先**：数据在设备上，不做键盘/剪贴板采集 |
+| 传统时间追踪要不停点「开始/结束」 | **被动采集**：后台静默运行，不打断心流      |
+
 
 ---
 
@@ -96,13 +101,15 @@ npm run tauri dev
 
 常用脚本（在仓库根目录执行）：
 
-| 命令 | 说明 |
-|------|------|
-| `npm run dev` | 仅前端 Vite 开发服务器 |
-| `npm run tauri dev` | Tauri 桌面应用开发模式 |
-| `npm run build` | 前端生产构建 |
-| `npm test` | 运行 Rust 侧测试 |
-| `npm run release` | 发布构建（见 `scripts/release.sh`） |
+
+| 命令                  | 说明                           |
+| ------------------- | ---------------------------- |
+| `npm run dev`       | 仅前端 Vite 开发服务器               |
+| `npm run tauri dev` | Tauri 桌面应用开发模式               |
+| `npm run build`     | 前端生产构建                       |
+| `npm test`          | 运行 Rust 侧测试                  |
+| `npm run release`   | 发布构建（见 `scripts/release.sh`） |
+
 
 安装包与分发流程可参考：[docs/DMG打包指南.md](docs/DMG打包指南.md)（macOS）、[docs/windows兼容项目/Windows上手.md](docs/windows兼容项目/Windows上手.md) 与 [绿色版打包说明](docs/windows兼容项目/绿色版打包说明.md)（Windows）。
 
@@ -110,13 +117,15 @@ npm run tauri dev
 
 ## 文档索引
 
-| 文档 | 内容 |
-|------|------|
-| [TimeLens_功能介绍.md](docs/TimeLens_功能介绍.md) | 功能详解、场景与路线图 |
-| [TimeLens_用户使用手册.md](docs/TimeLens_用户使用手册.md) | 上手与日常使用 |
-| [M9_验收与测试.md](docs/M9_验收与测试.md) | 验收与测试说明 |
-| [TimeLens_产品迭代规范.md](docs/TimeLens_产品迭代规范.md) | 迭代阶段闸门、文档矩阵、接口与测试交付标准 |
+
+| 文档                                                        | 内容                          |
+| --------------------------------------------------------- | --------------------------- |
+| [TimeLens_功能介绍.md](docs/TimeLens_功能介绍.md)                 | 功能详解、场景与路线图                 |
+| [TimeLens_用户使用手册.md](docs/TimeLens_用户使用手册.md)             | 上手与日常使用                     |
+| [M9_验收与测试.md](docs/M9_验收与测试.md)                           | 验收与测试说明                     |
+| [TimeLens_产品迭代规范.md](docs/TimeLens_产品迭代规范.md)             | 迭代阶段闸门、文档矩阵、接口与测试交付标准       |
 | [windows兼容项目/Windows上手.md](docs/windows兼容项目/Windows上手.md) | Windows 环境版本、开发/构建/绿色版与常见问题 |
+
 
 ---
 
@@ -140,11 +149,13 @@ npm run tauri dev
 
 在仓库 **Settings → General** 或主页 **⚙️ About** 中建议填写（需你在网页上操作，无法单靠提交自动生效）：
 
-| 项 | 建议填写 |
-|----|----------|
-| **Website** | <https://timelens-pi.vercel.app/> |
-| **Description**（英文一句，便于检索） | `Local-first Tauri desktop app: passive window & app tracking, smart screenshots, session timeline — macOS & Windows. Data stays on device.` |
+
+| 项                                 | 建议填写                                                                                                                                              |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Website**                       | [https://timelens-pi.vercel.app/](https://timelens-pi.vercel.app/)                                                                                |
+| **Description**（英文一句，便于检索）        | `Local-first Tauri desktop app: passive window & app tracking, smart screenshots, session timeline — macOS & Windows. Data stays on device.`      |
 | **Topics**（标签，复制到 About 的 topics） | `tauri` `rust` `react` `typescript` `vite` `productivity` `time-tracking` `screen-capture` `local-first` `macos` `windows` `desktop-app` `sqlite` |
+
 
 **说明**：`demo/我的微信二维码.JPG` 已列入根目录 `.gitignore`，避免个人二维码进入公开 Git；本地或 CI 部署 `demo/` 到 Vercel 时，请自行在该路径放置图片，或把 `timelens-product-showcase.html` 中内测区块的图片改为你的托管链接。
 

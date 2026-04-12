@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -7,6 +7,7 @@ import {
 } from "react-router-dom";
 import AppShell from "./layout/AppShell";
 import { useAppStore } from "./stores/appStore";
+import { useThemeStore } from "./stores/themeStore";
 import * as api from "./services/tauri";
 import HealthPage from "./pages/HealthPage";
 import RecapPage from "./pages/RecapPage";
@@ -20,11 +21,17 @@ import DailyReportPage from "./pages/DailyReportPage";
 import SettingsShellPage from "./pages/SettingsShellPage";
 
 export default function App() {
+  const theme = useThemeStore((s) => s.theme);
   const refreshAll = useAppStore((s) => s.refreshAll);
   const setTracking = useAppStore((s) => s.setTracking);
   const setPermissions = useAppStore((s) => s.setPermissions);
   const setAfk = useAppStore((s) => s.setAfk);
   const setWriterStats = useAppStore((s) => s.setWriterStats);
+
+  useLayoutEffect(() => {
+    if (theme === "white") document.documentElement.setAttribute("data-theme", "white");
+    else document.documentElement.removeAttribute("data-theme");
+  }, [theme]);
 
   useEffect(() => {
     void refreshAll();

@@ -43,6 +43,19 @@ pub fn screen_capture_refresh_access() -> bool {
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+pub fn screen_capture_poll_check() -> bool {
+    false
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+pub fn request_screen_capture_access() -> bool {
+    false
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn request_screen_capture_on_first_launch() {}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 pub fn active_display_count() -> i32 {
     1
 }

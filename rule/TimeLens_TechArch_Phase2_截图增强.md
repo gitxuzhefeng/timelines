@@ -13,7 +13,7 @@
 
 ## 执行摘要
 
-**macOS / Windows** 使用 **系统原生、本机离线** OCR：**Vision**、**Windows.Media.Ocr**。**Linux** 使用 **Tesseract**。统一 **`OcrEngine`**（阅读序行、词/行级置信度、可选几何供内部使用）。**禁止**默认或静默 **在线 OCR**。**本期不引入** ONNX/第二推理栈及 **跨引擎自动降级**（详见 OCR 工程方案）。
+**macOS / Windows** 使用 **系统原生、本机离线** OCR：**Vision**、**Windows.Media.Ocr**。**Linux** 使用 **Tesseract**。统一 `**OcrEngine`**（阅读序行、词/行级置信度、可选几何供内部使用）。**禁止**默认或静默 **在线 OCR**。**本期不引入** ONNX/第二推理栈及 **跨引擎自动降级**（详见 OCR 工程方案）。
 
 识别服务 **可检索与情境辅助**；输入为 **已落盘快照**，经 **黑名单与脱敏**；**非全量**（重要触发优先，poll 结合感知哈希、节流、低并发）；失败 **不影响** 事实层与截图主流程。
 
@@ -28,13 +28,15 @@
 
 ## 2. 引擎选型
 
-| 平台 | 引擎 |
-| --- | --- |
-| macOS | Vision（`VNRecognizeTextRequest`），Swift + FFI/sidecar |
-| Windows | `Windows.Media.Ocr`（WinRT，Windows 10+），注意 OCR **语言组件** |
-| Linux | Tesseract（语言包如 `chi_sim+eng`） |
 
-Rust 侧 **`OcrEngine`** 统一输出，供闸门与 FTS 前处理共用。
+| 平台      | 引擎                                                     |
+| ------- | ------------------------------------------------------ |
+| macOS   | Vision（`VNRecognizeTextRequest`），Swift + FFI/sidecar   |
+| Windows | `Windows.Media.Ocr`（WinRT，Windows 10+），注意 OCR **语言组件** |
+| Linux   | Tesseract（语言包如 `chi_sim+eng`）                          |
+
+
+Rust 侧 `**OcrEngine`** 统一输出，供闸门与 FTS 前处理共用。
 
 ---
 
@@ -77,8 +79,9 @@ Rust 侧 **`OcrEngine`** 统一输出，供闸门与 FTS 前处理共用。
 
 ## 8. 修订记录
 
-| 版本 | 日期 | 说明 |
-| --- | --- | --- |
-| v1.0～v1.2 | 2026-04-02～03 | 初版至 FTS/里程碑挂接 |
-| v2.0 | 2026-04-03 | 桌面原生主路径、OcrEngine、Linux Tess |
-| **v2.1** | **2026-04-03** | 与 OCR 方案 v2.1 对齐：**去掉 ONNX/第二引擎/多级降级** 等本期不实现项；压缩与 OCR 专题重复段落 |
+
+| 版本        | 日期             | 说明                                                            |
+| --------- | -------------- | ------------------------------------------------------------- |
+| v1.0～v1.2 | 2026-04-02～03  | 初版至 FTS/里程碑挂接                                                 |
+| v2.0      | 2026-04-03     | 桌面原生主路径、OcrEngine、Linux Tess                                  |
+| **v2.1**  | **2026-04-03** | 与 OCR 方案 v2.1 对齐：**去掉 ONNX/第二引擎/多级降级** 等本期不实现项；压缩与 OCR 专题重复段落 |

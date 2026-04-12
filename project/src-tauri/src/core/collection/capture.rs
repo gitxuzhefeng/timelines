@@ -1,4 +1,5 @@
 use std::fs;
+#[cfg(target_os = "macos")]
 use std::process::Command;
 use std::sync::{
     atomic::{AtomicBool, AtomicUsize, Ordering},

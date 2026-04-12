@@ -67,31 +67,39 @@ export function RecapContent({
   const showAiToggle = aiOn || hasAiReport;
 
   return (
-    <div className={`flex h-full min-h-0 flex-col gap-3 text-zinc-100 ${className}`}>
+    <div className={`flex h-full min-h-0 flex-col gap-3 text-[var(--tl-ink)] ${className}`}>
       <div className="flex flex-wrap items-center gap-3">
         {!hideDateControl && (
-          <label className="flex items-center gap-2 text-sm text-zinc-400">
+          <label className="flex items-center gap-2 text-sm text-[var(--tl-muted)]">
             日期
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1"
+              className="rounded border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-2 py-1 text-[var(--tl-ink)]"
             />
           </label>
         )}
         {showAiToggle && (
-          <div className="flex rounded border border-zinc-700 p-0.5 text-xs">
+          <div className="flex rounded border border-[var(--tl-line)] p-0.5 text-xs">
             <button
               type="button"
-              className={`rounded px-2 py-1 ${view === "fact_only" ? "bg-zinc-700 text-white" : "text-zinc-400"}`}
+              className={`rounded px-2 py-1 ${
+                view === "fact_only"
+                  ? "bg-[var(--tl-btn-muted)] text-[var(--tl-ink)]"
+                  : "text-[var(--tl-muted)]"
+              }`}
               onClick={() => setView("fact_only")}
             >
               事实
             </button>
             <button
               type="button"
-              className={`rounded px-2 py-1 ${view === "ai_enhanced" ? "bg-zinc-700 text-white" : "text-zinc-400"}`}
+              className={`rounded px-2 py-1 ${
+                view === "ai_enhanced"
+                  ? "bg-[var(--tl-btn-muted)] text-[var(--tl-ink)]"
+                  : "text-[var(--tl-muted)]"
+              }`}
               onClick={() => setView("ai_enhanced")}
             >
               AI 增强
@@ -101,7 +109,7 @@ export function RecapContent({
         <button
           type="button"
           disabled={busy}
-          className="rounded bg-zinc-700 px-3 py-1.5 text-sm hover:bg-zinc-600 disabled:opacity-40"
+          className="rounded bg-[var(--tl-btn-muted)] px-3 py-1.5 text-sm text-[var(--tl-ink)] hover:opacity-90 disabled:opacity-40"
           onClick={async () => {
             setBusy(true);
             setMsg(null);
@@ -130,7 +138,7 @@ export function RecapContent({
                 ? "请先在设置中配置 API Key"
                 : undefined
           }
-          className="rounded bg-emerald-900/80 px-3 py-1.5 text-sm text-emerald-100 hover:bg-emerald-800/80 disabled:opacity-40"
+          className="rounded bg-[var(--tl-btn-primary-bg)] px-3 py-1.5 text-sm text-[var(--tl-btn-primary-text)] hover:bg-[var(--tl-btn-primary-bg-hover)] disabled:opacity-40"
           onClick={async () => {
             setBusy(true);
             setMsg(null);
@@ -154,7 +162,7 @@ export function RecapContent({
         <button
           type="button"
           disabled={busy || !md}
-          className="rounded border border-zinc-600 px-3 py-1.5 text-sm hover:bg-zinc-800 disabled:opacity-40"
+          className="rounded border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-ink)] hover:bg-[var(--tl-surface-deep)] disabled:opacity-40"
           onClick={async () => {
             setBusy(true);
             try {
@@ -171,30 +179,30 @@ export function RecapContent({
         </button>
         <button
           type="button"
-          className="rounded border border-zinc-600 px-3 py-1.5 text-sm hover:bg-zinc-800"
+          className="rounded border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-ink)] hover:bg-[var(--tl-surface-deep)]"
           onClick={() => void load()}
         >
           刷新
         </button>
       </div>
       {view === "ai_enhanced" && meta.model && (
-        <p className="text-xs text-zinc-500">
-          模型: <span className="font-mono text-zinc-400">{meta.model}</span>
+        <p className="text-xs text-[var(--tl-muted)]">
+          模型: <span className="font-mono">{meta.model}</span>
           {meta.hash && (
             <>
               {" "}
               · prompt 哈希:{" "}
-              <span className="font-mono text-zinc-500">{meta.hash.slice(0, 12)}…</span>
+              <span className="font-mono">{meta.hash.slice(0, 12)}…</span>
             </>
           )}
         </p>
       )}
-      {msg && <p className="text-sm text-amber-200/90">{msg}</p>}
-      <div className="min-h-0 flex-1 overflow-auto rounded border border-zinc-800 bg-zinc-900/40 p-4 text-sm leading-relaxed text-zinc-200 [&_h1]:mb-3 [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-base [&_h2]:font-medium [&_code]:rounded [&_code]:bg-zinc-800 [&_code]:px-1 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-zinc-950 [&_pre]:p-3">
+      {msg && <p className="text-sm text-[var(--tl-warn-amber-text)]">{msg}</p>}
+      <div className="min-h-0 flex-1 overflow-auto rounded border border-[var(--tl-line)] bg-[var(--tl-surface)] p-4 text-sm leading-relaxed text-[var(--tl-ink)]/95 [&_h1]:mb-3 [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-base [&_h2]:font-medium [&_code]:rounded [&_code]:bg-[var(--tl-surface-deep)] [&_code]:px-1 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:bg-[var(--tl-pre-bg)] [&_pre]:p-3">
         {md ? (
           <ReactMarkdown>{md}</ReactMarkdown>
         ) : (
-          <p className="text-zinc-500">
+          <p className="text-[var(--tl-muted)]">
             {view === "ai_enhanced"
               ? "暂无 AI 增强报告。请先生成当日 daily_analysis，再点击「生成 AI 增强报告」。"
               : "暂无报告。请选择有数据的日期并点击生成。"}

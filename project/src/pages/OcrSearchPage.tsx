@@ -85,10 +85,10 @@ export default function OcrSearchPage() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col text-zinc-100">
+    <div className="flex h-full min-h-0 flex-col text-[var(--tl-ink)]">
       {lightboxSrc ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--tl-overlay-lightbox)] p-4"
           role="dialog"
           aria-modal="true"
           aria-label="截图大图"
@@ -96,7 +96,7 @@ export default function OcrSearchPage() {
         >
           <button
             type="button"
-            className="absolute right-4 top-4 rounded bg-zinc-800 px-3 py-1 text-sm text-zinc-200 hover:bg-zinc-700"
+            className="absolute right-4 top-4 rounded bg-[var(--tl-surface-deep)] px-3 py-1 text-sm text-[var(--tl-ink)] hover:opacity-90"
             onClick={() => setLightboxSrc(null)}
           >
             关闭
@@ -110,30 +110,30 @@ export default function OcrSearchPage() {
         </div>
       ) : null}
 
-      <header className="flex flex-wrap items-center gap-3 border-b border-zinc-800 px-4 py-3">
-        <h1 className="text-lg font-semibold tracking-tight text-white">OCR 检索</h1>
-        <label className="flex items-center gap-2 text-sm text-zinc-400">
+      <header className="flex flex-wrap items-center gap-3 border-b border-[var(--tl-line)] bg-[var(--tl-subheader-bg)] px-4 py-3">
+        <h1 className="text-lg font-semibold tracking-tight text-[var(--tl-ink)]">OCR 检索</h1>
+        <label className="flex items-center gap-2 text-sm text-[var(--tl-muted)]">
           日期
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-zinc-100"
+            className="rounded border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-2 py-1 text-[var(--tl-ink)]"
           />
         </label>
-        <p className="text-xs text-zinc-500">
+        <p className="text-xs text-[var(--tl-muted)]">
           多词以空格或逗号分隔，联合匹配（AND）。结果含会话信息、截图与文字。
         </p>
         <div className="ml-auto flex flex-wrap items-center gap-3">
           <Link
             to="/intents"
-            className="text-xs text-zinc-400 underline-offset-2 hover:underline"
+            className="text-xs text-[var(--tl-muted)] underline-offset-2 hover:text-[var(--tl-ink)] hover:underline"
           >
             应用分组
           </Link>
           <Link
             to="/sessions"
-            className="text-xs text-emerald-400/90 underline-offset-2 hover:underline"
+            className="text-xs text-[var(--tl-cyan)] underline-offset-2 hover:underline"
           >
             返回会话
           </Link>
@@ -141,9 +141,13 @@ export default function OcrSearchPage() {
       </header>
 
       {error && (
-        <div className="flex items-center justify-between border-b border-rose-900/50 bg-rose-950/40 px-4 py-2 text-sm text-rose-200">
+        <div className="flex items-center justify-between border-b border-[var(--tl-error-border)] bg-[var(--tl-error-bg)] px-4 py-2 text-sm text-[var(--tl-error-text)]">
           {error}
-          <button type="button" className="text-rose-400 underline" onClick={() => clearError()}>
+          <button
+            type="button"
+            className="text-[var(--tl-error-link)] underline"
+            onClick={() => clearError()}
+          >
             关闭
           </button>
         </div>
@@ -151,7 +155,7 @@ export default function OcrSearchPage() {
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {ocrCfg && !ocrCfg.enabled && (
-          <div className="border-b border-amber-900/40 bg-amber-950/30 px-4 py-3 text-sm text-amber-100/90">
+          <div className="border-b border-[var(--tl-warn-amber-border)] bg-[var(--tl-ocr-warn-strip-bg)] px-4 py-3 text-sm text-[var(--tl-ocr-warn-strip-text)]">
             OCR 未开启。请前往
             <Link to="/settings" className="mx-1 underline">
               设置
@@ -160,9 +164,9 @@ export default function OcrSearchPage() {
           </div>
         )}
 
-        <div className="border-b border-zinc-800 bg-zinc-900/30 px-4 py-4">
+        <div className="border-b border-[var(--tl-line)] bg-[var(--tl-surface)] px-4 py-4">
           <div className="flex flex-wrap items-end gap-2">
-            <label className="flex min-w-[12rem] flex-1 flex-col text-xs text-zinc-500">
+            <label className="flex min-w-[12rem] flex-1 flex-col text-xs text-[var(--tl-muted)]">
               关键词（空格/逗号分隔，联合匹配）
               <input
                 type="search"
@@ -171,32 +175,32 @@ export default function OcrSearchPage() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") void runSearch();
                 }}
-                className="mt-0.5 rounded border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-100"
+                className="mt-0.5 rounded border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-2 py-1.5 text-sm text-[var(--tl-ink)]"
                 placeholder="例：invoice 2024 或 发票，订单"
               />
             </label>
-            <label className="flex cursor-pointer items-center gap-1.5 pb-1.5 text-xs text-zinc-400">
+            <label className="flex cursor-pointer items-center gap-1.5 pb-1.5 text-xs text-[var(--tl-muted)]">
               <input
                 type="checkbox"
                 checked={ocrRestrictSession}
                 onChange={(e) => setOcrRestrictSession(e.target.checked)}
-                className="rounded border-zinc-600"
+                className="rounded border-[var(--tl-line)]"
               />
               仅当前会话
             </label>
             <button
               type="button"
               disabled={ocrSearchBusy || (ocrCfg !== null && !ocrCfg.enabled)}
-              className="rounded bg-zinc-700 px-4 py-1.5 text-sm hover:bg-zinc-600 disabled:opacity-40"
+              className="rounded bg-[var(--tl-btn-muted)] px-4 py-1.5 text-sm text-[var(--tl-ink)] hover:opacity-90 disabled:opacity-40"
               onClick={() => void runSearch()}
             >
               搜索
             </button>
           </div>
           {ocrRestrictSession && (
-            <p className="mt-2 text-[11px] text-zinc-500">
+            <p className="mt-2 text-[11px] text-[var(--tl-muted)]">
               「当前会话」与
-              <Link to="/sessions" className="text-zinc-400 underline">
+              <Link to="/sessions" className="underline">
                 会话页
               </Link>
               左侧选中项一致；未选中时会提示错误。
@@ -206,12 +210,12 @@ export default function OcrSearchPage() {
 
         <div className="space-y-4 px-4 py-4">
           {ocrHits.length === 0 ? (
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-[var(--tl-muted)]">
               {ocrSearchBusy ? "搜索中…" : "输入关键词并搜索，或更换日期。"}
             </p>
           ) : (
             <>
-              <p className="text-xs text-zinc-500">共 {ocrHits.length} 条</p>
+              <p className="text-xs text-[var(--tl-muted)]">共 {ocrHits.length} 条</p>
               <ul className="space-y-4">
                 {ocrHits.map((hit) => {
                   const sess = sessionById.get(hit.sessionId);
@@ -220,51 +224,60 @@ export default function OcrSearchPage() {
                     <li key={`${hit.snapshotId}-${hit.capturedAtMs}`}>
                       <article
                         onClick={() => setSelectedOcrHit(hit)}
-                        className={`cursor-pointer overflow-hidden rounded-xl border bg-zinc-950/50 transition-colors hover:border-zinc-700 ${
-                          active ? "border-emerald-700/50 ring-1 ring-emerald-800/40" : "border-zinc-800"
+                        className={`cursor-pointer overflow-hidden rounded-xl border border-[var(--tl-line)] bg-[var(--tl-hit-card-bg)] transition-colors hover:opacity-[0.98] ${
+                          active
+                            ? "ring-1 ring-[var(--tl-hit-card-active-ring)]"
+                            : ""
                         }`}
                       >
                         <div className="grid gap-0 lg:grid-cols-[minmax(220px,280px)_1fr]">
-                          {/* (a) 会话信息 */}
-                          <div className="space-y-3 border-b border-zinc-800 p-4 lg:border-b-0 lg:border-r">
-                            <div className="text-[10px] font-semibold uppercase tracking-widest text-emerald-400/90">
+                          <div className="space-y-3 border-b border-[var(--tl-line)] p-4 lg:border-b-0 lg:border-r">
+                            <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--tl-cyan)]">
                               会话信息
                             </div>
                             <dl className="space-y-2 text-xs">
                               <div>
-                                <dt className="text-[10px] uppercase tracking-wide text-zinc-500">应用</dt>
-                                <dd className="font-mono text-zinc-200">{hit.appName}</dd>
+                                <dt className="text-[10px] uppercase tracking-wide text-[var(--tl-muted)]">
+                                  应用
+                                </dt>
+                                <dd className="font-mono text-[var(--tl-ink)]">{hit.appName}</dd>
                               </div>
                               <div>
-                                <dt className="text-[10px] uppercase tracking-wide text-zinc-500">窗口</dt>
-                                <dd className="text-zinc-300">{hit.windowTitle || "—"}</dd>
+                                <dt className="text-[10px] uppercase tracking-wide text-[var(--tl-muted)]">
+                                  窗口
+                                </dt>
+                                <dd className="text-[var(--tl-ink)]/90">{hit.windowTitle || "—"}</dd>
                               </div>
                               <div>
-                                <dt className="text-[10px] uppercase tracking-wide text-zinc-500">场景 / Intent</dt>
-                                <dd className="text-zinc-300">
+                                <dt className="text-[10px] uppercase tracking-wide text-[var(--tl-muted)]">
+                                  场景 / Intent
+                                </dt>
+                                <dd className="text-[var(--tl-ink)]/90">
                                   {hit.sessionIntent?.trim() ? hit.sessionIntent : "未分类"}
                                 </dd>
                               </div>
                               {sess ? (
                                 <div>
-                                  <dt className="text-[10px] uppercase tracking-wide text-zinc-500">
+                                  <dt className="text-[10px] uppercase tracking-wide text-[var(--tl-muted)]">
                                     会话时段
                                   </dt>
-                                  <dd className="font-mono text-[11px] text-zinc-400">
+                                  <dd className="font-mono text-[11px] text-[var(--tl-muted)]">
                                     {fmtSessionRange(sess.startMs, sess.endMs)}
                                   </dd>
                                 </div>
                               ) : null}
                               <div>
-                                <dt className="text-[10px] uppercase tracking-wide text-zinc-500">截图时间</dt>
-                                <dd className="font-mono text-zinc-300">
+                                <dt className="text-[10px] uppercase tracking-wide text-[var(--tl-muted)]">
+                                  截图时间
+                                </dt>
+                                <dd className="font-mono text-[var(--tl-ink)]/90">
                                   {new Date(hit.capturedAtMs).toLocaleString()}
                                 </dd>
                               </div>
                             </dl>
                             <button
                               type="button"
-                              className="w-full rounded border border-zinc-600 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800"
+                              className="w-full rounded border border-[var(--tl-line)] py-1.5 text-xs text-[var(--tl-ink)] hover:bg-[var(--tl-surface-deep)]"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 openInSessions(hit);
@@ -275,9 +288,8 @@ export default function OcrSearchPage() {
                           </div>
 
                           <div className="grid min-h-0 lg:grid-cols-[minmax(200px,38%)_1fr]">
-                            {/* (b) 图片 */}
-                            <div className="flex flex-col border-b border-zinc-800 bg-zinc-900/40 p-3 lg:border-b-0 lg:border-r">
-                              <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-violet-400/90">
+                            <div className="flex flex-col border-b border-[var(--tl-line)] bg-[var(--tl-surface)] p-3 lg:border-b-0 lg:border-r">
+                              <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-[var(--tl-purple)]">
                                 识别图片
                               </div>
                               <div className="relative mx-auto w-full max-w-md">
@@ -285,7 +297,7 @@ export default function OcrSearchPage() {
                                   {hit.matchedKeywords.map((k) => (
                                     <span
                                       key={k}
-                                      className="rounded bg-amber-500/90 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-950 shadow-sm"
+                                      className="rounded bg-amber-500/90 px-1.5 py-0.5 text-[10px] font-semibold text-[var(--tl-mark-on-amber)] shadow-sm"
                                     >
                                       {k}
                                     </span>
@@ -304,7 +316,7 @@ export default function OcrSearchPage() {
                                   <img
                                     src={snapshotTimelensUrl(hit.snapshotId)}
                                     alt="OCR 命中截图"
-                                    className="max-h-72 w-full rounded-lg border border-zinc-700 object-contain shadow-lg"
+                                    className="max-h-72 w-full rounded-lg border border-[var(--tl-line)] object-contain shadow-lg"
                                     onError={(e) => {
                                       (e.target as HTMLImageElement).style.display = "none";
                                     }}
@@ -313,18 +325,17 @@ export default function OcrSearchPage() {
                               </div>
                             </div>
 
-                            {/* (c) 文字 */}
                             <div className="flex flex-col gap-3 p-4">
-                              <div className="text-[10px] font-semibold uppercase tracking-widest text-violet-400/90">
+                              <div className="text-[10px] font-semibold uppercase tracking-widest text-[var(--tl-purple)]">
                                 文字信息
                               </div>
                               {hit.matchedKeywords.length > 0 && (
                                 <div className="flex flex-wrap items-center gap-1.5">
-                                  <span className="text-[11px] text-zinc-500">匹配词</span>
+                                  <span className="text-[11px] text-[var(--tl-muted)]">匹配词</span>
                                   {hit.matchedKeywords.map((k) => (
                                     <span
                                       key={k}
-                                      className="rounded bg-amber-500/85 px-1.5 py-0.5 text-[11px] font-medium text-zinc-950"
+                                      className="rounded bg-amber-500/85 px-1.5 py-0.5 text-[11px] font-medium text-[var(--tl-mark-on-amber)]"
                                     >
                                       {k}
                                     </span>
@@ -332,23 +343,21 @@ export default function OcrSearchPage() {
                                 </div>
                               )}
                               <div>
-                                <div className="mb-1 text-[11px] font-medium text-zinc-500">
+                                <div className="mb-1 text-[11px] font-medium text-[var(--tl-muted)]">
                                   匹配片段（FTS）
                                 </div>
-                                <p className="text-sm text-zinc-200">
-                                  {renderOcrSnippet(hit.matchedSnippet)}
-                                </p>
+                                <p className="text-sm text-[var(--tl-ink)]/90">{renderOcrSnippet(hit.matchedSnippet)}</p>
                               </div>
                               <div className="min-h-0 flex-1">
-                                <div className="mb-1 text-[11px] font-medium text-zinc-500">
+                                <div className="mb-1 text-[11px] font-medium text-[var(--tl-muted)]">
                                   本帧识别全文（脱敏后）
                                 </div>
                                 {hit.fullOcrText ? (
-                                  <div className="max-h-48 overflow-y-auto rounded border border-zinc-800 bg-zinc-950/80 p-2">
+                                  <div className="max-h-48 overflow-y-auto rounded border border-[var(--tl-line)] bg-[var(--tl-pre-bg)] p-2">
                                     {highlightedFullOcr(hit.fullOcrText, hit.matchedKeywords)}
                                   </div>
                                 ) : (
-                                  <p className="text-sm text-zinc-500">
+                                  <p className="text-sm text-[var(--tl-muted)]">
                                     （无全文，可能已清理或仅索引片段）
                                   </p>
                                 )}

@@ -42,6 +42,10 @@ export async function checkPermissions(): Promise<PermissionStatus> {
   return invoke<PermissionStatus>("check_permissions");
 }
 
+export async function requestScreenCaptureAccess(): Promise<boolean> {
+  return invoke<boolean>("request_screen_capture_access");
+}
+
 export async function openAccessibilitySettings(): Promise<void> {
   await invoke("open_accessibility_settings");
 }

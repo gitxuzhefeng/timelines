@@ -41,8 +41,14 @@ pub struct FrontWindowState {
 static KEY_TOTAL: AtomicU32 = AtomicU32::new(0);
 static MOUSE_TOTAL: AtomicU32 = AtomicU32::new(0);
 static INPUT_LAST: Mutex<Option<(u32, u32)>> = Mutex::new(None);
-static KB_HOOK_HANDLE: OnceLock<HHOOK> = OnceLock::new();
-static MOUSE_HOOK_HANDLE: OnceLock<HHOOK> = OnceLock::new();
+/// `HHOOK` 不满足 `Send`/`Sync`，不能放进 `static OnceLock`；存裸指针位模式（`usize`）即可。
+static KB_HOOK_HANDLE: OnceLock<usize> = OnceLock::new();
+static MOUSE_HOOK_HANDLE: OnceLock<usize> = OnceLock::new();
+
+#[inline]
+fn hook_from_slot(slot: &OnceLock<usize>) -> HHOOK {
+    HHOOK(slot.get().copied().unwrap_or(0) as *mut _)
+}
 
 pub fn ax_trusted() -> bool {
     true
@@ -68,6 +74,14 @@ pub fn screen_capture_granted() -> bool {
 }
 
 pub fn screen_capture_refresh_access() -> bool {
+    screen_capture_probe()
+}
+
+pub fn screen_capture_poll_check() -> bool {
+    screen_capture_probe()
+}
+
+pub fn request_screen_capture_access() -> bool {
     screen_capture_probe()
 }
 
@@ -115,12 +129,12 @@ pub fn spawn_low_level_input_hooks(running: Arc<AtomicBool>) {
             let _ = UnhookWindowsHookEx(k_hook);
             return;
         };
-        let _ = KB_HOOK_HANDLE.set(k_hook);
-        let _ = MOUSE_HOOK_HANDLE.set(m_hook);
+        let _ = KB_HOOK_HANDLE.set(k_hook.0 as usize);
+        let _ = MOUSE_HOOK_HANDLE.set(m_hook.0 as usize);
 
         let mut msg = MSG::default();
         while running.load(Ordering::Relaxed) {
-            while PeekMessageW(&mut msg, HWND(0), 0, 0, PM_REMOVE).as_bool() {
+            while PeekMessageW(&mut msg, HWND(std::ptr::null_mut()), 0, 0, PM_REMOVE).as_bool() {
                 if msg.message == WM_QUIT {
                     break;
                 }
@@ -139,7 +153,7 @@ unsafe extern "system" fn low_level_keyboard_proc(
     wparam: WPARAM,
     lparam: LPARAM,
 ) -> LRESULT {
-    let hk = KB_HOOK_HANDLE.get().copied().unwrap_or_default();
+    let hk = hook_from_slot(&KB_HOOK_HANDLE);
     if code < 0 {
         return CallNextHookEx(hk, code, wparam, lparam);
     }
@@ -153,7 +167,7 @@ unsafe extern "system" fn low_level_keyboard_proc(
 }
 
 unsafe extern "system" fn low_level_mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
-    let hk = MOUSE_HOOK_HANDLE.get().copied().unwrap_or_default();
+    let hk = hook_from_slot(&MOUSE_HOOK_HANDLE);
     if code < 0 {
         return CallNextHookEx(hk, code, wparam, lparam);
     }

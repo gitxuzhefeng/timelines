@@ -15,9 +15,10 @@ function rowKey(r: AppIntentAggregate): string {
 }
 
 function sourceBadgeClass(src: string): string {
-  if (src === "user") return "bg-[rgba(0,245,212,0.12)] text-[var(--tl-cyan)]";
-  if (src === "builtin") return "bg-violet-950/50 text-violet-200/90";
-  return "bg-[rgba(14,16,24,0.9)] text-[var(--tl-muted)]";
+  if (src === "user") return "bg-[var(--tl-accent-12)] text-[var(--tl-cyan)]";
+  if (src === "builtin")
+    return "bg-[var(--tl-badge-builtin-bg)] text-[var(--tl-badge-builtin-text)]";
+  return "bg-[var(--tl-badge-none-bg)] text-[var(--tl-muted)]";
 }
 
 function IntentRow({
@@ -105,7 +106,7 @@ function IntentRow({
         <label className="flex min-w-0 flex-1 flex-col font-mono text-[0.62rem] text-[var(--tl-muted)]">
           调整
           <select
-            className="mt-0.5 rounded-lg border border-[var(--tl-line)] bg-[rgba(14,16,24,0.9)] px-2 py-1.5 text-sm text-[var(--tl-ink)]"
+            className="mt-0.5 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-2 py-1.5 text-sm text-[var(--tl-ink)]"
             value={selectV === "__custom__" || (selectV === "" && custom) ? "__custom__" : selectV}
             onChange={(e) => {
               const v = e.target.value;
@@ -126,7 +127,7 @@ function IntentRow({
           自定义
           <input
             type="text"
-            className="mt-0.5 rounded-lg border border-[var(--tl-line)] bg-[rgba(14,16,24,0.9)] px-2 py-1.5 text-sm text-[var(--tl-ink)]"
+            className="mt-0.5 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-2 py-1.5 text-sm text-[var(--tl-ink)]"
             placeholder="可选"
             value={custom}
             onChange={(e) => {
@@ -139,7 +140,7 @@ function IntentRow({
         <button
           type="button"
           disabled={busy}
-          className="shrink-0 rounded-lg bg-emerald-900/70 px-3 py-2 text-sm text-emerald-100 hover:bg-emerald-800/80 disabled:opacity-40"
+          className="shrink-0 rounded-lg bg-[var(--tl-btn-primary-bg)] px-3 py-2 text-sm text-[var(--tl-btn-primary-text)] hover:bg-[var(--tl-btn-primary-bg-hover)] disabled:opacity-40"
           onClick={() => void applyOne()}
         >
           仅此项
@@ -304,7 +305,7 @@ export default function IntentManagePage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col text-[var(--tl-ink)]">
-      <header className="space-y-3 border-b border-[var(--tl-line)] bg-[rgba(8,10,16,0.35)] px-4 py-4">
+      <header className="space-y-3 border-b border-[var(--tl-line)] bg-[var(--tl-subheader-bg)] px-4 py-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="max-w-2xl space-y-2">
             <h1 className="text-lg font-semibold tracking-tight">应用分组</h1>
@@ -313,14 +314,14 @@ export default function IntentManagePage() {
               ；新会话在聚合时也会自动套用。
             </p>
             <p className="text-[0.72rem] leading-relaxed text-[var(--tl-muted)]">
-              系统内置常见桌面应用与 Bundle ID 的<strong className="text-violet-200/80">默认分组建议</strong>
+              系统内置常见桌面应用与 Bundle ID 的<strong className="text-[var(--tl-purple)]">默认分组建议</strong>
               （优先级低于你的手动设置）。安装或升级应用后会自动刷新词表版本。
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              className="rounded-lg border border-[var(--tl-line)] bg-[rgba(14,16,24,0.85)] px-3 py-2 text-sm hover:bg-[rgba(20,22,32,0.95)]"
+              className="rounded-lg border border-[var(--tl-line)] bg-[var(--tl-capture-idle-bg)] px-3 py-2 text-sm hover:bg-[var(--tl-capture-idle-hover)]"
               onClick={() => void load()}
             >
               刷新
@@ -328,14 +329,14 @@ export default function IntentManagePage() {
             <button
               type="button"
               disabled={backfillBusy}
-              className="rounded-lg border border-violet-800/50 bg-violet-950/35 px-3 py-2 text-sm text-violet-100 hover:bg-violet-950/50 disabled:opacity-40"
+              className="rounded-lg border border-[var(--tl-btn-violet-border)] bg-[var(--tl-btn-violet-bg)] px-3 py-2 text-sm text-[var(--tl-btn-violet-text)] hover:bg-[var(--tl-btn-violet-bg-hover)] disabled:opacity-40"
               onClick={() => void runBackfill()}
             >
               {backfillBusy ? "补齐中…" : "补齐历史未分组会话"}
             </button>
             <Link
               to="/sessions"
-              className="rounded-lg border border-[var(--tl-line)] px-3 py-2 text-sm text-[var(--tl-cyan)] hover:bg-[rgba(0,245,212,0.06)]"
+              className="rounded-lg border border-[var(--tl-line)] px-3 py-2 text-sm text-[var(--tl-cyan)] hover:bg-[var(--tl-accent-06)]"
             >
               会话
             </Link>
@@ -352,7 +353,7 @@ export default function IntentManagePage() {
           <span>未映射 {stats.none}</span>
         </div>
 
-        <div className="flex flex-col gap-3 rounded-xl border border-[var(--tl-line)] bg-[rgba(10,12,18,0.55)] p-3">
+        <div className="flex flex-col gap-3 rounded-xl border border-[var(--tl-line)] bg-[var(--tl-panel)] p-3">
           <div className="font-mono text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[var(--tl-muted)]">
             批量操作
           </div>
@@ -362,7 +363,7 @@ export default function IntentManagePage() {
               <select
                 value={bulkSelectV}
                 onChange={(e) => setBulkSelectV(e.target.value)}
-                className="mt-0.5 min-w-[9rem] rounded-lg border border-[var(--tl-line)] bg-[rgba(14,16,24,0.9)] px-2 py-1.5 text-sm text-[var(--tl-ink)]"
+                className="mt-0.5 min-w-[9rem] rounded-lg border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-2 py-1.5 text-sm text-[var(--tl-ink)]"
                 disabled={batchBusy}
               >
                 {INTENT_PRESET_OPTIONS.map((o) => (
@@ -380,7 +381,7 @@ export default function IntentManagePage() {
                   type="text"
                   value={bulkCustom}
                   onChange={(e) => setBulkCustom(e.target.value)}
-                  className="mt-0.5 rounded-lg border border-[var(--tl-line)] bg-[rgba(14,16,24,0.9)] px-2 py-1.5 text-sm text-[var(--tl-ink)]"
+                  className="mt-0.5 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-2 py-1.5 text-sm text-[var(--tl-ink)]"
                   disabled={batchBusy}
                   placeholder="例如：设计创作"
                 />
@@ -389,7 +390,7 @@ export default function IntentManagePage() {
             <button
               type="button"
               disabled={batchBusy || selectedInFilter.length === 0}
-              className="rounded-lg bg-emerald-900/70 px-4 py-2 text-sm text-emerald-100 hover:bg-emerald-800/80 disabled:opacity-40"
+              className="rounded-lg bg-[var(--tl-btn-primary-bg)] px-4 py-2 text-sm text-[var(--tl-btn-primary-text)] hover:bg-[var(--tl-btn-primary-bg-hover)] disabled:opacity-40"
               onClick={() => void applyBulk()}
             >
               {batchBusy ? "应用中…" : `应用到选中（${selectedInFilter.length}）`}
@@ -424,8 +425,8 @@ export default function IntentManagePage() {
               className={[
                 "rounded-full px-3 py-1 font-mono text-[0.65rem] font-medium transition-colors",
                 sourceFilter === id
-                  ? "bg-[rgba(0,245,212,0.12)] text-[var(--tl-cyan)]"
-                  : "bg-[rgba(14,16,24,0.7)] text-[var(--tl-muted)] hover:text-[var(--tl-ink)]",
+                  ? "bg-[var(--tl-accent-12)] text-[var(--tl-cyan)]"
+                  : "bg-[var(--tl-filter-pill-idle)] text-[var(--tl-muted)] hover:text-[var(--tl-ink)]",
               ].join(" ")}
             >
               {label}
@@ -436,15 +437,15 @@ export default function IntentManagePage() {
             placeholder="搜索应用名、Bundle、当前分组…"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="ml-auto min-w-[12rem] flex-1 rounded-lg border border-[var(--tl-line)] bg-[rgba(14,16,24,0.9)] px-3 py-1.5 text-sm text-[var(--tl-ink)] sm:max-w-xs"
+            className="ml-auto min-w-[12rem] flex-1 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-3 py-1.5 text-sm text-[var(--tl-ink)] sm:max-w-xs"
           />
         </div>
       </header>
 
       {error ? (
-        <div className="flex items-center justify-between border-b border-rose-900/50 bg-rose-950/40 px-4 py-2 text-sm text-rose-200">
+        <div className="flex items-center justify-between border-b border-[var(--tl-error-border)] bg-[var(--tl-error-bg)] px-4 py-2 text-sm text-[var(--tl-error-text)]">
           {error}
-          <button type="button" className="text-rose-400 underline" onClick={() => clearError()}>
+          <button type="button" className="text-[var(--tl-error-link)] underline" onClick={() => clearError()}>
             关闭
           </button>
         </div>

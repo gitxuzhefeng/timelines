@@ -45,7 +45,6 @@ unsafe extern "C" {
     fn CGEventSourceCounterForEventType(source: *const std::ffi::c_void, event_type: u32) -> u32;
     fn CGGetActiveDisplayList(max_displays: u32, displays: *mut u32, count: *mut u32) -> i32;
     fn CGPreflightScreenCaptureAccess() -> u8;
-    /// 触发系统授权弹窗（若尚未决定）；已授权/已拒绝时行为由系统决定。
     fn CGRequestScreenCaptureAccess() -> u8;
 }
 
@@ -140,19 +139,96 @@ fn screen_capture_probe_screencapture() -> bool {
     ok
 }
 
+/// 仅 `CGPreflightScreenCaptureAccess`，不触发系统弹窗、不执行 `screencapture`。
+/// 用于窗口焦点等高频回调——避免不必要的 `screencapture` 调用。
 pub fn screen_capture_granted() -> bool {
+    unsafe { CGPreflightScreenCaptureAccess() != 0 }
+}
+
+/// 用户点击「刷新系统权限」时使用：preflight 为真则真，否则试跑 `screencapture` 对齐真实能力。
+pub fn screen_capture_effective_granted() -> bool {
     if unsafe { CGPreflightScreenCaptureAccess() != 0 } {
         return true;
     }
     screen_capture_probe_screencapture()
 }
 
-/// 请求屏幕录制权限并重新检测。应在用户点击「刷新权限」或从系统设置返回后调用。
+/// 历史名称保留给 `check_permissions`。
 pub fn screen_capture_refresh_access() -> bool {
-    unsafe {
-        let _ = CGRequestScreenCaptureAccess();
+    screen_capture_effective_granted()
+}
+
+use std::sync::atomic::{AtomicBool, AtomicU64};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+static REQUESTED_THIS_SESSION: AtomicBool = AtomicBool::new(false);
+static LAST_PROBE_EPOCH_S: AtomicU64 = AtomicU64::new(0);
+/// 一旦 screencapture 探针成功过一次，即可信任（跳过后续 preflight 误报）。
+static PROBE_EVER_SUCCEEDED: AtomicBool = AtomicBool::new(false);
+
+fn epoch_secs() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
+/// 用户主动点击「请求屏幕录制权限」时调用。
+/// 每次应用运行只调用一次 `CGRequestScreenCaptureAccess`，防止反复弹框。
+/// 返回 true 表示已授权或弹窗已触发。
+pub fn request_screen_capture_access() -> bool {
+    if unsafe { CGPreflightScreenCaptureAccess() != 0 } {
+        return true;
     }
-    screen_capture_granted()
+    if REQUESTED_THIS_SESSION.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        return screen_capture_effective_granted();
+    }
+    let result = unsafe { CGRequestScreenCaptureAccess() != 0 };
+    log::info!("CGRequestScreenCaptureAccess => {result}");
+    result
+}
+
+/// .app 包内首次启动时自动调用一次，让系统把本应用加入 TCC 列表并弹出授权弹窗。
+/// 非 .app 环境（如 tauri dev）不做任何事。
+pub fn request_screen_capture_on_first_launch() {
+    if !running_inside_macos_app_bundle() {
+        return;
+    }
+    if unsafe { CGPreflightScreenCaptureAccess() != 0 } {
+        return;
+    }
+    if REQUESTED_THIS_SESSION.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        return;
+    }
+    let r = unsafe { CGRequestScreenCaptureAccess() };
+    log::info!(
+        "first-launch CGRequestScreenCaptureAccess => {}",
+        r != 0
+    );
+}
+
+/// 用于周期轮询（每 30s）：先查 preflight，若 false 且距上次探针 ≥60s 则跑 screencapture 探针。
+/// 避免在高频回调中反复触发 screencapture。
+pub fn screen_capture_poll_check() -> bool {
+    if unsafe { CGPreflightScreenCaptureAccess() != 0 } {
+        PROBE_EVER_SUCCEEDED.store(true, std::sync::atomic::Ordering::Relaxed);
+        return true;
+    }
+    if PROBE_EVER_SUCCEEDED.load(std::sync::atomic::Ordering::Relaxed) {
+        return true;
+    }
+    let now = epoch_secs();
+    let last = LAST_PROBE_EPOCH_S.load(std::sync::atomic::Ordering::Relaxed);
+    if now.saturating_sub(last) < 60 {
+        return false;
+    }
+    LAST_PROBE_EPOCH_S.store(now, std::sync::atomic::Ordering::Relaxed);
+    let ok = screen_capture_probe_screencapture();
+    if ok {
+        PROBE_EVER_SUCCEEDED.store(true, std::sync::atomic::Ordering::Relaxed);
+        log::info!("screen_capture_poll_check: screencapture probe succeeded (preflight was false)");
+    }
+    ok
 }
 
 unsafe fn ax_copy_attr(element: AXUIElementRef, key: &str) -> Option<CFTypeRef> {

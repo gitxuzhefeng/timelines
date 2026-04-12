@@ -138,10 +138,12 @@ pub fn run() {
             #[cfg(any(target_os = "macos", target_os = "windows"))]
             {
                 screen_ok.store(
-                    core::acquisition::screen_capture_refresh_access(),
+                    core::acquisition::screen_capture_granted(),
                     Ordering::Relaxed,
                 );
             }
+            #[cfg(target_os = "macos")]
+            core::acquisition::request_screen_capture_on_first_launch();
             let current_session = Arc::new(RwLock::new(None));
             let (agg_tx, agg_rx) = std::sync::mpsc::channel::<core::models::AggregationCmd>();
             let (cap_tx, cap_rx) =
@@ -261,7 +263,7 @@ pub fn run() {
                 win.on_window_event(move |e| {
                     if matches!(e, tauri::WindowEvent::Focused(true)) {
                         screen_ok_on_focus.store(
-                            core::acquisition::screen_capture_refresh_access(),
+                            core::acquisition::screen_capture_poll_check(),
                             Ordering::Relaxed,
                         );
                     }
@@ -279,7 +281,7 @@ pub fn run() {
                     }
                     #[cfg(any(target_os = "macos", target_os = "windows"))]
                     {
-                        let sr = core::acquisition::screen_capture_granted();
+                        let sr = core::acquisition::screen_capture_poll_check();
                         if let Some(s) = wh.try_state::<AppState>() {
                             s.0.screen_ok.store(sr, Ordering::Relaxed);
                         }
@@ -370,6 +372,7 @@ pub fn run() {
             api::restart_tracking,
             api::trigger_screenshot,
             api::check_permissions,
+            api::request_screen_capture_access,
             api::open_accessibility_settings,
             api::open_screen_recording_settings,
             api::open_notification_settings,

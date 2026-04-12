@@ -53,39 +53,39 @@ export default function HealthPage() {
   ];
 
   return (
-    <div className="h-full overflow-auto p-4 text-zinc-100">
+    <div className="h-full overflow-auto p-4 text-[var(--tl-ink)]">
       <div className="mb-4 flex items-center gap-3">
-        <h1 className="text-lg font-semibold text-white">健康度</h1>
+        <h1 className="text-lg font-semibold text-[var(--tl-ink)]">健康度</h1>
         <button
           type="button"
-          className="rounded border border-zinc-600 px-3 py-1.5 text-sm hover:bg-zinc-800"
+          className="rounded border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-ink)] hover:bg-[var(--tl-surface-deep)]"
           onClick={() => void refresh()}
         >
           立即刷新
         </button>
         {h && (
-          <span className="text-xs text-zinc-500">
+          <span className="text-xs text-[var(--tl-muted)]">
             检查时间 {new Date(h.lastCheckMs).toLocaleString()}
           </span>
         )}
       </div>
-      {err && <p className="mb-2 text-sm text-rose-300">{err}</p>}
+      {err && <p className="mb-2 text-sm text-[var(--tl-status-bad)]">{err}</p>}
 
-      <div className="mb-6 max-w-2xl rounded border border-zinc-800 bg-zinc-900/30 p-4">
-        <h2 className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+      <div className="mb-6 max-w-2xl rounded border border-[var(--tl-line)] bg-[var(--tl-surface)] p-4">
+        <h2 className="text-xs font-medium uppercase tracking-wide text-[var(--tl-muted)]">
           系统权限
         </h2>
         <div className="mt-2">
           <SystemPermissionPanel variant="both" />
         </div>
-        <p className="mt-3 text-xs leading-relaxed text-zinc-600">
+        <p className="mt-3 text-xs leading-relaxed text-[var(--tl-muted)]">
           {pipelineHealthPlatformNote(clientOs)}
         </p>
       </div>
 
       <table className="w-full max-w-2xl border-collapse text-sm">
         <thead>
-          <tr className="border-b border-zinc-700 text-left text-zinc-400">
+          <tr className="border-b border-[var(--tl-line)] text-left text-[var(--tl-muted)]">
             <th className="py-2 pr-4">引擎</th>
             <th className="py-2 pr-4">状态</th>
             <th className="py-2">最近数据</th>
@@ -96,22 +96,22 @@ export default function HealthPage() {
             rows.map(([label, key]) => {
               const eng = h[key] as (typeof h)["tracker"];
               return (
-                <tr key={label} className="border-b border-zinc-800/80">
-                  <td className="py-2 pr-4 text-zinc-200">{label}</td>
+                <tr key={label} className="border-b border-[var(--tl-line)]">
+                  <td className="py-2 pr-4 text-[var(--tl-ink)]">{label}</td>
                   <td className="py-2 pr-4">
                     <span
                       className={
                         eng.status === "running"
-                          ? "text-emerald-400"
+                          ? "text-[var(--tl-status-ok)]"
                           : eng.status === "degraded"
-                            ? "text-amber-400"
-                            : "text-zinc-500"
+                            ? "text-[var(--tl-status-warn)]"
+                            : "text-[var(--tl-muted)]"
                       }
                     >
                       {engineStatusLabel(eng.status)}
                     </span>
                   </td>
-                  <td className="py-2 text-zinc-500">{fmtTs(eng.lastDataMs)}</td>
+                  <td className="py-2 text-[var(--tl-muted)]">{fmtTs(eng.lastDataMs)}</td>
                 </tr>
               );
             })}

@@ -17,6 +17,246 @@
   --tl-p3-c-c: #d4a24c;
   --tl-p3-c-d: #5a554d;
   --tl-p3-accent: #e35d48;
+  --tl-p3-intent-a-bg: rgba(61, 155, 139, 0.12);
+  --tl-p3-intent-b-bg: rgba(124, 111, 212, 0.12);
+  --tl-p3-intent-c-bg: rgba(212, 162, 76, 0.12);
+  --tl-p3-intent-d-bg: rgba(90, 85, 77, 0.2);
+  /* App shell */
+  --tl-shell-gradient-from: #080a10;
+  --tl-sidebar-bg: rgba(10, 12, 18, 0.92);
+  --tl-header-bg: rgba(8, 10, 16, 0.75);
+  --tl-nav-active-bg: rgba(0, 245, 212, 0.08);
+  --tl-nav-hover-bg: rgba(0, 245, 212, 0.06);
+  --tl-capture-idle-border: var(--tl-line);
+  --tl-capture-idle-bg: rgba(14, 16, 24, 0.85);
+  --tl-capture-idle-hover: rgba(20, 22, 32, 0.95);
+  --tl-input-fill: rgba(14, 16, 24, 0.9);
+  --tl-panel: rgba(10, 12, 18, 0.55);
+  /* Surfaces（设置等） */
+  --tl-surface: rgba(24, 24, 27, 0.4);
+  --tl-surface-deep: rgba(9, 9, 11, 0.75);
+  --tl-overlay: rgba(0, 0, 0, 0.7);
+  --tl-modal-surface: rgb(24 24 27);
+  --tl-btn-muted: rgb(63 63 70);
+  /* 半透明叠层（透视 / 时间线） */
+  --tl-glass-15: rgba(0, 0, 0, 0.15);
+  --tl-glass-20: rgba(0, 0, 0, 0.2);
+  --tl-glass-25: rgba(0, 0, 0, 0.25);
+  --tl-glass-30: rgba(0, 0, 0, 0.3);
+  --tl-glass-40: rgba(0, 0, 0, 0.4);
+  --tl-accent-15: rgba(0, 245, 212, 0.15);
+  --tl-accent-22: rgba(0, 245, 212, 0.22);
+  --tl-accent-45: rgba(0, 245, 212, 0.45);
+  --tl-accent-12: rgba(0, 245, 212, 0.12);
+  --tl-accent-25: rgba(0, 245, 212, 0.25);
+  --tl-accent-20: rgba(0, 245, 212, 0.2);
+  --tl-accent-06: rgba(0, 245, 212, 0.06);
+  --tl-accent-18: rgba(0, 245, 212, 0.18);
+  --tl-accent-08: rgba(0, 245, 212, 0.08);
+  --tl-accent-10: rgba(0, 245, 212, 0.1);
+  --tl-accent-15b: rgba(0, 245, 212, 0.15);
+  --tl-violet-35: rgba(155, 126, 217, 0.35);
+  --tl-violet-08: rgba(155, 126, 217, 0.08);
+  --tl-sheet-bg: #0e1018;
+  --tl-overlay-strong: rgba(0, 0, 0, 0.6);
+  --tl-overlay-lightbox: rgba(0, 0, 0, 0.85);
+  --tl-snap-hover: rgba(255, 255, 255, 0.05);
+  --tl-snap-selected: rgba(0, 245, 212, 0.1);
+  --tl-chip-bg: rgba(255, 255, 255, 0.03);
+  --tl-bar-empty: rgba(255, 255, 255, 0.06);
+  /* 海报与 p3 块 */
+  --tl-poster-grad-a: #12151c;
+  --tl-poster-grad-c: #0a0c10;
+  --tl-p3-bridge-bg: linear-gradient(160deg, rgba(18, 21, 28, 0.95) 0%, #0a0c10 100%);
+  --tl-p3-card-hover-border: rgba(0, 245, 212, 0.22);
+  --tl-p3-card-hover-bg: rgba(255, 255, 255, 0.045);
+  --tl-p3-card-active-border: rgba(0, 245, 212, 0.35);
+  --tl-p3-card-active-bg: rgba(0, 245, 212, 0.06);
+  /* 列表 / 工具页分区 */
+  --tl-subheader-bg: rgba(8, 10, 16, 0.35);
+  --tl-list-hover: rgba(255, 255, 255, 0.04);
+  --tl-row-selected: rgba(39, 39, 42, 0.75);
+  --tl-row-selected-soft: rgba(39, 39, 42, 0.55);
+  --tl-footer-bar: rgba(24, 24, 27, 0.82);
+  --tl-hit-card-bg: rgba(9, 9, 11, 0.55);
+  --tl-hit-card-active-ring: rgba(16, 185, 129, 0.45);
+  --tl-filter-pill-idle: rgba(14, 16, 24, 0.72);
+  /* 状态徽章 */
+  --tl-tracking-on-bg: rgba(6, 78, 59, 0.55);
+  --tl-tracking-on-text: rgb(167 243 208);
+  --tl-tracking-off-bg: rgba(63, 63, 70, 0.75);
+  --tl-tracking-off-text: rgb(161 161 170);
+  --tl-badge-afk-bg: rgba(120, 53, 15, 0.5);
+  --tl-badge-afk-text: rgb(254 243 199);
+  --tl-badge-builtin-bg: rgba(76, 29, 149, 0.42);
+  --tl-badge-builtin-text: rgb(221 214 254);
+  --tl-badge-none-bg: rgba(14, 16, 24, 0.88);
+  --tl-perm-ok-bg: rgba(6, 78, 59, 0.45);
+  --tl-perm-ok-text: rgb(167 243 208);
+  --tl-perm-bad-bg: rgba(127, 29, 29, 0.42);
+  --tl-perm-bad-text: rgb(254 202 202);
+  --tl-perm-action-border: rgba(185, 28, 28, 0.45);
+  --tl-perm-action-text: rgb(254 202 202);
+  /* 主按钮 / 紫辅按钮 */
+  --tl-btn-primary-bg: rgb(4 120 87);
+  --tl-btn-primary-bg-hover: rgb(5 150 105);
+  --tl-btn-primary-text: rgb(240 253 250);
+  --tl-btn-violet-border: rgba(91, 33, 182, 0.5);
+  --tl-btn-violet-bg: rgba(76, 29, 149, 0.35);
+  --tl-btn-violet-bg-hover: rgba(76, 29, 149, 0.5);
+  --tl-btn-violet-text: rgb(237 233 254);
+  /* 错误条 */
+  --tl-error-bg: rgba(69, 10, 10, 0.45);
+  --tl-error-border: rgba(185, 28, 28, 0.4);
+  --tl-error-text: rgb(254 202 202);
+  --tl-error-link: rgb(248 113 113);
+  /* 琥珀提示 / 警告条 / OCR 顶条 */
+  --tl-warn-amber-bg: rgba(69, 26, 3, 0.42);
+  --tl-warn-amber-border: rgba(245, 158, 11, 0.32);
+  --tl-warn-amber-text: rgba(254, 243, 199, 0.95);
+  --tl-ocr-warn-strip-bg: rgba(69, 26, 3, 0.38);
+  --tl-ocr-warn-strip-text: rgba(254, 243, 199, 0.92);
+  --tl-banner-warn-bg: rgba(120, 53, 15, 0.3);
+  --tl-banner-warn-text: rgba(254, 243, 199, 0.95);
+  /* 顶栏采集中 */
+  --tl-capture-on-border: rgba(6, 95, 70, 0.65);
+  --tl-capture-on-bg: rgba(6, 78, 59, 0.38);
+  --tl-capture-on-hover: rgba(6, 78, 59, 0.52);
+  /* 代码/预览底 */
+  --tl-pre-bg: rgba(0, 0, 0, 0.32);
+  --tl-img-placeholder-bg: rgba(0, 0, 0, 0.38);
+  /* 高亮（琥珀底上的字） */
+  --tl-mark-on-amber: rgb(9 9 11);
+  /* 危险操作按钮 */
+  --tl-btn-danger-border: rgba(180, 83, 9, 0.55);
+  --tl-btn-danger-text: rgba(254, 243, 199, 0.95);
+  --tl-btn-danger-hover: rgba(120, 53, 15, 0.45);
+  /* 状态色（成功 / 警告 / 错误文案） */
+  --tl-status-ok: rgb(52 211 153);
+  --tl-status-warn: rgb(251 191 36);
+  --tl-status-bad: rgb(251 113 133);
+}
+
+[data-theme="white"] {
+  --tl-bg: #f8fafc;
+  --tl-ink: #0f172a;
+  --tl-muted: #64748b;
+  --tl-line: rgba(15, 23, 42, 0.12);
+  --tl-cyan: #0d9488;
+  --tl-cyan-dim: rgba(13, 148, 136, 0.55);
+  --tl-cyan-glow: rgba(13, 148, 136, 0.22);
+  --tl-purple: #7c3aed;
+  --tl-card: rgba(255, 255, 255, 0.94);
+  --tl-poster-bg: #ffffff;
+  --tl-p3-c-a: #0f766e;
+  --tl-p3-c-b: #6d28d9;
+  --tl-p3-c-c: #b45309;
+  --tl-p3-c-d: #57534e;
+  --tl-p3-accent: #c2410c;
+  --tl-p3-intent-a-bg: rgba(15, 118, 110, 0.12);
+  --tl-p3-intent-b-bg: rgba(124, 58, 237, 0.1);
+  --tl-p3-intent-c-bg: rgba(180, 83, 9, 0.12);
+  --tl-p3-intent-d-bg: rgba(87, 83, 78, 0.12);
+  --tl-shell-gradient-from: #f1f5f9;
+  --tl-sidebar-bg: rgba(255, 255, 255, 0.94);
+  --tl-header-bg: rgba(248, 250, 252, 0.92);
+  --tl-nav-active-bg: rgba(13, 148, 136, 0.12);
+  --tl-nav-hover-bg: rgba(13, 148, 136, 0.08);
+  --tl-capture-idle-border: rgba(15, 23, 42, 0.12);
+  --tl-capture-idle-bg: rgba(255, 255, 255, 0.92);
+  --tl-capture-idle-hover: #f1f5f9;
+  --tl-input-fill: #ffffff;
+  --tl-panel: rgba(241, 245, 249, 0.92);
+  --tl-surface: rgba(255, 255, 255, 0.88);
+  --tl-surface-deep: #f1f5f9;
+  --tl-overlay: rgba(15, 23, 42, 0.45);
+  --tl-modal-surface: #ffffff;
+  --tl-btn-muted: #e2e8f0;
+  --tl-glass-15: rgba(248, 250, 252, 0.92);
+  --tl-glass-20: rgba(241, 245, 249, 0.92);
+  --tl-glass-25: rgba(241, 245, 249, 0.96);
+  --tl-glass-30: rgba(226, 232, 240, 0.98);
+  --tl-glass-40: rgba(226, 232, 240, 0.95);
+  --tl-accent-15: rgba(13, 148, 136, 0.12);
+  --tl-accent-22: rgba(13, 148, 136, 0.18);
+  --tl-accent-45: rgba(13, 148, 136, 0.4);
+  --tl-accent-12: rgba(13, 148, 136, 0.12);
+  --tl-accent-25: rgba(13, 148, 136, 0.22);
+  --tl-accent-20: rgba(13, 148, 136, 0.15);
+  --tl-accent-06: rgba(13, 148, 136, 0.07);
+  --tl-accent-18: rgba(13, 148, 136, 0.14);
+  --tl-accent-08: rgba(13, 148, 136, 0.09);
+  --tl-accent-10: rgba(13, 148, 136, 0.11);
+  --tl-accent-15b: rgba(13, 148, 136, 0.12);
+  --tl-violet-35: rgba(124, 58, 237, 0.28);
+  --tl-violet-08: rgba(124, 58, 237, 0.1);
+  --tl-sheet-bg: #ffffff;
+  --tl-overlay-strong: rgba(15, 23, 42, 0.35);
+  --tl-overlay-lightbox: rgba(15, 23, 42, 0.65);
+  --tl-snap-hover: rgba(15, 23, 42, 0.06);
+  --tl-snap-selected: rgba(13, 148, 136, 0.12);
+  --tl-chip-bg: rgba(15, 23, 42, 0.04);
+  --tl-bar-empty: rgba(15, 23, 42, 0.06);
+  --tl-poster-grad-a: #ffffff;
+  --tl-poster-grad-c: #f1f5f9;
+  --tl-p3-bridge-bg: linear-gradient(160deg, #ffffff 0%, #f8fafc 100%);
+  --tl-p3-card-hover-border: rgba(13, 148, 136, 0.35);
+  --tl-p3-card-hover-bg: rgba(13, 148, 136, 0.05);
+  --tl-p3-card-active-border: rgba(13, 148, 136, 0.45);
+  --tl-p3-card-active-bg: rgba(13, 148, 136, 0.08);
+  --tl-subheader-bg: rgba(241, 245, 249, 0.88);
+  --tl-list-hover: rgba(15, 23, 42, 0.05);
+  --tl-row-selected: rgba(13, 148, 136, 0.12);
+  --tl-row-selected-soft: rgba(13, 148, 136, 0.09);
+  --tl-footer-bar: rgba(248, 250, 252, 0.92);
+  --tl-hit-card-bg: rgba(255, 255, 255, 0.88);
+  --tl-hit-card-active-ring: rgba(13, 148, 136, 0.55);
+  --tl-filter-pill-idle: rgba(226, 232, 240, 0.95);
+  --tl-tracking-on-bg: rgba(16, 185, 129, 0.15);
+  --tl-tracking-on-text: rgb(4 120 87);
+  --tl-tracking-off-bg: rgba(226, 232, 240, 0.95);
+  --tl-tracking-off-text: rgb(100 116 139);
+  --tl-badge-afk-bg: rgba(254, 243, 199, 0.85);
+  --tl-badge-afk-text: rgb(146 64 14);
+  --tl-badge-builtin-bg: rgba(237, 233, 254, 0.95);
+  --tl-badge-builtin-text: rgb(91 33 182);
+  --tl-badge-none-bg: rgba(241, 245, 249, 0.95);
+  --tl-perm-ok-bg: rgba(16, 185, 129, 0.15);
+  --tl-perm-ok-text: rgb(4 120 87);
+  --tl-perm-bad-bg: rgba(254, 202, 202, 0.85);
+  --tl-perm-bad-text: rgb(127 29 29);
+  --tl-perm-action-border: rgba(248, 113, 113, 0.55);
+  --tl-perm-action-text: rgb(127 29 29);
+  --tl-btn-primary-bg: rgb(5 150 105);
+  --tl-btn-primary-bg-hover: rgb(4 120 87);
+  --tl-btn-primary-text: rgb(255 255 255);
+  --tl-btn-violet-border: rgba(139, 92, 246, 0.45);
+  --tl-btn-violet-bg: rgba(237, 233, 254, 0.95);
+  --tl-btn-violet-bg-hover: rgba(221, 214, 254, 1);
+  --tl-btn-violet-text: rgb(91 33 182);
+  --tl-error-bg: rgba(254, 226, 226, 0.85);
+  --tl-error-border: rgba(248, 113, 113, 0.45);
+  --tl-error-text: rgb(127 29 29);
+  --tl-error-link: rgb(185 28 28);
+  --tl-warn-amber-bg: rgba(254, 243, 199, 0.65);
+  --tl-warn-amber-border: rgba(217, 119, 6, 0.35);
+  --tl-warn-amber-text: rgb(120 53 15);
+  --tl-ocr-warn-strip-bg: rgba(254, 243, 199, 0.75);
+  --tl-ocr-warn-strip-text: rgb(120 53 15);
+  --tl-banner-warn-bg: rgba(254, 243, 199, 0.55);
+  --tl-banner-warn-text: rgb(120 53 15);
+  --tl-capture-on-border: rgba(16, 185, 129, 0.45);
+  --tl-capture-on-bg: rgba(16, 185, 129, 0.12);
+  --tl-capture-on-hover: rgba(16, 185, 129, 0.2);
+  --tl-pre-bg: rgba(241, 245, 249, 0.95);
+  --tl-img-placeholder-bg: rgba(241, 245, 249, 0.95);
+  --tl-mark-on-amber: rgb(15 23 42);
+  --tl-btn-danger-border: rgba(217, 119, 6, 0.45);
+  --tl-btn-danger-text: rgb(120 53 15);
+  --tl-btn-danger-hover: rgba(254, 243, 199, 0.95);
+  --tl-status-ok: rgb(5 150 105);
+  --tl-status-warn: rgb(217 119 6);
+  --tl-status-bad: rgb(220 38 38);
 }
 
 body {
@@ -80,7 +320,12 @@ body {
 
 .tl-poster-card {
   position: relative;
-  background: linear-gradient(155deg, #12151c 0%, var(--tl-poster-bg) 50%, #0a0c10 100%);
+  background: linear-gradient(
+    155deg,
+    var(--tl-poster-grad-a) 0%,
+    var(--tl-poster-bg) 50%,
+    var(--tl-poster-grad-c) 100%
+  );
   border-radius: 16px;
   padding: 1.25rem 1.35rem;
   overflow: hidden;
@@ -141,7 +386,7 @@ body {
 
 /* —— 今日完整时间线（三期详情稿） —— */
 .tl-p3-bridge {
-  background: linear-gradient(160deg, rgba(18, 21, 28, 0.95) 0%, #0a0c10 100%);
+  background: var(--tl-p3-bridge-bg);
   border: 1px solid var(--tl-line);
   border-radius: 18px;
   padding: 1rem 1.1rem 1.05rem;
@@ -237,28 +482,43 @@ body {
 }
 
 .tl-p3-card:hover {
-  border-color: rgba(0, 245, 212, 0.22);
-  background: rgba(255, 255, 255, 0.045);
+  border-color: var(--tl-p3-card-hover-border);
+  background: var(--tl-p3-card-hover-bg);
 }
 
 .tl-p3-card-active {
-  border-color: rgba(0, 245, 212, 0.35);
-  background: rgba(0, 245, 212, 0.06);
+  border-color: var(--tl-p3-card-active-border);
+  background: var(--tl-p3-card-active-bg);
 }
 
 .tl-p3-intent-a {
   color: var(--tl-p3-c-a);
-  background: rgba(61, 155, 139, 0.12);
+  background: var(--tl-p3-intent-a-bg);
 }
 .tl-p3-intent-b {
-  color: #a89ef0;
-  background: rgba(124, 111, 212, 0.12);
+  color: var(--tl-p3-c-b);
+  background: var(--tl-p3-intent-b-bg);
 }
 .tl-p3-intent-c {
   color: var(--tl-p3-c-c);
-  background: rgba(212, 162, 76, 0.12);
+  background: var(--tl-p3-intent-c-bg);
 }
 .tl-p3-intent-d {
-  color: #a8a29a;
-  background: rgba(90, 85, 77, 0.2);
+  color: var(--tl-p3-c-d);
+  background: var(--tl-p3-intent-d-bg);
+}
+
+[data-theme="white"] .tl-poster-card {
+  box-shadow:
+    0 0 0 1px rgba(13, 148, 136, 0.18) inset,
+    0 16px 48px -20px rgba(15, 23, 42, 0.1),
+    0 0 36px -18px rgba(13, 148, 136, 0.08);
+}
+[data-theme="white"] .tl-poster-card::before {
+  background: linear-gradient(
+    135deg,
+    rgba(13, 148, 136, 0.35),
+    rgba(124, 58, 237, 0.22),
+    rgba(13, 148, 136, 0.15)
+  );
 }

@@ -111,6 +111,14 @@ pub fn check_permissions(state: State<'_, AppState>) -> Result<PermissionStatus,
     })
 }
 
+/// 用户主动点击「请求屏幕录制权限」时调用：触发 macOS 系统弹窗（每次运行只弹一次）。
+#[tauri::command]
+pub fn request_screen_capture_access(state: State<'_, AppState>) -> Result<bool, String> {
+    let granted = acquisition::request_screen_capture_access();
+    state.0.screen_ok.store(granted, Ordering::Relaxed);
+    Ok(granted)
+}
+
 #[tauri::command]
 pub fn open_accessibility_settings() -> Result<(), String> {
     #[cfg(target_os = "macos")]
@@ -664,7 +672,7 @@ fn build_ocr_fts_and_expr(tokens: &[String]) -> String {
 const OCR_FULL_TEXT_MAX_CHARS: usize = 65536;
 
 fn open_db_rw(path: &Path) -> Result<rusqlite::Connection, String> {
-    let mut c = rusqlite::Connection::open(path).map_err(|e| e.to_string())?;
+    let c = rusqlite::Connection::open(path).map_err(|e| e.to_string())?;
     c.busy_timeout(Duration::from_secs(8))
         .map_err(|e| e.to_string())?;
     Ok(c)
@@ -951,7 +959,7 @@ pub fn set_intent_for_app_aggregates_batch(
 /// 将「尚无 Intent」的历史会话按当前映射规则（含内置字典）补齐。
 #[tauri::command]
 pub fn backfill_session_intents_from_mappings(state: State<'_, AppState>) -> Result<i64, String> {
-    let mut c = open_db_rw(&state.0.paths.db_path)?;
+    let c = open_db_rw(&state.0.paths.db_path)?;
     let mut stmt = c
         .prepare(
             "SELECT DISTINCT app_name, \
@@ -1118,7 +1126,7 @@ pub fn generate_daily_report(
         if !state.0.ai_enabled.load(Ordering::Relaxed) {
             return Err("AI 未开启：请先在设置中开启并配置".into());
         }
-        let mut c = open_db_rw(&state.0.paths.db_path)?;
+        let c = open_db_rw(&state.0.paths.db_path)?;
         let api_key = settings::get_ai_api_key(&c)
             .ok_or_else(|| "请先在设置中配置 API Key（BYOK）".to_string())?;
         let base_url = settings::get_ai_base_url(&c);
@@ -1248,7 +1256,7 @@ pub fn generate_daily_report(
             ai_prompt_hash: Some(prompt_hash),
         });
     }
-    let mut c = open_db_rw(&state.0.paths.db_path)?;
+    let c = open_db_rw(&state.0.paths.db_path)?;
     let row: DailyAnalysisDto = c
         .query_row(
             "SELECT id, analysis_date, generated_at_ms, version, total_active_ms, intent_breakdown, top_apps, \

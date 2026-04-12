@@ -225,7 +225,7 @@ export default function TimelinePage() {
     <div className="relative h-full overflow-y-auto p-5 pb-10">
       {lightbox ? (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--tl-overlay-lightbox)] p-4"
           role="dialog"
           aria-modal="true"
           aria-label="截图大图"
@@ -233,7 +233,7 @@ export default function TimelinePage() {
         >
           <button
             type="button"
-            className="absolute right-4 top-4 rounded-lg bg-zinc-800 px-3 py-1 text-sm text-zinc-200"
+            className="absolute right-4 top-4 rounded-lg bg-[var(--tl-surface-deep)] px-3 py-1 text-sm text-[var(--tl-ink)]"
             onClick={() => setLightbox(null)}
           >
             关闭
@@ -281,7 +281,7 @@ export default function TimelinePage() {
           </p>
           <div className="mb-3 flex h-2 overflow-hidden rounded" role="img" aria-label="意图占比">
             {bridgeBar.length === 0 ? (
-              <span className="h-full w-full rounded bg-white/[0.06]" />
+              <span className="h-full w-full rounded bg-[var(--tl-bar-empty)]" />
             ) : (
               bridgeBar.map((b) => (
                 <span
@@ -303,14 +303,14 @@ export default function TimelinePage() {
             </div>
             <div className="flex max-w-full flex-wrap justify-end gap-1.5">
               {bridgeChips.length === 0 && !loading ? (
-                <span className="rounded-md border border-[var(--tl-line)] bg-white/[0.03] px-2 py-1 text-[0.65rem] text-[var(--tl-muted)]">
+                <span className="rounded-md border border-[var(--tl-line)] bg-[var(--tl-chip-bg)] px-2 py-1 text-[0.65rem] text-[var(--tl-muted)]">
                   暂无 Top 应用
                 </span>
               ) : (
                 bridgeChips.map((c) => (
                   <span
                     key={c.app}
-                    className="rounded-md border border-[var(--tl-line)] bg-white/[0.03] px-2 py-1 text-[0.65rem] text-[var(--tl-muted)]"
+                    className="rounded-md border border-[var(--tl-line)] bg-[var(--tl-chip-bg)] px-2 py-1 text-[0.65rem] text-[var(--tl-muted)]"
                   >
                     <strong className="font-semibold text-[var(--tl-ink)]">{c.app}</strong>{" "}
                     {formatDurationShortMs(c.dur)} · {c.pct}%
@@ -442,7 +442,7 @@ export default function TimelinePage() {
       </div>
 
       {pick ? (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/60 p-2 md:p-4" role="presentation">
+        <div className="fixed inset-0 z-50 flex justify-end bg-[var(--tl-overlay-strong)] p-2 md:p-4" role="presentation">
           <button
             type="button"
             className="absolute inset-0 cursor-default border-0 bg-transparent"
@@ -453,7 +453,7 @@ export default function TimelinePage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="tl-sheet-title"
-            className="relative z-10 flex h-full w-full max-w-lg flex-col rounded-xl border border-[var(--tl-line)] bg-[#0e1018] shadow-2xl"
+            className="relative z-10 flex h-full w-full max-w-lg flex-col rounded-xl border border-[var(--tl-line)] bg-[var(--tl-sheet-bg)] shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-[var(--tl-line)] px-4 py-3">
@@ -482,7 +482,7 @@ export default function TimelinePage() {
               <p className="mt-4 text-xs font-medium uppercase tracking-wide text-[var(--tl-muted)]">
                 截图
               </p>
-              <div className="mt-2 flex min-h-[160px] items-center justify-center rounded-lg border border-[var(--tl-line)] bg-black/30 p-2">
+              <div className="mt-2 flex min-h-[160px] items-center justify-center rounded-lg border border-[var(--tl-line)] bg-[var(--tl-glass-30)] p-2">
                 {selectedSnap?.filePath ? (
                   <button
                     type="button"
@@ -510,7 +510,9 @@ export default function TimelinePage() {
                           if (sn.filePath) setLightbox(snapshotTimelensUrl(sn.id));
                         }}
                         className={`flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-xs ${
-                          sn.id === snapPick ? "bg-[rgba(0,245,212,0.1)]" : "hover:bg-white/5"
+                          sn.id === snapPick
+                            ? "bg-[var(--tl-snap-selected)]"
+                            : "hover:bg-[var(--tl-snap-hover)]"
                         }`}
                       >
                         <span>{fmtTime(sn.capturedAtMs)}</span>

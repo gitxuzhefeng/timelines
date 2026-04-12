@@ -38,8 +38,8 @@ function navCls(active: boolean): string {
   return [
     "tl-nav-item flex w-full items-center gap-2 rounded-lg border-0 px-2.5 py-2 text-left text-sm font-medium transition-colors",
     active
-      ? "tl-nav-active bg-[rgba(0,245,212,0.08)] text-[var(--tl-ink)]"
-      : "text-[var(--tl-muted)] hover:bg-[rgba(0,245,212,0.06)] hover:text-[var(--tl-ink)]",
+      ? "tl-nav-active bg-[var(--tl-nav-active-bg)] text-[var(--tl-ink)]"
+      : "text-[var(--tl-muted)] hover:bg-[var(--tl-nav-hover-bg)] hover:text-[var(--tl-ink)]",
   ].join(" ");
 }
 
@@ -69,7 +69,7 @@ export default function AppShell() {
     <div className="tl-app flex h-screen min-h-0 flex-col bg-[var(--tl-bg)] text-[var(--tl-ink)]">
       <div className="tl-shell mx-auto flex min-h-0 w-full max-w-[1320px] flex-1">
         <aside
-          className="tl-sidebar flex w-[min(278px,100%)] shrink-0 flex-col border-r border-[var(--tl-line)] bg-[rgba(10,12,18,0.92)] backdrop-blur-md"
+          className="tl-sidebar flex w-[min(278px,100%)] shrink-0 flex-col border-r border-[var(--tl-line)] bg-[var(--tl-sidebar-bg)] backdrop-blur-md"
           aria-label="主导航"
         >
           <div className="border-b border-[var(--tl-line)] px-4 py-3">
@@ -114,8 +114,8 @@ export default function AppShell() {
           </nav>
         </aside>
 
-        <div className="flex min-w-0 min-h-0 flex-1 flex-col bg-gradient-to-b from-[#080a10] to-[var(--tl-bg)]">
-          <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--tl-line)] bg-[rgba(8,10,16,0.75)] px-5 py-3 backdrop-blur-md">
+        <div className="flex min-w-0 min-h-0 flex-1 flex-col bg-gradient-to-b from-[var(--tl-shell-gradient-from)] to-[var(--tl-bg)]">
+          <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--tl-line)] bg-[var(--tl-header-bg)] px-5 py-3 backdrop-blur-md">
             <div className="min-w-0 flex-1">
               <h1 className="text-[1.05rem] font-bold tracking-wide">{title}</h1>
               {sub ? (
@@ -132,8 +132,8 @@ export default function AppShell() {
                 className={[
                   "flex min-w-[9.5rem] flex-col items-stretch rounded-lg border px-3 py-2 text-left transition-colors disabled:opacity-50",
                   isTracking
-                    ? "border-emerald-800/70 bg-emerald-950/35 hover:bg-emerald-950/50"
-                    : "border-[var(--tl-line)] bg-[rgba(14,16,24,0.85)] hover:bg-[rgba(20,22,32,0.95)]",
+                    ? "border-[var(--tl-capture-on-border)] bg-[var(--tl-capture-on-bg)] hover:bg-[var(--tl-capture-on-hover)]"
+                    : "border-[var(--tl-capture-idle-border)] bg-[var(--tl-capture-idle-bg)] hover:bg-[var(--tl-capture-idle-hover)]",
                 ].join(" ")}
               >
                 <span className="font-mono text-[0.58rem] font-semibold uppercase tracking-[0.12em] text-[var(--tl-muted)]">
@@ -142,7 +142,7 @@ export default function AppShell() {
                 <span
                   className={[
                     "mt-0.5 text-sm font-semibold",
-                    isTracking ? "text-emerald-300" : "text-[var(--tl-muted)]",
+                    isTracking ? "text-[var(--tl-tracking-on-text)]" : "text-[var(--tl-muted)]",
                   ].join(" ")}
                 >
                   {captureBusy ? "…" : isTracking ? "采集中" : "停止采集"}
@@ -154,7 +154,7 @@ export default function AppShell() {
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="rounded-lg border border-[var(--tl-line)] bg-[rgba(14,16,24,0.9)] px-2 py-1.5 text-[var(--tl-ink)]"
+                  className="rounded-lg border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-2 py-1.5 text-[var(--tl-ink)]"
                 />
               </label>
             </div>
