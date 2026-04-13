@@ -1,123 +1,64 @@
 # TimeLens · Windows 上手指南
 
-> **版本**：v1.0 · 2026-03-30  
-> **适用**：在 **Windows 10 / Windows 11（64 位）** 上从源码运行开发模式、或本地构建安装包/绿色版。  
-> **仓库应用路径**：`project/`（Tauri 2 + Vite 6 + React 18）。
+> **版本**：v2.0 · 2026-04-13  
+> **适用**：在 Windows 10/11 **64 位**（x64 或 ARM64）上开发、本地构建 **NSIS 安装包**或绿色 ZIP。应用代码在 **`project/`**（Tauri 2 + Vite 6 + React 18）。
 
 ---
 
-## 1. 环境与版本要求（请逐项核对）
+## 1. 环境要求
 
-下列版本为 **当前仓库可复现的推荐基线**；略高版本一般可用，若构建失败再以本表为准回退或升级。
+| 组件 | 说明 |
+|------|------|
+| **系统** | Windows 10 22H2+ 或 Windows 11，**x64 或 ARM64** |
+| **Node.js** | **20 LTS 或 22 LTS**（须支持 Vite 6）。自检：`node -v`、`npm -v` |
+| **Rust** | **stable**，**MSVC** 工具链。x64 主机：`x86_64-pc-windows-msvc`；ARM64 主机（WoA）：`aarch64-pc-windows-msvc`。自检：`rustc -V`、`rustup show` |
+| **MSVC** | **Visual Studio 2022**「使用 C++ 的桌面开发」或 **Build Tools 2022** 同等 workload；须含 **Windows SDK**。ARM64 目标还需 **MSVC v143 的 ARM64/ARM64EC 组件**（否则缺 `lib\arm64\msvcrt.lib` 等） |
+| **LLVM**（ARM64 建议） | 部分依赖（如 `ring`）构建时会找 **clang**。WoA 上可 `winget install LLVM.LLVM`，保证 `clang.exe` 在 PATH（本仓库脚本会预置 `C:\Program Files\LLVM\bin`） |
+| **WebView2** | Evergreen。Win11 多已自带；Win10 若白屏见 [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) |
+| **Git** | 克隆仓库用，2.40+ 即可 |
 
+技术栈版本以 `project/package.json`、`project/src-tauri/Cargo.toml` 及 lock 文件为准。未装 MSVC 时，含 C 代码的 crate 会链接失败，与 [Tauri 前置条件](https://v2.tauri.app/start/prerequisites/) 一致。
 
-| 组件            | 要求                                                                                               | 本仓库锁定的参考版本                      | 如何自检                                                          |
-| ------------- | ------------------------------------------------------------------------------------------------ | ------------------------------- | ------------------------------------------------------------- |
-| **操作系统**      | Windows 10 **22H2** 及以上，或 Windows 11；**64 位（x64）**                                               | —                               | 设置 → 系统 → 关于                                                  |
-| **Node.js**   | **20 LTS** 或 **22 LTS**（需支持 Vite 6）；不推荐低于 18                                                     | 建议使用 **20.18+** 或 **22.x**      | `node -v`（应输出 `v20.x` 或 `v22.x`）                              |
-| **npm**       | 随 Node 安装即可                                                                                      | 一般 **10.x**（Node 20+ 自带）        | `npm -v`                                                      |
-| **Rust 工具链**  | **stable**，且默认目标为 **MSVC**                                                                       | `rustc` / `cargo` 为当前 stable 即可 | `rustc -V`、`cargo -V`                                         |
-| **Rust 目标平台** | `**x86_64-pc-windows-msvc`**（本仓库默认 Windows 桌面构建）                                                 | —                               | `rustup show` 中 `active toolchain` 含 `x86_64-pc-windows-msvc` |
-| **MSVC 生成工具** | **Visual Studio 2022** 的 **“使用 C++ 的桌面开发”** 工作负载；或 **Build Tools for Visual Studio 2022** 勾选同等组件 | VS **17.x** 生成工具                | 安装后重启终端再编 Rust                                                |
-| **WebView2**  | **Evergreen Runtime**（运行时）                                                                       | 与 Edge 通道同步更新                   | Win11 通常已装；Win10 见下文 §3                                       |
-| **Git**       | 克隆仓库时需要                                                                                          | **2.40+** 即可                    | `git --version`                                               |
-
-
-### 1.1 与本仓库对应的技术栈版本（便于对照）
-
-
-| 层级        | 说明                                                                                                                                              |
-| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Tauri** | `project/src-tauri/Cargo.toml` 中为 **2.x**；当前 lock 中文案参考：**tauri 2.10.x**、**@tauri-apps/cli 2.10.x**（以你本机 `Cargo.lock` / `package-lock.json` 为准） |
-| **前端**    | React **18.3.x**、Vite **6.x**、TypeScript **~5.8**、Tailwind **4.x**（见 `project/package.json`）                                                    |
-| **Rust**  | Edition **2021**（见 `project/src-tauri/Cargo.toml`）                                                                                              |
-
-
-> **说明**：未安装 MSVC 时，`rusqlite`、`libwebp-sys` 等带 C 代码的依赖会链接失败；这与 Tauri 官方 [Windows 前置条件](https://v2.tauri.app/start/prerequisites/) 一致。
+**路径建议**：在 **本地盘符目录**（如 `C:\...\timelines`）克隆与构建。在虚拟机共享盘、网络路径（`\\psf\...`）下，Vite/解析可能异常。
 
 ---
 
-## 2. 安装步骤（建议顺序）
+## 2. 安装顺序（概要）
 
-### 2.1 安装 Node.js
-
-1. 打开 [Node.js 官网 LTS](https://nodejs.org/)，下载 **Windows 安装包（64-bit）**。
-2. 安装时勾选 **“Add to PATH”**。
-3. 新开 **PowerShell** 或 **cmd**，执行：
-
-```powershell
-node -v
-npm -v
-```
-
-### 2.2 安装 Rust（rustup + MSVC 目标）
-
-1. 打开 [https://rustup.rs](https://rustup.rs) ，下载并运行 `rustup-init.exe`。
-2. 按提示选择 **默认 stable**；确保主机为 **x86_64-pc-windows-msvc**（安装程序通常会自动选择）。
-3. 若尚未安装 Visual Studio 生成工具，rustup 可能提示补充 **C++ 生成工具** — 请继续 **§2.3** 后再执行：
-
-```powershell
-rustup default stable
-rustup show
-```
-
-如需显式安装 Windows 目标：
-
-```powershell
-rustup target add x86_64-pc-windows-msvc
-```
-
-### 2.3 安装 Visual Studio 生成工具（C++）
-
-1. 下载 [Visual Studio Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)（或安装完整 Visual Studio）。
-2. 在工作负载中勾选 **「使用 C++ 的桌面开发」**（Desktop development with C++）。
-3. 安装完成后 **重启终端**，再执行 `cargo -V` 确认无报错。
-
-### 2.4 WebView2 运行时（Windows 10 重点）
-
-- **Windows 11**：多数机器已自带 Evergreen WebView2，一般无需操作。  
-- **Windows 10**：若应用窗口 **白屏** 或无法加载界面，请安装：  
-[WebView2 Runtime（Evergreen 独立安装包）](https://developer.microsoft.com/microsoft-edge/webview2/)
+1. [Node.js LTS](https://nodejs.org/)（64-bit），安装时勾选加入 PATH。  
+2. [rustup](https://rustup.rs/)，stable + 默认 MSVC 主机。按需：`rustup target add x86_64-pc-windows-msvc` 或 `aarch64-pc-windows-msvc`。  
+3. [VS Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)，勾选 **「使用 C++ 的桌面开发」**；ARM64 机器请确认 **ARM64 工具链**已装。装好后**新开终端**。  
+4. Win10 无 WebView2 时安装 Evergreen Runtime（见上表链接）。
 
 ---
 
 ## 3. 获取代码
 
-在任意目录打开 **PowerShell**：
-
 ```powershell
 git clone https://github.com/gitxuzhefeng/timelines.git
 cd timelines
-git pull
 ```
 
 ---
 
-## 4. 开发模式（热更新调试）
+## 4. 开发调试
 
-在仓库 **根目录** `timelines/` 下执行（与根目录 `package.json` 脚本一致）：
+在仓库**根目录**：
 
 ```powershell
 cd project
-npm install
+npm install   # 或 npm ci
 cd ..
 npm run tauri dev
 ```
 
-- 首次会下载 npm 依赖并编译 Rust，**可能耗时数分钟**。  
-- 成功后应弹出 **TimeLens** 窗口；前端由 Vite 提供，修改 `project/src` 下代码可热更新（具体以 Tauri + Vite 行为为准）。
-
-**仅跑前端（不启桌面壳）**：
-
-```powershell
-npm run dev
-```
+仅前端（无桌面壳）：`npm run dev`（根目录脚本）。
 
 ---
 
-## 5. 生产构建（安装包 / 绿色版目录）
+## 5. 生产构建（安装包）
 
-在 `**project**` 目录：
+在 **`project`** 目录：
 
 ```powershell
 cd project
@@ -125,69 +66,62 @@ npm ci
 npm run tauri build
 ```
 
-或在仓库根目录：
-
-```powershell
-npm install --prefix project
-npm run tauri build --prefix project
-```
+或在根目录：`npm install --prefix project` 后 `npm run tauri build --prefix project`。
 
 ### 5.1 产物位置
 
-构建成功后，查看：
+- 安装包、打包输出：`project\src-tauri\target\release\bundle\`（常见为 `bundle\nsis\*.exe`，具体以本机 Tauri 输出为准）。  
+- 主程序：`project\src-tauri\target\release\timelens.exe`（名称以 `tauri.conf.json` 为准）。
+
+### 5.2 ARM64 Windows（WoA）推荐方式
+
+在 ARM64 上若直接 `npm run tauri build` 出现 **找不到 `link.exe`**、**`msvcrt.lib`** 或 **`ring` 找不到 clang**，请使用仓库脚本（内部调用 **`vcvarsall.bat amd64_arm64`**，即用 x64 主机工具链链接 ARM64）：
 
 ```text
-project\src-tauri\target\release\bundle\
+project\scripts\tauri-build-windows-msvc.cmd
 ```
 
-- 常见包含 **NSIS 安装程序**（`tauri.conf.json` 中已配置 `nsis` 目标）以及可运行的 **应用目录**（具体子目录名以本机 Tauri 2 版本输出为准）。  
-- **绿色版**：将「含主程序 `.exe`、DLL、WebView 资源」的完整文件夹打包为 **ZIP**，解压到任意路径即可运行（勿只拷贝单个 exe）。详见 [绿色版打包说明.md](./绿色版打包说明.md)。
+前提：已安装 Node（脚本默认使用 `C:\Program Files\nodejs`）、VS Build Tools、Rust；若已安装 LLVM，脚本会把其 `bin` 加入 PATH。可按需编辑脚本中的 VS 路径或 Node 路径。
+
+### 5.3 仓库内的安装包归档（可选）
+
+维护者可将构建好的安装包放到 **`releases/windows/`** 便于固定版本下载；`.gitignore` 对 `releases/windows/*.exe` 设有例外。体积大时更推荐 [GitHub Releases](https://github.com/gitxuzhefeng/timelines/releases) 分发。
+
+**架构说明**：在 **ARM64** 机器上产物多为 `*_arm64-setup.exe`；面向主流 **x64 Windows** 用户需在 **x64 环境或 CI（如 `windows-latest` x64）** 再构建一份。
 
 ---
 
-## 6. 数据目录与隐私位置
+## 6. 绿色版（ZIP）
 
-- 默认数据目录：`**%USERPROFILE%\.timelens`**（与 macOS 的 `~/.timelens` 对应）。  
-- 内含 SQLite、截图等；卸载应用不会自动删除该目录，如需清空请自行备份后删除。
-
----
-
-## 7. 首次运行与系统提示
-
-
-| 现象                                 | 处理                                                                                                                                           |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| **SmartScreen 已阻止**                | 点「更多信息」→「仍要运行」。未签名二进制在公网分发时较常见；企业环境可后续做代码签名。                                                                                                 |
-| **界面白屏（Win10）**                    | 优先安装 §2.4 的 WebView2 Evergreen，重启应用。                                                                                                         |
-| **构建报错找不到 link.exe / Windows SDK** | 回到 §2.3，确认 C++ 桌面开发工作负载已装全，并**重启终端**。                                                                                                        |
-| **截图文件已有，主界面预览空白**                 | 已修复：WebView2 要求预览地址使用 `http://timelens.localhost/snapshot/{id}`，不能使用 `timelens://…` 作为 `<img src>`。请拉取最新代码；若仍异常，在开发者工具 Network 中查看该请求是否 200。 |
-
+与安装包同源构建；从 `bundle` 中取**完整可运行目录**（勿只拷单个 exe）打 ZIP。详见 [绿色版打包说明.md](./绿色版打包说明.md)。
 
 ---
 
-## 8. 可选：自检 Rust 测试
+## 7. 数据目录
 
-在 `project/src-tauri`：
+默认 **`%USERPROFILE%\.timelens`**（与 macOS `~/.timelens` 对应）。卸载安装程序不自动删此目录。
 
-```powershell
-cd project\src-tauri
-cargo test
-```
+---
+
+## 8. 常见问题
+
+| 现象 | 处理 |
+|------|------|
+| SmartScreen 拦截 | 「更多信息」→「仍要运行」；分发侧可做代码签名 |
+| Win10 白屏 | 安装 WebView2 Evergreen |
+| 找不到 `link.exe` / SDK | 确认 C++ workload 与 SDK；ARM64 用 **§5.2** 脚本 |
+| 构建找不到 `msvcrt.lib`（ARM64） | 安装 **VC Tools ARM64** 组件，确保存在 `VC\...\lib\arm64\` |
+| `ring` / cc 找不到 `clang`（ARM64） | 安装 **LLVM** 并保证 PATH 中有 `clang.exe`（见 **§5.2**） |
 
 ---
 
 ## 9. 相关文档
 
+| 文档 | 说明 |
+|------|------|
+| [绿色版打包说明.md](./绿色版打包说明.md) | 绿色 ZIP 与安装包关系、用户侧说明 |
+| [03_测试计划.md](./03_测试计划.md) | Windows 测试要点 |
+| [01_技术方案.md](./01_技术方案.md) | 平台差异 |
+| 根目录 [README.md](../../README.md) | 仓库总览 |
 
-| 文档                                                            | 说明                     |
-| ------------------------------------------------------------- | ---------------------- |
-| [绿色版打包说明.md](./绿色版打包说明.md)                                    | ZIP 分发、WebView2、与安装版关系 |
-| [03_测试计划.md](./03_测试计划.md)                                    | Windows 功能与回归测试矩阵      |
-| [01_技术方案.md](./01_技术方案.md)                                    | 平台差异与技术要点              |
-| 根目录 [README.md](../../README.md)                              | 全仓库说明与脚本索引             |
-| [Tauri 2 前置条件（官方）](https://v2.tauri.app/start/prerequisites/) | 平台要求以官方为准              |
-
-
----
-
-**TimeLens** — Windows 上与 macOS 共用同一套 P0 能力边界；若某一步报错，请保留完整终端输出与 `rustc -V`、`node -v` 便于排查。
+Rust 单测（可选）：`cd project\src-tauri` 后 `cargo test`。
