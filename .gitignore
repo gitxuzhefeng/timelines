@@ -59,6 +59,8 @@ demo/netlify/我的微信二维码.JPG
 *.exe
 *.msi
 *.rar
+# 例外：入库的 Windows 安装包（见 releases/windows/）
+!releases/windows/*.exe
 # 签名与证书
 *.p12
 *.mobileprovision
