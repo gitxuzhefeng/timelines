@@ -72,7 +72,7 @@ export default function SessionsPage() {
           <img
             src={lightboxSrc}
             alt="截图大图"
-            className="max-h-[92vh] max-w-full object-contain shadow-2xl"
+            className="tl-lightbox-image max-h-[92vh] max-w-full object-contain shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           />
         </div>
@@ -163,7 +163,7 @@ export default function SessionsPage() {
                   <button
                     type="button"
                     onClick={() => void selectSession(s.id)}
-                    className={`flex w-full flex-col items-start gap-0.5 border-b border-[var(--tl-line)] px-3 py-2.5 text-left text-sm transition-colors ${
+                    className={`tl-interactive-row flex w-full flex-col items-start gap-0.5 border-b border-[var(--tl-line)] px-3 py-2.5 text-left text-sm transition-colors ${
                       active ? "bg-[var(--tl-row-selected)]" : "hover:bg-[var(--tl-list-hover)]"
                     }`}
                   >
@@ -199,14 +199,14 @@ export default function SessionsPage() {
             {selectedSnap?.filePath ? (
               <button
                 type="button"
-                className="max-h-full max-w-full cursor-zoom-in border-0 bg-transparent p-0"
+                className="tl-interactive-row max-h-full max-w-full cursor-zoom-in border-0 bg-transparent p-0"
                 title="点击放大"
                 onClick={() => setLightboxSrc(snapshotTimelensUrl(selectedSnap.id))}
               >
                 <img
                   src={snapshotTimelensUrl(selectedSnap.id)}
                   alt="snapshot"
-                  className="max-h-full max-w-full rounded border border-[var(--tl-line)] object-contain shadow-lg"
+                  className="tl-preview-image max-h-full max-w-full rounded border border-[var(--tl-line)] object-contain shadow-lg"
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = "none";
                   }}
@@ -232,7 +232,7 @@ export default function SessionsPage() {
                     <button
                       type="button"
                       onClick={() => selectSnapshot(sn.id)}
-                      className={`flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-xs ${
+                      className={`tl-interactive-row flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-xs ${
                         sn.id === (selectedSnapshotId ?? selectedSnap?.id)
                           ? "bg-[var(--tl-row-selected-soft)]"
                           : "hover:bg-[var(--tl-list-hover)]"
@@ -244,7 +244,7 @@ export default function SessionsPage() {
                         <img
                           src={snapshotTimelensUrl(sn.id)}
                           alt=""
-                          className="mt-1 h-12 w-full cursor-zoom-in rounded border border-[var(--tl-line)] object-cover"
+                          className="tl-preview-image mt-1 h-12 w-full cursor-zoom-in rounded border border-[var(--tl-line)] object-cover"
                           onClick={(e) => {
                             e.stopPropagation();
                             selectSnapshot(sn.id);

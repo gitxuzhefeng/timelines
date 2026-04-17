@@ -522,3 +522,49 @@ body {
     rgba(13, 148, 136, 0.15)
   );
 }
+
+.tl-shell-blur-surface {
+  backdrop-filter: blur(12px);
+}
+
+/* Windows 交互性能模式：降低 GPU/重绘压力，优先保障跟手与点击反馈。 */
+[data-os="windows"][data-win-perf="on"] .tl-shell-blur-surface {
+  backdrop-filter: none !important;
+}
+
+[data-os="windows"][data-win-perf="on"] .tl-interactive-row {
+  transition-duration: 0.06s !important;
+}
+
+[data-os="windows"][data-win-perf="on"] .tl-nav-item::before {
+  box-shadow: none;
+}
+
+[data-os="windows"][data-win-perf="on"] .tl-p3-card {
+  transition: none;
+}
+
+[data-os="windows"][data-win-perf="on"] .tl-poster-card {
+  box-shadow:
+    0 0 0 1px rgba(0, 245, 212, 0.1) inset,
+    0 10px 28px -20px rgba(0, 0, 0, 0.5);
+}
+
+[data-os="windows"][data-win-perf="on"] .tl-p3-bridge {
+  box-shadow: none;
+}
+
+[data-os="windows"][data-win-perf="on"] .tl-poster-card::before,
+[data-os="windows"][data-win-perf="on"] .tl-fp-beam {
+  animation: none !important;
+}
+
+[data-os="windows"][data-win-perf="on"] .tl-fp-link {
+  background: rgba(0, 245, 212, 0.12);
+}
+
+[data-os="windows"][data-win-perf="on"] .tl-lightbox-image,
+[data-os="windows"][data-win-perf="on"] .tl-sheet-panel,
+[data-os="windows"][data-win-perf="on"] .tl-preview-image {
+  box-shadow: 0 8px 24px -18px rgba(0, 0, 0, 0.55) !important;
+}

@@ -189,7 +189,7 @@ export default function TodayLensPage() {
             <button
               type="button"
               disabled={busy}
-              className="rounded-lg bg-[var(--tl-accent-15)] px-4 py-2 text-sm font-medium text-[var(--tl-cyan)] ring-1 ring-[var(--tl-line)] hover:bg-[var(--tl-accent-22)] disabled:opacity-40"
+              className="tl-interactive-row rounded-lg bg-[var(--tl-accent-15)] px-4 py-2 text-sm font-medium text-[var(--tl-cyan)] ring-1 ring-[var(--tl-line)] hover:bg-[var(--tl-accent-22)] disabled:opacity-40"
               onClick={async () => {
                 setBusy(true);
                 try {
@@ -246,7 +246,7 @@ export default function TodayLensPage() {
                     /* ignore */
                   }
                 }}
-                className={`rounded-lg border px-2.5 py-1.5 text-left text-[0.72rem] transition-colors ${
+                className={`tl-interactive-row rounded-lg border px-2.5 py-1.5 text-left text-[0.72rem] transition-colors ${
                   on
                     ? "border-[var(--tl-accent-45)] bg-[var(--tl-accent-12)] text-[var(--tl-ink)]"
                     : "border-[var(--tl-line)] bg-[var(--tl-glass-20)] text-[var(--tl-muted)] hover:border-[var(--tl-accent-25)] hover:text-[var(--tl-ink)]/85"
@@ -450,14 +450,14 @@ export default function TodayLensPage() {
         <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--tl-line)] pt-4">
           <button
             type="button"
-            className="rounded-lg border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-cyan)] hover:bg-[var(--tl-accent-08)]"
+            className="tl-interactive-row rounded-lg border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-cyan)] hover:bg-[var(--tl-accent-08)]"
             onClick={() => navigate("/timeline")}
           >
             打开时间线 →
           </button>
           <button
             type="button"
-            className="rounded-lg border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-cyan)] hover:bg-[var(--tl-accent-08)]"
+            className="tl-interactive-row rounded-lg border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-cyan)] hover:bg-[var(--tl-accent-08)]"
             onClick={() => navigate("/report")}
           >
             打开日报告 →

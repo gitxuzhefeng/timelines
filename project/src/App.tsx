@@ -19,6 +19,7 @@ import TodayLensPage from "./pages/TodayLensPage";
 import TimelinePage from "./pages/TimelinePage";
 import DailyReportPage from "./pages/DailyReportPage";
 import SettingsShellPage from "./pages/SettingsShellPage";
+import { detectClientDesktopOs } from "./lib/platform";
 
 export default function App() {
   const theme = useThemeStore((s) => s.theme);
@@ -34,17 +35,36 @@ export default function App() {
   }, [theme]);
 
   useEffect(() => {
+    const os = detectClientDesktopOs();
+    document.documentElement.setAttribute("data-os", os);
+    if (os === "windows") {
+      document.documentElement.setAttribute("data-win-perf", "on");
+    } else {
+      document.documentElement.removeAttribute("data-win-perf");
+    }
+  }, []);
+
+  useEffect(() => {
     void refreshAll();
     const unsubs: Array<() => void> = [];
+    let sessionsRefreshTimer: ReturnType<typeof window.setTimeout> | null = null;
+    const scheduleSessionsRefresh = () => {
+      if (sessionsRefreshTimer != null) return;
+      // 合并短时间内重复刷新，降低 Windows 下高频 UI 抖动。
+      sessionsRefreshTimer = window.setTimeout(() => {
+        sessionsRefreshTimer = null;
+        void useAppStore.getState().refreshSessions();
+      }, 180);
+    };
     const reg = async () => {
       unsubs.push(
         await api.listenEvent("window_event_updated", () => {
-          void useAppStore.getState().refreshSessions();
+          scheduleSessionsRefresh();
         }),
       );
       unsubs.push(
         await api.listenEvent("new_snapshot_saved", () => {
-          void useAppStore.getState().refreshSessions();
+          scheduleSessionsRefresh();
           const sid = useAppStore.getState().selectedSessionId;
           if (sid) void useAppStore.getState().selectSession(sid);
         }),
@@ -66,7 +86,7 @@ export default function App() {
       );
       unsubs.push(
         await api.listenEvent("app_switch_recorded", () => {
-          void useAppStore.getState().refreshSessions();
+          scheduleSessionsRefresh();
         }),
       );
       unsubs.push(
@@ -78,6 +98,7 @@ export default function App() {
     void reg();
     return () => {
       unsubs.forEach((u) => u());
+      if (sessionsRefreshTimer != null) window.clearTimeout(sessionsRefreshTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 全局事件仅挂载一次
   }, []);

@@ -241,7 +241,7 @@ export default function TimelinePage() {
           <img
             src={lightbox}
             alt="snapshot"
-            className="max-h-[92vh] max-w-full object-contain shadow-2xl"
+            className="tl-lightbox-image max-h-[92vh] max-w-full object-contain shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           />
         </div>
@@ -391,7 +391,7 @@ export default function TimelinePage() {
                         <button
                           type="button"
                           onClick={() => setPick(s)}
-                          className={`tl-p3-card ${active ? "tl-p3-card-active" : ""}`}
+                          className={`tl-p3-card tl-interactive-row ${active ? "tl-p3-card-active" : ""}`}
                         >
                           <div className="mb-1 flex items-center justify-between gap-2">
                             <span className="flex items-center gap-1.5 text-[0.82rem] font-semibold text-[var(--tl-ink)]">
@@ -453,7 +453,7 @@ export default function TimelinePage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="tl-sheet-title"
-            className="relative z-10 flex h-full w-full max-w-lg flex-col rounded-xl border border-[var(--tl-line)] bg-[var(--tl-sheet-bg)] shadow-2xl"
+            className="tl-sheet-panel relative z-10 flex h-full w-full max-w-lg flex-col rounded-xl border border-[var(--tl-line)] bg-[var(--tl-sheet-bg)] shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-[var(--tl-line)] px-4 py-3">
@@ -486,13 +486,13 @@ export default function TimelinePage() {
                 {selectedSnap?.filePath ? (
                   <button
                     type="button"
-                    className="max-h-[200px] max-w-full border-0 bg-transparent p-0"
+                    className="tl-interactive-row max-h-[200px] max-w-full border-0 bg-transparent p-0"
                     onClick={() => setLightbox(snapshotTimelensUrl(selectedSnap.id))}
                   >
                     <img
                       src={snapshotTimelensUrl(selectedSnap.id)}
                       alt=""
-                      className="max-h-[200px] max-w-full rounded object-contain"
+                      className="tl-preview-image max-h-[200px] max-w-full rounded object-contain"
                     />
                   </button>
                 ) : (
@@ -509,7 +509,7 @@ export default function TimelinePage() {
                           setSnapPick(sn.id);
                           if (sn.filePath) setLightbox(snapshotTimelensUrl(sn.id));
                         }}
-                        className={`flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-xs ${
+                        className={`tl-interactive-row flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-xs ${
                           sn.id === snapPick
                             ? "bg-[var(--tl-snap-selected)]"
                             : "hover:bg-[var(--tl-snap-hover)]"

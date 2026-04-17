@@ -36,7 +36,7 @@ function titleForPath(pathname: string): { title: string; sub?: string } {
 
 function navCls(active: boolean): string {
   return [
-    "tl-nav-item flex w-full items-center gap-2 rounded-lg border-0 px-2.5 py-2 text-left text-sm font-medium transition-colors",
+    "tl-nav-item tl-interactive-row flex w-full items-center gap-2 rounded-lg border-0 px-2.5 py-2 text-left text-sm font-medium transition-colors",
     active
       ? "tl-nav-active bg-[var(--tl-nav-active-bg)] text-[var(--tl-ink)]"
       : "text-[var(--tl-muted)] hover:bg-[var(--tl-nav-hover-bg)] hover:text-[var(--tl-ink)]",
@@ -69,7 +69,7 @@ export default function AppShell() {
     <div className="tl-app flex h-screen min-h-0 flex-col bg-[var(--tl-bg)] text-[var(--tl-ink)]">
       <div className="tl-shell mx-auto flex min-h-0 w-full max-w-[1320px] flex-1">
         <aside
-          className="tl-sidebar flex w-[min(278px,100%)] shrink-0 flex-col border-r border-[var(--tl-line)] bg-[var(--tl-sidebar-bg)] backdrop-blur-md"
+          className="tl-sidebar tl-shell-blur-surface flex w-[min(278px,100%)] shrink-0 flex-col border-r border-[var(--tl-line)] bg-[var(--tl-sidebar-bg)] backdrop-blur-md"
           aria-label="主导航"
         >
           <div className="border-b border-[var(--tl-line)] px-4 py-3">
@@ -115,7 +115,7 @@ export default function AppShell() {
         </aside>
 
         <div className="flex min-w-0 min-h-0 flex-1 flex-col bg-gradient-to-b from-[var(--tl-shell-gradient-from)] to-[var(--tl-bg)]">
-          <header className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--tl-line)] bg-[var(--tl-header-bg)] px-5 py-3 backdrop-blur-md">
+          <header className="tl-shell-blur-surface flex flex-wrap items-center justify-between gap-3 border-b border-[var(--tl-line)] bg-[var(--tl-header-bg)] px-5 py-3 backdrop-blur-md">
             <div className="min-w-0 flex-1">
               <h1 className="text-[1.05rem] font-bold tracking-wide">{title}</h1>
               {sub ? (
@@ -130,7 +130,7 @@ export default function AppShell() {
                 aria-pressed={isTracking}
                 title={isTracking ? "点击停止采集" : "点击开始采集"}
                 className={[
-                  "flex min-w-[9.5rem] flex-col items-stretch rounded-lg border px-3 py-2 text-left transition-colors disabled:opacity-50",
+                  "tl-interactive-row flex min-w-[9.5rem] flex-col items-stretch rounded-lg border px-3 py-2 text-left transition-colors disabled:opacity-50",
                   isTracking
                     ? "border-[var(--tl-capture-on-border)] bg-[var(--tl-capture-on-bg)] hover:bg-[var(--tl-capture-on-hover)]"
                     : "border-[var(--tl-capture-idle-border)] bg-[var(--tl-capture-idle-bg)] hover:bg-[var(--tl-capture-idle-hover)]",
