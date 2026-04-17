@@ -3,23 +3,74 @@
  * 用于权限文案等与系统设置入口对齐；勿用于安全决策。
  */
 export type ClientDesktopOs = "windows" | "macos" | "other";
+export type ClientRenderingEngine = "webview2" | "webkit" | "other";
+
+export interface ClientPlatformProfile {
+  os: ClientDesktopOs;
+  engine: ClientRenderingEngine;
+  requiresLocalhostProtocolWorkaround: boolean;
+}
 
 /** 与 `src-tauri/tauri.conf.json` 的 `identifier` 保持一致，用于 macOS 权限排障文案（TCC 按此 ID 记录授权）。 */
 export const MACOS_APP_BUNDLE_ID = "com.timelens.desktop";
 
+function parseClientPlatformProfile(ua: string): ClientPlatformProfile {
+  if (/Windows NT/i.test(ua)) {
+    return {
+      os: "windows",
+      // Tauri on Windows uses WebView2 (Chromium-based runtime).
+      engine: "webview2",
+      requiresLocalhostProtocolWorkaround: true,
+    };
+  }
+  if (/Mac OS X|Macintosh/i.test(ua)) {
+    return {
+      os: "macos",
+      // Tauri on macOS uses WKWebView.
+      engine: "webkit",
+      requiresLocalhostProtocolWorkaround: false,
+    };
+  }
+  if (/Android/i.test(ua)) {
+    return {
+      os: "other",
+      engine: "other",
+      requiresLocalhostProtocolWorkaround: true,
+    };
+  }
+  return {
+    os: "other",
+    engine: "other",
+    requiresLocalhostProtocolWorkaround: false,
+  };
+}
+
+export function getClientPlatformProfile(): ClientPlatformProfile {
+  if (typeof navigator === "undefined") {
+    return {
+      os: "other",
+      engine: "other",
+      requiresLocalhostProtocolWorkaround: false,
+    };
+  }
+  return parseClientPlatformProfile(navigator.userAgent);
+}
+
 export function detectClientDesktopOs(): ClientDesktopOs {
-  if (typeof navigator === "undefined") return "other";
-  const ua = navigator.userAgent;
-  if (/Windows NT/i.test(ua)) return "windows";
-  if (/Mac OS X|Macintosh/i.test(ua)) return "macos";
-  return "other";
+  return getClientPlatformProfile().os;
+}
+
+export function detectClientRenderingEngine(): ClientRenderingEngine {
+  return getClientPlatformProfile().engine;
+}
+
+export function isWebView2LikeRuntime(): boolean {
+  return detectClientRenderingEngine() === "webview2";
 }
 
 /** WebView2 / Android 对非标准自定义 scheme 子资源有限制，需走 `http://{scheme}.localhost/…` workaround */
 export function usesCustomProtocolLocalhostWorkaround(): boolean {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent;
-  return /Windows NT|Android/i.test(ua);
+  return getClientPlatformProfile().requiresLocalhostProtocolWorkaround;
 }
 
 /** 会话页权限角标短标签 */

@@ -19,8 +19,7 @@
         "resizable": true,
         "transparent": false,
         "decorations": true,
-        "shadow": false,
-        "additionalBrowserArgs": "--disable-features=CalculateNativeWinOcclusion --disable-gpu-vsync --disable-renderer-backgrounding"
+        "shadow": false
       }
     ],
     "security": {

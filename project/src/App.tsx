@@ -19,7 +19,7 @@ import TodayLensPage from "./pages/TodayLensPage";
 import TimelinePage from "./pages/TimelinePage";
 import DailyReportPage from "./pages/DailyReportPage";
 import SettingsShellPage from "./pages/SettingsShellPage";
-import { detectClientDesktopOs } from "./lib/platform";
+import { getClientPlatformProfile } from "./lib/platform";
 
 export default function App() {
   const theme = useThemeStore((s) => s.theme);
@@ -35,9 +35,10 @@ export default function App() {
   }, [theme]);
 
   useEffect(() => {
-    const os = detectClientDesktopOs();
-    document.documentElement.setAttribute("data-os", os);
-    if (os === "windows") {
+    const profile = getClientPlatformProfile();
+    document.documentElement.setAttribute("data-os", profile.os);
+    document.documentElement.setAttribute("data-runtime-engine", profile.engine);
+    if (profile.os === "windows") {
       document.documentElement.setAttribute("data-win-perf", "on");
     } else {
       document.documentElement.removeAttribute("data-win-perf");

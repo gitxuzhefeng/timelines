@@ -1,4 +1,7 @@
-import { usesCustomProtocolLocalhostWorkaround } from "../lib/platform";
+import {
+  isWebView2LikeRuntime,
+  usesCustomProtocolLocalhostWorkaround,
+} from "../lib/platform";
 
 /** 与 Rust `AppIntentAggregateDto` 对齐：按应用名 + Bundle 聚合 */
 export interface AppIntentAggregate {
@@ -265,7 +268,8 @@ export interface AiSettingsDto {
  */
 export function snapshotTimelensUrl(snapshotId: string): string {
   const path = `snapshot/${snapshotId}`;
-  if (usesCustomProtocolLocalhostWorkaround()) {
+  // WebView2 on Windows 必须使用 localhost workaround 以保证 <img> 子资源可加载。
+  if (isWebView2LikeRuntime() || usesCustomProtocolLocalhostWorkaround()) {
     return `http://timelens.localhost/${path}`;
   }
   return `timelens://localhost/${path}`;

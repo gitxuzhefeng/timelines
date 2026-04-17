@@ -3,7 +3,8 @@
   "app": {
     "windows": [
       {
-        "label": "main"
+        "label": "main",
+        "additionalBrowserArgs": "--disable-features=CalculateNativeWinOcclusion --disable-gpu-vsync --disable-renderer-backgrounding"
       }
     ]
   }

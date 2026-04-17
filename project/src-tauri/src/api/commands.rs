@@ -119,73 +119,97 @@ pub fn request_screen_capture_access(state: State<'_, AppState>) -> Result<bool,
     Ok(granted)
 }
 
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+fn unsupported_platform_error(action: &str) -> String {
+    #[cfg(target_os = "macos")]
+    let os = "macos";
+    #[cfg(target_os = "windows")]
+    let os = "windows";
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    let os = "unsupported";
+    format!("{action} is unsupported on {os}")
+}
+
+fn open_system_settings_uri(uri: &str) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        let status = std::process::Command::new("open")
+            .arg(uri)
+            .status()
+            .map_err(|e| format!("failed to open settings URI '{uri}': {e}"))?;
+        if !status.success() {
+            return Err(format!("failed to open settings URI '{uri}', exit status: {status}"));
+        }
+    }
+    #[cfg(target_os = "windows")]
+    {
+        let status = std::process::Command::new("explorer")
+            .arg(uri)
+            .status()
+            .map_err(|e| format!("failed to open settings URI '{uri}': {e}"))?;
+        if !status.success() {
+            return Err(format!("failed to open settings URI '{uri}', exit status: {status}"));
+        }
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        return Err(unsupported_platform_error("open system settings"));
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub fn open_accessibility_settings() -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
-        std::process::Command::new("open")
-            .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
-            .status()
-            .map_err(|e| e.to_string())?;
+        return open_system_settings_uri(
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+        );
     }
     #[cfg(target_os = "windows")]
     {
-        std::process::Command::new("explorer")
-            .arg("ms-settings:easeofaccess")
-            .spawn()
-            .map_err(|e| e.to_string())?;
+        return open_system_settings_uri("ms-settings:easeofaccess");
     }
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
-        return Err("unsupported platform".into());
+        return Err(unsupported_platform_error("open accessibility settings"));
     }
-    Ok(())
 }
 
 #[tauri::command]
 pub fn open_screen_recording_settings() -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
-        std::process::Command::new("open")
-            .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
-            .status()
-            .map_err(|e| e.to_string())?;
+        return open_system_settings_uri(
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture",
+        );
     }
     #[cfg(target_os = "windows")]
     {
-        std::process::Command::new("explorer")
-            .arg("ms-settings:privacy")
-            .spawn()
-            .map_err(|e| e.to_string())?;
+        return open_system_settings_uri("ms-settings:privacy");
     }
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
-        return Err("unsupported platform".into());
+        return Err(unsupported_platform_error("open screen recording settings"));
     }
-    Ok(())
 }
 
 #[tauri::command]
 pub fn open_notification_settings() -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
-        std::process::Command::new("open")
-            .arg("x-apple.systempreferences:com.apple.Notifications-Settings.extension")
-            .status()
-            .map_err(|e| e.to_string())?;
+        return open_system_settings_uri(
+            "x-apple.systempreferences:com.apple.Notifications-Settings.extension",
+        );
     }
     #[cfg(target_os = "windows")]
     {
-        std::process::Command::new("explorer")
-            .arg("ms-settings:notifications")
-            .spawn()
-            .map_err(|e| e.to_string())?;
+        return open_system_settings_uri("ms-settings:notifications");
     }
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
-        return Err("unsupported platform".into());
+        return Err(unsupported_platform_error("open notification settings"));
     }
-    Ok(())
 }
 
 #[tauri::command]
