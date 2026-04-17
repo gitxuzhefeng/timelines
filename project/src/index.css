@@ -523,6 +523,7 @@ body {
   );
 }
 
+/* 注意：Windows 端（[data-os="windows"][data-win-perf="on"]）会把 backdrop-filter 覆盖为 none，见下方性能分支。 */
 .tl-shell-blur-surface {
   backdrop-filter: blur(12px);
 }

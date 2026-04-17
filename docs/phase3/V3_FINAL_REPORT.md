@@ -12,16 +12,18 @@
 
 ## 主要变更
 
-| 区域 | 说明 |
-|------|------|
-| 路由 | 默认 `/` → `/lens`；主导航 `/lens`、`/timeline`、`/report`、`/settings` |
-| 数据 | 新增 `getDailyAnalysis`（Tauri `get_daily_analysis`）、`DailyAnalysisDto` 与 JSON 安全解析（`lib/jsonSafe.ts`、`lib/dailyAnalysisParsed.ts`） |
-| 今日透视 | `TodayLensPage.tsx`：管线健康、Intent 条带、心流分段、剪贴板 Top 流、打断条、Top 应用、空态与生成分析 |
-| 时间线 | `TimelinePage.tsx`：按上午/中午/下午/晚上分组，`getSessions` + 会话 Sheet + 截图列表 |
-| 日报告 | `DailyReportPage.tsx` + 复用 `RecapContent`（隐藏壳内重复日期控件） |
-| 设置 | `SettingsShellPage.tsx` 复用 `SettingsForm` + `DevModeSection` |
-| 旧页 | `/recap`、`/sessions`、`/ocr`、`/ocr-eval`、`/intents`、`/health` 以 `LegacyWrap` 全屏承载，无顶栏 |
-| 样式 | `index.css` 增加 `--tl-*` 主题变量与海报/管线动画类 |
+
+| 区域   | 说明                                                                                                                               |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------- |
+| 路由   | 默认 `/` → `/lens`；主导航 `/lens`、`/timeline`、`/report`、`/settings`                                                                   |
+| 数据   | 新增 `getDailyAnalysis`（Tauri `get_daily_analysis`）、`DailyAnalysisDto` 与 JSON 安全解析（`lib/jsonSafe.ts`、`lib/dailyAnalysisParsed.ts`） |
+| 今日透视 | `TodayLensPage.tsx`：管线健康、Intent 条带、心流分段、剪贴板 Top 流、打断条、Top 应用、空态与生成分析                                                             |
+| 时间线  | `TimelinePage.tsx`：按上午/中午/下午/晚上分组，`getSessions` + 会话 Sheet + 截图列表                                                                |
+| 日报告  | `DailyReportPage.tsx` + 复用 `RecapContent`（隐藏壳内重复日期控件）                                                                            |
+| 设置   | `SettingsShellPage.tsx` 复用 `SettingsForm` + `DevModeSection`                                                                     |
+| 旧页   | `/recap`、`/sessions`、`/ocr`、`/ocr-eval`、`/intents`、`/health` 以 `LegacyWrap` 全屏承载，无顶栏                                             |
+| 样式   | `index.css` 增加 `--tl-`* 主题变量与海报/管线动画类                                                                                            |
+
 
 ## 构建与测试
 
@@ -45,4 +47,4 @@
 
 - Git 分支：`v3`（已推送 `origin/v3`）
 - 标签与制品版本：`v0.3.0`（`project/package.json`、Tauri `Cargo.toml` / `tauri.conf.json` 已对齐）
-- GitHub Release：<https://github.com/gitxuzhefeng/timelines/releases/tag/v0.3.0>
+- GitHub Release：[https://github.com/gitxuzhefeng/timelines/releases/tag/v0.3.0](https://github.com/gitxuzhefeng/timelines/releases/tag/v0.3.0)

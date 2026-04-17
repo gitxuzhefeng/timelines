@@ -99,6 +99,8 @@ pub fn run() {
             }
         })
         .setup(|app| {
+            // Windows 渲染降载参数（transparent / shadow / WebView2 features）统一在
+            // `tauri.conf.json` + `tauri.windows.conf.json` 中声明，不再在运行时注入。
             let paths = core::storage::DataPaths::new().map_err(|e| format!("{e}"))?;
             paths.ensure_dirs().map_err(|e| format!("{e}"))?;
             let wconn =

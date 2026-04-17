@@ -2,20 +2,11 @@
 
 **一句话**：TimeLens 是一款**本地优先**的桌面应用，在 **macOS / Windows** 上**被动采集**前台窗口与应用使用、配合**智能截图**做情境回溯，把碎片时间还原成可复盘的工作会话，数据默认留在本机。
 
-
-
 [GitHub Repo stars](https://github.com/gitxuzhefeng/timelines)
 [产品宣传页](https://timelens-pi.vercel.app/)
 [Download](https://github.com/gitxuzhefeng/timelines/releases/latest)
 
-  
-
-
-
-
 **真实效果图** · 本地验证看板：左侧会话流、中央截图预览、右侧当前 Session、底部 RAW 日志与 Writer 延迟等指标。产品与路线图的可视化讲解见 [产品宣传页](https://timelens-pi.vercel.app/)。
-
-
 
 ---
 

@@ -16,7 +16,11 @@
         "title": "TimeLens",
         "width": 1120,
         "height": 720,
-        "resizable": true
+        "resizable": true,
+        "transparent": false,
+        "decorations": true,
+        "shadow": false,
+        "additionalBrowserArgs": "--disable-features=CalculateNativeWinOcclusion --disable-gpu-vsync --disable-renderer-backgrounding"
       }
     ],
     "security": {
@@ -38,8 +42,7 @@
       "icons/icon.ico"
     ],
     "macOS": {
-      "minimumSystemVersion": "12.0",
-      "infoPlist": "Info.plist"
+      "minimumSystemVersion": "12.0"
     }
   }
 }
