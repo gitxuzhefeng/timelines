@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAppStore } from "../stores/appStore";
 import { useDevModeStore } from "../stores/devModeStore";
+import { ListenerDebugPanel } from "../components/ListenerDebugPanel";
 import * as api from "../services/tauri";
 
 const MAIN_NAV = [
@@ -159,6 +160,11 @@ export default function AppShell() {
               </label>
             </div>
           </header>
+          {devEnabled ? (
+            <div className="border-b border-[var(--tl-line)] px-5 py-2">
+              <ListenerDebugPanel />
+            </div>
+          ) : null}
           <main className="min-h-0 flex-1 overflow-hidden">
             <Outlet />
           </main>

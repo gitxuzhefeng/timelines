@@ -157,6 +157,8 @@ export default function SessionsPage() {
             <Virtuoso
               data={sessions}
               className="h-full"
+              overscan={240}
+              computeItemKey={(_, s) => s.id}
               itemContent={(_, s) => {
                 const active = s.id === selectedSessionId;
                 return (
@@ -206,6 +208,8 @@ export default function SessionsPage() {
                 <img
                   src={snapshotTimelensUrl(selectedSnap.id)}
                   alt="snapshot"
+                  loading="eager"
+                  decoding="async"
                   className="tl-preview-image max-h-full max-w-full rounded border border-[var(--tl-line)] object-contain shadow-lg"
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = "none";
@@ -244,6 +248,8 @@ export default function SessionsPage() {
                         <img
                           src={snapshotTimelensUrl(sn.id)}
                           alt=""
+                          loading="lazy"
+                          decoding="async"
                           className="tl-preview-image mt-1 h-12 w-full cursor-zoom-in rounded border border-[var(--tl-line)] object-cover"
                           onClick={(e) => {
                             e.stopPropagation();

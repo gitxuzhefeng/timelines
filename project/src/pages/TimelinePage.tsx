@@ -241,6 +241,8 @@ export default function TimelinePage() {
           <img
             src={lightbox}
             alt="snapshot"
+            loading="eager"
+            decoding="async"
             className="tl-lightbox-image max-h-[92vh] max-w-full object-contain shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           />
@@ -492,6 +494,8 @@ export default function TimelinePage() {
                     <img
                       src={snapshotTimelensUrl(selectedSnap.id)}
                       alt=""
+                      loading="lazy"
+                      decoding="async"
                       className="tl-preview-image max-h-[200px] max-w-full rounded object-contain"
                     />
                   </button>

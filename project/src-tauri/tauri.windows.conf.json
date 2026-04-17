@@ -4,7 +4,7 @@
     "windows": [
       {
         "label": "main",
-        "additionalBrowserArgs": "--disable-features=CalculateNativeWinOcclusion --disable-gpu-vsync --disable-renderer-backgrounding"
+        "additionalBrowserArgs": "--disable-features=CalculateNativeWinOcclusion --disable-renderer-backgrounding"
       }
     ]
   }

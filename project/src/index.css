@@ -545,6 +545,15 @@ body {
   transition: none;
 }
 
+[data-os="windows"][data-win-perf="on"] .tl-p3-item {
+  content-visibility: auto;
+  contain-intrinsic-size: 84px;
+}
+
+[data-os="windows"][data-win-perf="on"] .tl-p3-card {
+  contain: layout paint;
+}
+
 [data-os="windows"][data-win-perf="on"] .tl-poster-card {
   box-shadow:
     0 0 0 1px rgba(0, 245, 212, 0.1) inset,

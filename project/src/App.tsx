@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -20,6 +20,7 @@ import TimelinePage from "./pages/TimelinePage";
 import DailyReportPage from "./pages/DailyReportPage";
 import SettingsShellPage from "./pages/SettingsShellPage";
 import { getClientPlatformProfile } from "./lib/platform";
+import { useListenerDebugStore } from "./stores/listenerDebugStore";
 
 export default function App() {
   const theme = useThemeStore((s) => s.theme);
@@ -28,6 +29,9 @@ export default function App() {
   const setPermissions = useAppStore((s) => s.setPermissions);
   const setAfk = useAppStore((s) => s.setAfk);
   const setWriterStats = useAppStore((s) => s.setWriterStats);
+  const listenerFlags = useListenerDebugStore((s) => s.flags);
+  const isScrollingRef = useRef(false);
+  const scrollingIdleTimerRef = useRef<ReturnType<typeof window.setTimeout> | null>(null);
 
   useLayoutEffect(() => {
     if (theme === "white") document.documentElement.setAttribute("data-theme", "white");
@@ -47,62 +51,94 @@ export default function App() {
 
   useEffect(() => {
     void refreshAll();
+  }, [refreshAll]);
+
+  useEffect(() => {
+    const onAnyScroll = () => {
+      isScrollingRef.current = true;
+      if (scrollingIdleTimerRef.current != null) {
+        window.clearTimeout(scrollingIdleTimerRef.current);
+      }
+      scrollingIdleTimerRef.current = window.setTimeout(() => {
+        isScrollingRef.current = false;
+        scrollingIdleTimerRef.current = null;
+      }, 180);
+    };
+    window.addEventListener("scroll", onAnyScroll, { capture: true, passive: true });
+
     const unsubs: Array<() => void> = [];
     let sessionsRefreshTimer: ReturnType<typeof window.setTimeout> | null = null;
     const scheduleSessionsRefresh = () => {
       if (sessionsRefreshTimer != null) return;
-      // 合并短时间内重复刷新，降低 Windows 下高频 UI 抖动。
+      const delayMs = isScrollingRef.current ? 420 : 180;
       sessionsRefreshTimer = window.setTimeout(() => {
         sessionsRefreshTimer = null;
         void useAppStore.getState().refreshSessions();
-      }, 180);
+      }, delayMs);
     };
     const reg = async () => {
-      unsubs.push(
-        await api.listenEvent("window_event_updated", () => {
-          scheduleSessionsRefresh();
-        }),
-      );
-      unsubs.push(
-        await api.listenEvent("new_snapshot_saved", () => {
-          scheduleSessionsRefresh();
-          const sid = useAppStore.getState().selectedSessionId;
-          if (sid) void useAppStore.getState().selectSession(sid);
-        }),
-      );
-      unsubs.push(
-        await api.listenEvent("tracking_state_changed", (p) => {
-          setTracking(p.isRunning);
-        }),
-      );
-      unsubs.push(
-        await api.listenEvent("permissions_required", (p) => {
-          setPermissions(p);
-        }),
-      );
-      unsubs.push(
-        await api.listenEvent("afk_state_changed", (p) => {
-          setAfk(p.isAfk);
-        }),
-      );
-      unsubs.push(
-        await api.listenEvent("app_switch_recorded", () => {
-          scheduleSessionsRefresh();
-        }),
-      );
-      unsubs.push(
-        await api.listenEvent("writer_stats_updated", (w) => {
-          setWriterStats(w);
-        }),
-      );
+      if (listenerFlags.windowEventUpdated) {
+        unsubs.push(
+          await api.listenEvent("window_event_updated", () => {
+            scheduleSessionsRefresh();
+          }),
+        );
+      }
+      if (listenerFlags.newSnapshotSaved) {
+        unsubs.push(
+          await api.listenEvent("new_snapshot_saved", () => {
+            scheduleSessionsRefresh();
+            const sid = useAppStore.getState().selectedSessionId;
+            if (sid) void useAppStore.getState().selectSession(sid);
+          }),
+        );
+      }
+      if (listenerFlags.trackingStateChanged) {
+        unsubs.push(
+          await api.listenEvent("tracking_state_changed", (p) => {
+            setTracking(p.isRunning);
+          }),
+        );
+      }
+      if (listenerFlags.permissionsRequired) {
+        unsubs.push(
+          await api.listenEvent("permissions_required", (p) => {
+            setPermissions(p);
+          }),
+        );
+      }
+      if (listenerFlags.afkStateChanged) {
+        unsubs.push(
+          await api.listenEvent("afk_state_changed", (p) => {
+            setAfk(p.isAfk);
+          }),
+        );
+      }
+      if (listenerFlags.appSwitchRecorded) {
+        unsubs.push(
+          await api.listenEvent("app_switch_recorded", () => {
+            scheduleSessionsRefresh();
+          }),
+        );
+      }
+      if (listenerFlags.writerStatsUpdated) {
+        unsubs.push(
+          await api.listenEvent("writer_stats_updated", (w) => {
+            setWriterStats(w);
+          }),
+        );
+      }
     };
     void reg();
     return () => {
+      window.removeEventListener("scroll", onAnyScroll, { capture: true } as EventListenerOptions);
       unsubs.forEach((u) => u());
       if (sessionsRefreshTimer != null) window.clearTimeout(sessionsRefreshTimer);
+      if (scrollingIdleTimerRef.current != null) {
+        window.clearTimeout(scrollingIdleTimerRef.current);
+      }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 全局事件仅挂载一次
-  }, []);
+  }, [listenerFlags, setTracking, setPermissions, setAfk, setWriterStats]);
 
   return (
     <BrowserRouter>
