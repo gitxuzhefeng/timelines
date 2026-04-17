@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ListenerDebugFlags } from "../stores/listenerDebugStore";
 import { useListenerDebugStore } from "../stores/listenerDebugStore";
 
@@ -49,11 +49,47 @@ export function ListenerDebugPanel() {
   const setFlag = useListenerDebugStore((s) => s.setFlag);
   const setAll = useListenerDebugStore((s) => s.setAll);
   const reset = useListenerDebugStore((s) => s.reset);
+  const [fps, setFps] = useState(0);
+  const [frameMs, setFrameMs] = useState(0);
+  const [sampleFrames, setSampleFrames] = useState(0);
 
   const enabledCount = useMemo(
     () => Object.values(flags).filter(Boolean).length,
     [flags],
   );
+
+  useEffect(() => {
+    let rafId = 0;
+    let sampleStart = performance.now();
+    let lastTs = sampleStart;
+    let frameCount = 0;
+    let frameMsSum = 0;
+
+    const loop = (ts: number) => {
+      frameCount += 1;
+      frameMsSum += ts - lastTs;
+      lastTs = ts;
+
+      const elapsed = ts - sampleStart;
+      if (elapsed >= 1000) {
+        const currentFps = frameCount / (elapsed / 1000);
+        const avgFrameMs = frameCount > 0 ? frameMsSum / frameCount : 0;
+        setFps(Math.round(currentFps));
+        setFrameMs(Number(avgFrameMs.toFixed(1)));
+        setSampleFrames(frameCount);
+
+        sampleStart = ts;
+        frameCount = 0;
+        frameMsSum = 0;
+      }
+      rafId = window.requestAnimationFrame(loop);
+    };
+
+    rafId = window.requestAnimationFrame(loop);
+    return () => window.cancelAnimationFrame(rafId);
+  }, []);
+
+  const fpsLevel = fps >= 55 ? "ok" : fps >= 40 ? "warn" : "bad";
 
   return (
     <details className="rounded-lg border border-[var(--tl-line)] bg-[var(--tl-surface)] px-3 py-2 text-xs text-[var(--tl-muted)]">
@@ -61,6 +97,29 @@ export function ListenerDebugPanel() {
         监听开关（调试） · {enabledCount}/{ITEMS.length}
       </summary>
       <div className="mt-2 space-y-2">
+        <div className="rounded border border-[var(--tl-line)] bg-[var(--tl-surface-deep)] px-2.5 py-2">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px]">
+            <span className="text-[var(--tl-muted)]">FPS</span>
+            <span
+              className={
+                fpsLevel === "ok"
+                  ? "text-[var(--tl-status-ok)]"
+                  : fpsLevel === "warn"
+                    ? "text-[var(--tl-status-warn)]"
+                    : "text-[var(--tl-status-bad)]"
+              }
+            >
+              {fps}
+            </span>
+            <span className="text-[var(--tl-muted)]">平均帧时</span>
+            <span className="text-[var(--tl-ink)]">{frameMs}ms</span>
+            <span className="text-[var(--tl-muted)]">样本帧</span>
+            <span className="text-[var(--tl-ink)]">{sampleFrames}</span>
+          </div>
+          <p className="mt-1 text-[10px] text-[var(--tl-muted)]">
+            参考：55-60 流畅，40-54 轻微卡顿，&lt;40 明显卡顿。
+          </p>
+        </div>
         <p className="leading-relaxed">
           用于排查滚动卡顿：勾选状态会立即生效并持久化在本机。推荐先关前三项看变化。
         </p>
