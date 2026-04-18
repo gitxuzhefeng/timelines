@@ -1,5 +1,6 @@
-import { invoke } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import type { InvokeArgs } from "@tauri-apps/api/core";
+import type { UnlistenFn } from "@tauri-apps/api/event";
+import { bridgeInvoke, bridgeListen } from "./desktop-bridge";
 import type {
   ActivityStats,
   AiSettingsDto,
@@ -21,6 +22,10 @@ import type {
   WindowSession,
   WriterStats,
 } from "../types";
+
+async function invoke<T>(command: string, args?: InvokeArgs): Promise<T> {
+  return bridgeInvoke<T>(command, args);
+}
 
 export async function startTracking(): Promise<void> {
   await invoke("start_tracking");
@@ -313,7 +318,5 @@ export function listenEvent<K extends keyof EventPayloads>(
   key: K,
   handler: (payload: EventPayloads[K]) => void,
 ): Promise<UnlistenFn> {
-  return listen<EventPayloads[K]>(key, (e) => {
-    handler(e.payload);
-  });
+  return bridgeListen<EventPayloads[K]>(String(key), handler);
 }

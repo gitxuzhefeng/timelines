@@ -47,7 +47,7 @@ export default function App() {
   useEffect(() => {
     void refreshAll();
     const unsubs: Array<() => void> = [];
-    let sessionsRefreshTimer: ReturnType<typeof window.setTimeout> | null = null;
+    let sessionsRefreshTimer: number | null = null;
     const scheduleSessionsRefresh = () => {
       if (sessionsRefreshTimer != null) return;
       // 合并短时间内重复刷新，降低 Windows 下高频 UI 抖动。

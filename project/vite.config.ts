@@ -4,8 +4,11 @@ import tailwindcss from "@tailwindcss/vite";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
+// @ts-expect-error process is a nodejs global
+const electron = process.env.VITE_ELECTRON === "1";
 
 export default defineConfig(async () => ({
+  base: electron ? "./" : "/",
   plugins: [react(), tailwindcss()],
   clearScreen: false,
   server: {
