@@ -95,10 +95,22 @@ fn macos_on_main_thread() -> bool {
     unsafe { libc::pthread_main_np() != 0 }
 }
 
+/// Electron 侧 `timelens-daemon` 为无 UI 进程，未跑 AppKit 主循环时 `dispatch_main` 队列不会被处理，
+/// 此时 `Queue::main().exec_sync` 会永久阻塞（表现为 HTTP invoke 直至客户端超时）。
+fn timelens_daemon_headless() -> bool {
+    std::env::current_exe()
+        .ok()
+        .and_then(|p| p.to_str().map(str::to_owned))
+        .is_some_and(|s| s.contains("timelens-daemon"))
+}
+
 /// `AXIsProcessTrusted` 在部分环境（如 Tauri 从非主线程 invoke）下会误报未授权；
 /// 与系统设置不一致时，应在主队列上检测。
 pub fn ax_trusted() -> bool {
     let probe = || unsafe { AXIsProcessTrusted() != 0 };
+    if timelens_daemon_headless() {
+        return probe();
+    }
     if macos_on_main_thread() {
         probe()
     } else {
@@ -329,14 +341,17 @@ fn sample_battery_macos() -> (Option<f64>, Option<i64>) {
     (Some(pct), is_ch)
 }
 
-/// `UNUserNotificationCenter` 要求进程在有效的 app bundle 内；`cargo run` / `tauri dev` 下
+/// `UNUserNotificationCenter` 要求进程在有效的 app bundle **主可执行** 上下文中；`cargo run` / `tauri dev` 下
 /// `mainBundle` 指向 `target/debug/`，调用 `currentNotificationCenter` 会触发
 /// `NSInternalInconsistencyException`（bundleProxyForCurrentProcess is nil）。
+///
+/// Electron 打包的 `timelens-daemon` 位于 `*.app/Contents/Resources/`，路径虽含 `.app/Contents/`，
+/// 但并非 `MacOS/` 主程序，`mainBundle.bundleURL` 会落到 Resources，UserNotifications 同样会崩。
 fn running_inside_macos_app_bundle() -> bool {
     std::env::current_exe()
         .ok()
         .and_then(|p| p.to_str().map(str::to_owned))
-        .is_some_and(|s| s.contains(".app/Contents/"))
+        .is_some_and(|s| s.contains(".app/Contents/MacOS/"))
 }
 
 /// macOS 无公开 API 监听「其他应用」通知到达；此处对齐 **本应用 UserNotifications 授权**（非「拒绝」即视为可配合启发式/后续扩展）。

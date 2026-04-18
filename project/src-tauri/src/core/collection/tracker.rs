@@ -11,8 +11,9 @@ use crc32fast::Hasher as Crc32;
 use log::warn;
 use serde_json::json;
 use std::hash::{Hash, Hasher};
-use tauri::{AppHandle, Emitter};
 use uuid::Uuid;
+
+use crate::event_sink::{emit_ser, EventSink};
 
 use crate::core::acquisition::{self, FrontWindowState};
 use crate::core::models::{
@@ -42,7 +43,7 @@ fn compute_hash(app: &str, bundle: &Option<String>, title: &str, fs: bool) -> i6
 
 #[allow(clippy::too_many_arguments)]
 pub fn spawn_tracker_thread(
-    app: AppHandle,
+    sink: Arc<dyn EventSink>,
     agg_tx: Sender<AggregationCmd>,
     capture_tx: crossbeam_channel::Sender<CaptureSignal>,
     writer: WriterHandle,
@@ -122,7 +123,10 @@ pub fn spawn_tracker_thread(
                     is_afk.store(false, Ordering::Relaxed);
                     let ts = Utc::now().timestamp_millis();
                     let _ = agg_tx.send(AggregationCmd::EnterRecordingBlackout { timestamp_ms: ts });
-                    let _ = app.emit("afk_state_changed", json!({ "isAfk": false, "idleSeconds": 0.0 }));
+                    sink.emit_json(
+                        "afk_state_changed",
+                        json!({ "isAfk": false, "idleSeconds": 0.0 }),
+                    );
                     in_blackout = true;
                     last_hash = None;
                     last_app.clear();
@@ -276,7 +280,7 @@ pub fn spawn_tracker_thread(
                         switch_type: sw.switch_type.clone(),
                     };
                     let _ = writer.try_send(WriteEvent::AppSwitch(sw));
-                    let _ = app.emit("app_switch_recorded", ev);
+                    emit_ser(sink.as_ref(), "app_switch_recorded", &ev);
                     if short_bounce {
                         let nid = Uuid::new_v4().to_string();
                         let _ = writer.try_send(WriteEvent::Notification(NotificationRow {

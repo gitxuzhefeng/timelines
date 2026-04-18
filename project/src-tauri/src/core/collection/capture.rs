@@ -15,9 +15,10 @@ use image_hasher::{HashAlg, HasherConfig};
 use log::{info, warn};
 use parking_lot::Mutex;
 use rusqlite::Connection;
-use tauri::{AppHandle, Emitter};
 use uuid::Uuid;
 
+use crate::event_sink::emit_ser;
+use crate::event_sink::EventSink;
 use crate::core::models::{CapturePriority, CaptureSignal, SnapshotPayload, SnapshotRow, WriteEvent};
 use crate::core::ocr::OcrJob;
 use crate::core::storage::DataPaths;
@@ -118,7 +119,7 @@ pub fn spawn_capture_thread(
     paths: DataPaths,
     is_afk: Arc<AtomicBool>,
     screen_ok: Arc<AtomicBool>,
-    app: AppHandle,
+    sink: Arc<dyn EventSink>,
     ocr_hook: Option<(
         crossbeam_channel::Sender<OcrJob>,
         Arc<AtomicBool>,
@@ -221,9 +222,10 @@ pub fn spawn_capture_thread(
                 format: "webp".into(),
                 perceptual_hash,
             };
-            let _ = app.emit(
+            emit_ser(
+                sink.as_ref(),
                 "new_snapshot_saved",
-                SnapshotPayload { snapshot: snap },
+                &SnapshotPayload { snapshot: snap },
             );
             if let Some((ref ocr_tx, ref ocr_on, ref pend)) = ocr_hook {
                 if ocr_on.load(Ordering::Relaxed) {

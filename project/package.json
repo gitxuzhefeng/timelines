@@ -3,13 +3,18 @@
   "private": true,
   "version": "0.3.1",
   "type": "module",
+  "main": "electron/main.mjs",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "build:electron": "cross-env VITE_ELECTRON=1 tsc && cross-env VITE_ELECTRON=1 vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "electron:dev": "concurrently -k \"vite\" \"wait-on tcp:127.0.0.1:1420 && electron ./electron/main.mjs\"",
+    "electron:daemon:build": "cargo build --manifest-path src-tauri/Cargo.toml --bin timelens-daemon",
+    "electron:dev": "npm run electron:daemon:build && concurrently -k \"vite\" \"wait-on tcp:127.0.0.1:1420 && electron ./electron/main.mjs\"",
+    "electron:pack": "npm run build:electron && cargo build --manifest-path src-tauri/Cargo.toml --release --bin timelens-daemon && electron-builder",
+    "electron:pack:mac": "npm run build:electron && cargo build --manifest-path src-tauri/Cargo.toml --release --bin timelens-daemon && electron-builder --mac",
+    "electron:pack:win": "npm run build:electron && cargo build --manifest-path src-tauri/Cargo.toml --release --bin timelens-daemon && electron-builder --win",
     "test": "cargo test --manifest-path src-tauri/Cargo.toml",
     "verify:no-net": "node scripts/check-no-external-fetch.mjs"
   },
@@ -20,20 +25,63 @@
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.13.2",
     "react-virtuoso": "^4.12.5",
-    "zustand": "^5.0.3"
+    "zustand": "^5.0.3",
+    "ws": "^8.20.0"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2",
-    "cross-env": "^7.0.3",
-    "electron": "^34.0.2",
     "@tailwindcss/vite": "^4.0.0",
     "@tauri-apps/cli": "^2",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.6.0",
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "electron": "^34.0.2",
+    "electron-builder": "^26.8.1",
     "tailwindcss": "^4.0.0",
     "typescript": "~5.8.3",
     "vite": "^6.0.0",
     "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.timelens.desktop",
+    "productName": "TimeLens",
+    "directories": {
+      "output": "electron-dist"
+    },
+    "files": [
+      "**/*",
+      "!src/**",
+      "!src-tauri/**",
+      "!**/node_modules/@types/**",
+      "!scripts/**",
+      "!*.md",
+      "!electron-dist/**"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": ["dmg"],
+      "extraResources": [
+        {
+          "from": "src-tauri/target/release",
+          "filter": ["timelens-daemon"],
+          "to": "."
+        }
+      ]
+    },
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "extraResources": [
+        {
+          "from": "src-tauri/target/release",
+          "filter": ["timelens-daemon.exe"],
+          "to": "."
+        }
+      ]
+    }
   }
 }

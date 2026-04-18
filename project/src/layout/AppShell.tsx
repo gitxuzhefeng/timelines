@@ -1,5 +1,7 @@
 import { useCallback, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { MainLogPanel } from "../components/MainLogPanel";
+import { isElectronShell } from "../services/desktop-bridge";
 import { useAppStore } from "../stores/appStore";
 import { useDevModeStore } from "../stores/devModeStore";
 import * as api from "../services/tauri";
@@ -50,6 +52,7 @@ export default function AppShell() {
   const setDate = useAppStore((s) => s.setDate);
   const isTracking = useAppStore((s) => s.isTracking);
   const devEnabled = useDevModeStore((s) => s.enabled);
+  const showMainLog = devEnabled && isElectronShell();
   const [captureBusy, setCaptureBusy] = useState(false);
 
   const toggleCapture = useCallback(async () => {
@@ -162,6 +165,7 @@ export default function AppShell() {
           <main className="min-h-0 flex-1 overflow-hidden">
             <Outlet />
           </main>
+          {showMainLog ? <MainLogPanel /> : null}
         </div>
       </div>
     </div>

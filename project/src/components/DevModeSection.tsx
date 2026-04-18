@@ -1,14 +1,24 @@
+import { isElectronShell } from "../services/desktop-bridge";
 import { useDevModeStore } from "../stores/devModeStore";
 
 export function DevModeSection() {
   const enabled = useDevModeStore((s) => s.enabled);
   const setEnabled = useDevModeStore((s) => s.setEnabled);
+  const electron = isElectronShell();
 
   return (
     <section className="mt-8 rounded-xl border border-[var(--tl-line)] bg-[var(--tl-card)] p-4">
       <h2 className="text-sm font-medium text-[var(--tl-muted)]">开发模式</h2>
       <p className="mt-1 text-xs leading-relaxed text-[var(--tl-muted)]/90">
-        开启后在侧栏显示复盘（旧）、会话、OCR、健康等一期/二期工具入口。状态保存在本机浏览器存储。
+        开启后在侧栏显示复盘（旧）、会话、OCR、健康等一期/二期工具入口；状态保存在本机浏览器存储。
+        {electron ? (
+          <>
+            {" "}
+            <strong className="text-[var(--tl-ink)]">Electron 版</strong>
+            还会在窗口底部显示<strong className="text-[var(--tl-ink)]">主进程同步日志</strong>
+            （invoke 耗时、守护进程 stderr、超时等），便于排查「一直加载中」。
+          </>
+        ) : null}
       </p>
       <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-[var(--tl-ink)]">
         <input

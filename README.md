@@ -102,7 +102,7 @@ npm run tauri dev
 | `npm run release`   | 发布构建（见 `scripts/release.sh`） |
 
 
-安装包与分发流程可参考：[docs/DMG打包指南.md](docs/DMG打包指南.md)（macOS）、[docs/windows兼容项目/Windows上手.md](docs/windows兼容项目/Windows上手.md) 与 [绿色版打包说明](docs/windows兼容项目/绿色版打包说明.md)（Windows）。
+安装包与分发流程可参考：[docs/DMG打包指南.md](docs/DMG打包指南.md)（macOS）、[docs/windows兼容项目/Windows上手.md](docs/windows兼容项目/Windows上手.md) 与 [绿色版打包说明](docs/windows兼容项目/绿色版打包说明.md)（Windows Tauri）、[docs/windows兼容项目/Windows-Electron-打包与安装.md](docs/windows兼容项目/Windows-Electron-打包与安装.md)（Windows Electron 安装包与便携版）。
 
 ---
 
@@ -112,10 +112,12 @@ npm run tauri dev
 | 文档                                                        | 内容                          |
 | --------------------------------------------------------- | --------------------------- |
 | [TimeLens_功能介绍.md](docs/TimeLens_功能介绍.md)                 | 功能详解、场景与路线图                 |
-| [TimeLens_用户使用手册.md](docs/TimeLens_用户使用手册.md)             | 上手与日常使用                     |
+| [TimeLens_使用说明书.md](docs/TimeLens_使用说明书.md)                 | **推荐**：功能说明、Electron 入门、双壳开发与打包（面向用户与贡献者） |
+| [archived/一期/TimeLens_用户使用手册.md](docs/archived/一期/TimeLens_用户使用手册.md) | 历史版上手与日常使用               |
 | [M9_验收与测试.md](docs/M9_验收与测试.md)                           | 验收与测试说明                     |
 | [TimeLens_产品迭代规范.md](docs/TimeLens_产品迭代规范.md)             | 迭代阶段闸门、文档矩阵、接口与测试交付标准       |
 | [windows兼容项目/Windows上手.md](docs/windows兼容项目/Windows上手.md) | Windows 环境版本、开发/构建/绿色版与常见问题 |
+| [windows兼容项目/Windows-Electron-打包与安装.md](docs/windows兼容项目/Windows-Electron-打包与安装.md) | **Electron 壳**：Windows 下一键构建、免安装版与 NSIS 安装版步骤 |
 
 
 ---

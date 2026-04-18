@@ -1,5 +1,6 @@
 use std::path::Path;
 use std::sync::Arc;
+use std::time::Duration;
 
 use parking_lot::Mutex;
 use rusqlite::{Connection, OpenFlags};
@@ -9,6 +10,7 @@ use crate::core::intent_builtin_catalog::ensure_builtin_catalog;
 
 pub fn open_write(path: &Path) -> rusqlite::Result<Connection> {
     let mut conn = Connection::open(path)?;
+    conn.busy_timeout(Duration::from_secs(10))?;
     conn.execute_batch(
         r#"
         PRAGMA journal_mode = WAL;
@@ -28,6 +30,7 @@ pub fn open_read(path: &Path) -> rusqlite::Result<Arc<Mutex<Connection>>> {
         | OpenFlags::SQLITE_OPEN_NO_MUTEX;
     let uri = format!("file:{}?mode=ro", path.display());
     let conn = Connection::open_with_flags(&uri, flags)?;
+    conn.busy_timeout(Duration::from_secs(10))?;
     conn.execute_batch(
         r#"
         PRAGMA cache_size = -8000;

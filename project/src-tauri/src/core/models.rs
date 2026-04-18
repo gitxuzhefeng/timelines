@@ -237,6 +237,10 @@ pub enum SessionUpdateOp {
         end_ms: i64,
         duration_ms: i64,
         delta: i64,
+        /// `title_change` 时写入新标题与解析字段；`poll` 等为 None 保持列不变。
+        window_title: Option<String>,
+        extracted_url: Option<String>,
+        extracted_file_path: Option<String>,
     },
 }
 

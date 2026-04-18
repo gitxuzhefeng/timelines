@@ -1,3 +1,4 @@
+import { isElectronShell } from "../services/desktop-bridge";
 import { usesCustomProtocolLocalhostWorkaround } from "../lib/platform";
 
 /** 与 Rust `AppIntentAggregateDto` 对齐：按应用名 + Bundle 聚合 */
@@ -264,6 +265,13 @@ export interface AiSettingsDto {
  * @see https://github.com/tauri-apps/wry/blob/dev/src/custom_protocol_workaround.rs
  */
 export function snapshotTimelensUrl(snapshotId: string): string {
+  if (
+    typeof window !== "undefined" &&
+    isElectronShell() &&
+    window.timelensDesktop?.snapshotUrl
+  ) {
+    return window.timelensDesktop.snapshotUrl(snapshotId);
+  }
   const path = `snapshot/${snapshotId}`;
   if (usesCustomProtocolLocalhostWorkaround()) {
     return `http://timelens.localhost/${path}`;

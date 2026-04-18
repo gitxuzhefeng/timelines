@@ -8,7 +8,7 @@ use rusqlite::params;
 use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tauri::{AppHandle, Emitter, State};
+use tauri::State;
 use uuid::Uuid;
 
 use crate::analysis::ai_client;
@@ -44,16 +44,22 @@ fn dir_size(path: &Path) -> u64 {
 }
 
 #[tauri::command]
-pub fn start_tracking(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
+pub fn start_tracking(state: State<'_, AppState>) -> Result<(), String> {
     state.0.tracking.store(true, Ordering::Relaxed);
-    let _ = app.emit("tracking_state_changed", json!({ "isRunning": true }));
+    state.0.event_sink.emit_json(
+        "tracking_state_changed",
+        json!({ "isRunning": true }),
+    );
     Ok(())
 }
 
 #[tauri::command]
-pub fn stop_tracking(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
+pub fn stop_tracking(state: State<'_, AppState>) -> Result<(), String> {
     state.0.tracking.store(false, Ordering::Relaxed);
-    let _ = app.emit("tracking_state_changed", json!({ "isRunning": false }));
+    state.0.event_sink.emit_json(
+        "tracking_state_changed",
+        json!({ "isRunning": false }),
+    );
     Ok(())
 }
 
@@ -63,12 +69,18 @@ pub fn is_tracking(state: State<'_, AppState>) -> bool {
 }
 
 #[tauri::command]
-pub fn restart_tracking(app: AppHandle, state: State<'_, AppState>) -> Result<bool, String> {
+pub fn restart_tracking(state: State<'_, AppState>) -> Result<bool, String> {
     state.0.tracking.store(false, Ordering::Relaxed);
-    let _ = app.emit("tracking_state_changed", json!({ "isRunning": false }));
+    state.0.event_sink.emit_json(
+        "tracking_state_changed",
+        json!({ "isRunning": false }),
+    );
     std::thread::sleep(std::time::Duration::from_millis(200));
     state.0.tracking.store(true, Ordering::Relaxed);
-    let _ = app.emit("tracking_state_changed", json!({ "isRunning": true }));
+    state.0.event_sink.emit_json(
+        "tracking_state_changed",
+        json!({ "isRunning": true }),
+    );
     Ok(true)
 }
 

@@ -11,9 +11,9 @@ use chrono::Utc;
 use rusqlite::Connection;
 use log::warn;
 use serde_json::json;
-use tauri::{AppHandle, Emitter};
 use uuid::Uuid;
 
+use crate::event_sink::{emit_ser, EventSink};
 use crate::core::intent_mapping::resolve_intent;
 use crate::core::models::{
     AggregationCmd, SessionUpdateOp, WindowSession, WriteEvent,
@@ -25,6 +25,8 @@ struct AggState {
     start_ms: i64,
     last_app: String,
     last_bundle: Option<String>,
+    /// 当前活跃会话的 raw 条数（与 DB 一致，用于 title_change 时 emit 完整 WindowSession）
+    raw_event_count: i64,
 }
 
 impl Default for AggState {
@@ -34,6 +36,7 @@ impl Default for AggState {
             start_ms: 0,
             last_app: String::new(),
             last_bundle: None,
+            raw_event_count: 0,
         }
     }
 }
@@ -46,8 +49,8 @@ fn same_app(a: &str, ab: &Option<String>, b: &str, bb: &Option<String>) -> bool 
     }
 }
 
-fn emit_session(app: &AppHandle, w: &WindowSession) {
-    let _ = app.emit("window_event_updated", w);
+fn emit_session(sink: &dyn EventSink, w: &WindowSession) {
+    emit_ser(sink, "window_event_updated", w);
 }
 
 fn insert_session(
@@ -133,7 +136,7 @@ fn handle_cmd(
     st: &mut AggState,
     cmd: AggregationCmd,
     writer: &WriterHandle,
-    app: &AppHandle,
+    sink: &dyn EventSink,
     current_session: &Arc<RwLock<Option<String>>>,
     is_afk: &Arc<AtomicBool>,
     read_conn: &Mutex<Connection>,
@@ -149,9 +152,10 @@ fn handle_cmd(
             }
             let _ = writer.try_send(WriteEvent::SessionUpdate(SessionUpdateOp::DeactivateAll));
             st.active_id = None;
+            st.raw_event_count = 0;
             *current_session.write().expect("lock") = None;
             is_afk.store(true, Ordering::Relaxed);
-            let _ = app.emit(
+            sink.emit_json(
                 "afk_state_changed",
                 json!({ "isAfk": true, "idleSeconds": idle_seconds }),
             );
@@ -184,6 +188,7 @@ fn handle_cmd(
             st.start_ms = timestamp_ms;
             st.last_app = app_name.clone();
             st.last_bundle = bundle_id.clone();
+            st.raw_event_count = 1;
             *current_session.write().expect("lock") = Some(new_id.clone());
             let w = window_session_from(
                 &new_id,
@@ -198,8 +203,11 @@ fn handle_cmd(
                 1,
                 true,
             );
-            emit_session(app, &w);
-            let _ = app.emit("afk_state_changed", json!({ "isAfk": false, "idleSeconds": 0.0 }));
+            emit_session(sink, &w);
+            sink.emit_json(
+                "afk_state_changed",
+                json!({ "isAfk": false, "idleSeconds": 0.0 }),
+            );
         }
         AggregationCmd::EnterRecordingBlackout { timestamp_ms } => {
             if let Some(ref id) = st.active_id {
@@ -210,6 +218,7 @@ fn handle_cmd(
             st.start_ms = 0;
             st.last_app.clear();
             st.last_bundle = None;
+            st.raw_event_count = 0;
             *current_session.write().expect("lock") = None;
             is_afk.store(false, Ordering::Relaxed);
         }
@@ -249,6 +258,7 @@ fn handle_cmd(
                     st.start_ms = timestamp_ms;
                     st.last_app = app_name.clone();
                     st.last_bundle = bundle_id.clone();
+                    st.raw_event_count = 1;
                     *current_session.write().expect("lock") = Some(new_id.clone());
                     let w = window_session_from(
                         &new_id,
@@ -263,7 +273,7 @@ fn handle_cmd(
                         1,
                         true,
                     );
-                    emit_session(app, &w);
+                    emit_session(sink, &w);
                 }
                 "poll" | "title_change" => {
                     if let Some(ref id) = st.active_id {
@@ -275,16 +285,48 @@ fn handle_cmd(
                         ) {
                             let end = timestamp_ms;
                             let dur = (end - st.start_ms).max(0);
+                            let is_title = trigger_type == "title_change";
+                            let (wt, eu, ep) = if is_title {
+                                (
+                                    Some(window_title.clone()),
+                                    extracted_url.clone(),
+                                    extracted_file_path.clone(),
+                                )
+                            } else {
+                                (None, None, None)
+                            };
                             let _ = writer.try_send(WriteEvent::SessionUpdate(
                                 SessionUpdateOp::BumpRawCount {
                                     id: id.clone(),
                                     end_ms: end,
                                     duration_ms: dur,
                                     delta: 1,
+                                    window_title: wt,
+                                    extracted_url: eu,
+                                    extracted_file_path: ep,
                                 },
                             ));
+                            st.raw_event_count += 1;
                             st.last_app = app_name.clone();
                             st.last_bundle = bundle_id.clone();
+                            if is_title {
+                                let intent =
+                                    resolved_intent_for_insert(read_conn, &app_name, &bundle_id);
+                                let w = window_session_from(
+                                    id,
+                                    st.start_ms,
+                                    end,
+                                    &app_name,
+                                    &bundle_id,
+                                    &window_title,
+                                    &extracted_url,
+                                    &extracted_file_path,
+                                    intent,
+                                    st.raw_event_count,
+                                    true,
+                                );
+                                emit_session(sink, &w);
+                            }
                         } else {
                             if let Some(ref oid) = st.active_id.clone() {
                                 close_session(writer, oid, st.start_ms, timestamp_ms);
@@ -308,6 +350,7 @@ fn handle_cmd(
                             st.start_ms = timestamp_ms;
                             st.last_app = app_name.clone();
                             st.last_bundle = bundle_id.clone();
+                            st.raw_event_count = 1;
                             *current_session.write().expect("lock") = Some(new_id.clone());
                             let w = window_session_from(
                                 &new_id,
@@ -322,7 +365,7 @@ fn handle_cmd(
                                 1,
                                 true,
                             );
-                            emit_session(app, &w);
+                            emit_session(sink, &w);
                         }
                     } else {
                         let new_id = Uuid::new_v4().to_string();
@@ -342,6 +385,7 @@ fn handle_cmd(
                         st.start_ms = timestamp_ms;
                         st.last_app = app_name.clone();
                         st.last_bundle = bundle_id.clone();
+                        st.raw_event_count = 1;
                         *current_session.write().expect("lock") = Some(new_id.clone());
                         let w = window_session_from(
                             &new_id,
@@ -356,7 +400,7 @@ fn handle_cmd(
                             1,
                             true,
                         );
-                        emit_session(app, &w);
+                        emit_session(sink, &w);
                     }
                 }
                 _ => {}
@@ -368,7 +412,7 @@ fn handle_cmd(
 fn compensate(
     read_conn: &Mutex<rusqlite::Connection>,
     writer: &WriterHandle,
-    _app: &AppHandle,
+    _sink: &dyn EventSink,
     current_session: &Arc<RwLock<Option<String>>>,
     is_afk: &Arc<AtomicBool>,
     st: &mut AggState,
@@ -404,6 +448,7 @@ fn compensate(
             let _ = writer.try_send(WriteEvent::SessionUpdate(SessionUpdateOp::DeactivateAll));
             if st.active_id.as_ref() == Some(&id) {
                 st.active_id = None;
+                st.raw_event_count = 0;
                 *current_session.write().expect("lock") = None;
             }
         }
@@ -411,7 +456,7 @@ fn compensate(
 }
 
 pub fn spawn_aggregation_thread(
-    app: AppHandle,
+    sink: Arc<dyn EventSink>,
     rx: Receiver<AggregationCmd>,
     writer: WriterHandle,
     read_conn: Arc<Mutex<rusqlite::Connection>>,
@@ -426,7 +471,7 @@ pub fn spawn_aggregation_thread(
                 compensate(
                     read_conn.as_ref(),
                     &writer,
-                    &app,
+                    sink.as_ref(),
                     &current_session,
                     &is_afk,
                     &mut st,
@@ -439,7 +484,7 @@ pub fn spawn_aggregation_thread(
                     &mut st,
                     cmd,
                     &writer,
-                    &app,
+                    sink.as_ref(),
                     &current_session,
                     &is_afk,
                     read_conn.as_ref(),

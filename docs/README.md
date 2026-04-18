@@ -12,11 +12,12 @@
 
 | 文档                             | 说明                                |
 | ------------------------------ | --------------------------------- |
-| [Windows上手.md](./Windows上手.md) | 环境、开发、`tauri build`、**x64 / ARM64（WoA）**、产物路径 |
-| [01_技术方案.md](./01_技术方案.md)     | 现状差距、架构原则、模块改造点、依赖与配置、风险          |
-| [02_研发计划.md](./02_研发计划.md)     | 阶段划分、任务清单、依赖顺序、交付物                |
-| [03_测试计划.md](./03_测试计划.md)     | 环境、用例矩阵、回归范围、通过标准                 |
-| [绿色版打包说明.md](./绿色版打包说明.md)     | 绿色 ZIP 与 NSIS 关系、用户说明、WebView2 |
+| [windows兼容项目/Windows上手.md](./windows兼容项目/Windows上手.md) | 环境、开发、`tauri build`、**x64 / ARM64（WoA）**、产物路径 |
+| [windows兼容项目/Windows-Electron-打包与安装.md](./windows兼容项目/Windows-Electron-打包与安装.md) | **Electron + daemon**：`electron:pack:win`、便携版与 NSIS 安装版 |
+| [windows兼容项目/01_技术方案.md](./windows兼容项目/01_技术方案.md)     | 现状差距、架构原则、模块改造点、依赖与配置、风险          |
+| [windows兼容项目/02_研发计划.md](./windows兼容项目/02_研发计划.md)     | 阶段划分、任务清单、依赖顺序、交付物                |
+| [windows兼容项目/03_测试计划.md](./windows兼容项目/03_测试计划.md)     | 环境、用例矩阵、回归范围、通过标准                 |
+| [windows兼容项目/绿色版打包说明.md](./windows兼容项目/绿色版打包说明.md)     | 绿色 ZIP 与 NSIS 关系、用户说明、WebView2 |
 
 
 ## 关联仓库文档

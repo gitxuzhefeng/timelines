@@ -3,6 +3,7 @@ project/node_modules/
 project/dist/
 project/src-tauri/target/
 project/src-tauri/gen/
+project/electron-dist/
 
 # ========== 历史路径 code/（已废弃，保留规则以免误提交）==========
 code/node_modules/

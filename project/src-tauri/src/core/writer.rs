@@ -440,10 +440,26 @@ fn apply_batch(conn: &mut Connection, batch: &[WriteEvent]) -> rusqlite::Result<
                     end_ms,
                     duration_ms,
                     delta,
+                    window_title,
+                    extracted_url,
+                    extracted_file_path,
                 } => {
                     tx.execute(
-                        "UPDATE window_sessions SET end_ms = ?2, duration_ms = ?3, raw_event_count = raw_event_count + ?4 WHERE id = ?1",
-                        params![id, end_ms, duration_ms, delta],
+                        r#"UPDATE window_sessions SET end_ms = ?2, duration_ms = ?3,
+                        raw_event_count = raw_event_count + ?4,
+                        window_title = COALESCE(?5, window_title),
+                        extracted_url = COALESCE(?6, extracted_url),
+                        extracted_file_path = COALESCE(?7, extracted_file_path)
+                        WHERE id = ?1"#,
+                        params![
+                            id,
+                            end_ms,
+                            duration_ms,
+                            delta,
+                            window_title.as_deref(),
+                            extracted_url.as_deref(),
+                            extracted_file_path.as_deref(),
+                        ],
                     )?;
                 }
             },

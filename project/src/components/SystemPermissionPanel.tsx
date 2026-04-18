@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { PermissionStatus } from "../types";
 import * as api from "../services/tauri";
+import { isElectronShell } from "../services/desktop-bridge";
 import {
   detectClientDesktopOs,
   MACOS_APP_BUNDLE_ID,
@@ -40,6 +41,7 @@ export function SystemPermissionPanel({
     () => permissionSettingsButtonLabels(clientOs),
     [clientOs],
   );
+  const electron = isElectronShell();
 
   const permissions = controlled !== undefined ? controlled : local;
   const setPerms = onPermissionsChange ?? setLocal;
@@ -146,6 +148,19 @@ export function SystemPermissionPanel({
             </button>
           )}
         </div>
+      )}
+      {electron && clientOs === "macos" && permissions && (
+        <details className="mt-3 rounded-md border border-[var(--tl-line)] bg-[var(--tl-card)] text-xs leading-relaxed text-[var(--tl-muted)] open:bg-[var(--tl-surface-deep)]/30">
+          <summary className="cursor-pointer select-none list-none px-3 py-2 font-medium text-[var(--tl-ink)] [&::-webkit-details-marker]:hidden">
+            Electron 守护进程与屏幕录制说明（可选阅读）
+          </summary>
+          <div className="border-t border-[var(--tl-line)] px-3 py-2 opacity-95">
+            采集与截图在子进程 <code className="text-[var(--tl-cyan)]">timelens-daemon</code>{" "}
+            中执行。请在「系统设置 → 隐私与安全性 → 录屏与系统录音」列表中查找并开启
+            <strong className="text-[var(--tl-ink)]"> timelens-daemon</strong>
+            （若与「TimeLens」分列显示，需<strong>分别打开</strong>）。仅勾选主应用而未勾选守护进程时，会出现无法截屏或权限看似「开不了」的情况。
+          </div>
+        </details>
       )}
       {showMacosPermissionHelp &&
         clientOs === "macos" &&

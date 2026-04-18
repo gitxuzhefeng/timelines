@@ -14,11 +14,16 @@ export async function bridgeInvoke<T>(
   args?: InvokeArgs,
 ): Promise<T> {
   const d = getDesktop();
-  if (d?.invoke) {
+  if (typeof d?.invoke === "function") {
     return d.invoke<T>(command, args);
   }
-  const { invoke } = await import("@tauri-apps/api/core");
-  return invoke<T>(command, args);
+  const { invoke, isTauri } = await import("@tauri-apps/api/core");
+  if (typeof isTauri === "function" && isTauri()) {
+    return invoke<T>(command, args);
+  }
+  throw new Error(
+    "TimeLens：未连接桌面后端（既非 Tauri 也未加载 Electron 预加载脚本）。请使用官方桌面安装包，或从源码以 Electron/Tauri 启动。",
+  );
 }
 
 export async function bridgeListen<T>(
@@ -26,9 +31,15 @@ export async function bridgeListen<T>(
   handler: (payload: T) => void,
 ): Promise<UnlistenFn> {
   const d = getDesktop();
-  if (d?.listen) {
+  if (typeof d?.listen === "function") {
     return d.listen<T>(channel, handler);
   }
-  const { listen } = await import("@tauri-apps/api/event");
-  return listen<T>(channel, (e) => handler(e.payload));
+  const { isTauri } = await import("@tauri-apps/api/core");
+  if (typeof isTauri === "function" && isTauri()) {
+    const { listen } = await import("@tauri-apps/api/event");
+    return listen<T>(channel, (e) => handler(e.payload));
+  }
+  throw new Error(
+    "TimeLens：未连接桌面事件通道。请使用官方桌面安装包，或从源码以 Electron/Tauri 启动。",
+  );
 }
