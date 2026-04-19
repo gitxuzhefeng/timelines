@@ -20,7 +20,7 @@
         "transparent": false,
         "decorations": true,
         "shadow": false,
-        "additionalBrowserArgs": "--disable-features=CalculateNativeWinOcclusion --disable-gpu-vsync --disable-renderer-backgrounding"
+        "additionalBrowserArgs": "--disable-features=CalculateNativeWinOcclusion --disable-renderer-backgrounding"
       }
     ],
     "security": {

@@ -18,15 +18,18 @@ use windows::Win32::System::Power::{GetSystemPowerStatus, SYSTEM_POWER_STATUS};
 use windows::Win32::System::WinRT::RoInitialize;
 use windows::Win32::System::WinRT::RO_INIT_MULTITHREADED;
 use windows::Win32::System::Threading::{
-    OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
+    GetCurrentThreadId, OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
+    PROCESS_QUERY_LIMITED_INFORMATION,
 };
 use windows::Win32::UI::Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO};
 use windows::Win32::UI::WindowsAndMessaging::{
-    CallNextHookEx, DispatchMessageW, HHOOK, KBDLLHOOKSTRUCT, LLKHF_INJECTED, LLMHF_INJECTED,
-    MSLLHOOKSTRUCT, PeekMessageW, SetWindowsHookExW, TranslateMessage, UnhookWindowsHookEx, MSG,
-    PM_REMOVE, WH_KEYBOARD_LL, WH_MOUSE_LL, WM_KEYDOWN, WM_LBUTTONDOWN, WM_QUIT,
+    CallNextHookEx, DispatchMessageW, GetMessageW, HHOOK, KBDLLHOOKSTRUCT, LLKHF_INJECTED,
+    LLMHF_INJECTED, MSLLHOOKSTRUCT, PostThreadMessageW, SetWindowsHookExW, TranslateMessage,
+    UnhookWindowsHookEx, MSG, WH_KEYBOARD_LL, WH_MOUSE_LL, WM_KEYDOWN, WM_LBUTTONDOWN, WM_QUIT,
 };
-use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetSystemMetrics, GetWindowTextW, GetWindowThreadProcessId, SM_CMONITORS};
+use windows::Win32::UI::WindowsAndMessaging::{
+    GetForegroundWindow, GetSystemMetrics, GetWindowTextW, GetWindowThreadProcessId, SM_CMONITORS,
+};
 use windows::core::PWSTR;
 use windows::Win32::Foundation::CloseHandle;
 
@@ -44,6 +47,8 @@ static INPUT_LAST: Mutex<Option<(u32, u32)>> = Mutex::new(None);
 /// `HHOOK` 不满足 `Send`/`Sync`，不能放进 `static OnceLock`；存裸指针位模式（`usize`）即可。
 static KB_HOOK_HANDLE: OnceLock<usize> = OnceLock::new();
 static MOUSE_HOOK_HANDLE: OnceLock<usize> = OnceLock::new();
+/// 钩子线程的 Win32 线程 ID，用于从外部 PostThreadMessage(WM_QUIT) 停止消息泵。
+static HOOK_THREAD_ID: AtomicU32 = AtomicU32::new(0);
 
 #[inline]
 fn hook_from_slot(slot: &OnceLock<usize>) -> HHOOK {
@@ -132,20 +137,39 @@ pub fn spawn_low_level_input_hooks(running: Arc<AtomicBool>) {
         let _ = KB_HOOK_HANDLE.set(k_hook.0 as usize);
         let _ = MOUSE_HOOK_HANDLE.set(m_hook.0 as usize);
 
+        // 保存线程 ID，供外部通过 PostThreadMessageW(WM_QUIT) 停止消息泵。
+        // WH_MOUSE_LL / WH_KEYBOARD_LL 要求钩子线程必须持续抽取消息（GetMessage 阻塞式），
+        // 否则 Windows 会在 LowLevelHooksTimeout（默认 200ms）后跳过钩子，
+        // 导致每次鼠标移动都有最长 50ms 的延迟（旧 PeekMessage+sleep 方案的根本缺陷）。
+        HOOK_THREAD_ID.store(GetCurrentThreadId(), Ordering::Relaxed);
+
         let mut msg = MSG::default();
-        while running.load(Ordering::Relaxed) {
-            while PeekMessageW(&mut msg, HWND(std::ptr::null_mut()), 0, 0, PM_REMOVE).as_bool() {
-                if msg.message == WM_QUIT {
-                    break;
-                }
-                let _ = TranslateMessage(&msg);
-                DispatchMessageW(&msg);
-            }
-            std::thread::sleep(std::time::Duration::from_millis(50));
+        // GetMessage 阻塞等待，仅在有消息时才唤醒，CPU 占用为零。
+        // 收到 WM_QUIT（由 stop_low_level_input_hooks 发送）时返回 false，退出循环。
+        while GetMessageW(&mut msg, windows::Win32::Foundation::HWND(std::ptr::null_mut()), 0, 0)
+            .as_bool()
+        {
+            let _ = TranslateMessage(&msg);
+            DispatchMessageW(&msg);
         }
+
+        // running 标志已由调用方管理，此处仅做兜底检查（正常路径由 WM_QUIT 退出）。
         let _ = UnhookWindowsHookEx(k_hook);
         let _ = UnhookWindowsHookEx(m_hook);
+        HOOK_THREAD_ID.store(0, Ordering::Relaxed);
+        drop(running); // 持有 Arc 直到线程退出，确保生命周期正确
     });
+}
+
+/// 向钩子线程发送 WM_QUIT，使其退出 GetMessage 循环并卸载钩子。
+/// 由 running 标志变为 false 的调用方负责调用（如 app 退出时）。
+pub fn stop_low_level_input_hooks() {
+    let tid = HOOK_THREAD_ID.load(Ordering::Relaxed);
+    if tid != 0 {
+        unsafe {
+            let _ = PostThreadMessageW(tid, WM_QUIT, windows::Win32::Foundation::WPARAM(0), windows::Win32::Foundation::LPARAM(0));
+        }
+    }
 }
 
 unsafe extern "system" fn low_level_keyboard_proc(
