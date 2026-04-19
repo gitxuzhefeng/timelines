@@ -1,0 +1,72 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: windows
+          - os: macos-latest
+            name: macos
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: project/package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: project/src-tauri
+
+      - name: Install frontend dependencies
+        working-directory: project
+        run: npm ci
+
+      - name: Build Tauri app
+        working-directory: project
+        run: npm run tauri build
+
+      # ── Windows: NSIS 安装包 ──────────────────────────────────────────────
+      - name: Upload Windows installer (NSIS)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: TimeLens-windows-x64-installer
+          path: project/src-tauri/target/release/bundle/nsis/*-setup.exe
+          retention-days: 30
+
+      # ── Windows: 免安装便携版（单个 .exe）────────────────────────────────
+      - name: Upload Windows portable (exe)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: TimeLens-windows-x64-portable
+          path: project/src-tauri/target/release/TimeLens.exe
+          retention-days: 30
+
+      # ── macOS: DMG ────────────────────────────────────────────────────────
+      - name: Upload macOS DMG
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: TimeLens-macos-dmg
+          path: project/src-tauri/target/release/bundle/dmg/*.dmg
+          retention-days: 30
