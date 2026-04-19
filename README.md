@@ -1,155 +1,102 @@
+<div align="center">
+
+<img src="docs/timelines宣传/时间线black.png" alt="TimeLens" width="100%">
+
 # TimeLens · 时间透视镜
 
-**一句话**：TimeLens 是一款**本地优先**的桌面应用，在 **macOS / Windows** 上**被动采集**前台窗口与应用使用、配合**智能截图**做情境回溯，把碎片时间还原成可复盘的工作会话，数据默认留在本机。
+**被动记录 · 零打卡 · 数据留本机**
 
-[GitHub Repo stars](https://github.com/gitxuzhefeng/timelines)
-[产品宣传页](https://timelens-pi.vercel.app/)
-[Download](https://github.com/gitxuzhefeng/timelines/releases/latest)
+让你真正看清每天的时间去了哪里
 
-**真实效果图** · 本地验证看板：左侧会话流、中央截图预览、右侧当前 Session、底部 RAW 日志与 Writer 延迟等指标。产品与路线图的可视化讲解见 [产品宣传页](https://timelens-pi.vercel.app/)。
+[产品宣传页](https://timelens-pi.vercel.app/) · [下载](https://github.com/gitxuzhefeng/timelines/releases/latest) · [GitHub Actions 构建](https://github.com/gitxuzhefeng/timelines/actions)
 
----
-
-> **AI 驱动的个人时间透视镜** —— 在 macOS 上自动、被动地记录你的电脑使用行为，用客观数据看清时间真正流向了哪里。（Windows 端采集与打包已合入主干，上手与版本要求见 [docs/windows兼容项目/Windows上手.md](docs/windows兼容项目/Windows上手.md)。）
-
-每天面对屏幕八小时，却说不清这八小时里究竟发生了什么？TimeLens 用**零手动打卡**的采集方式，把窗口、应用与情境截图连成可追溯的时间线，让主观感受与真实行为对齐。
+</div>
 
 ---
 
-## 宣传页与下载
+## 它能做什么
 
+TimeLens 在后台静默运行，自动记录你在每个应用和窗口上花了多少时间，配合智能截图还原工作情境，把碎片化的屏幕行为聚合成可复盘的时间线。
 
-| 入口                                                                               | 说明                                                                                      |
-| -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| **[产品宣传页](https://timelens-pi.vercel.app/)**                                     | 一期数据管道、五大引擎示意、二期 AI 洞察与三期路线图 —— 适合对外介绍与分享。                                              |
-| **[GitHub Releases](https://github.com/gitxuzhefeng/timelines/releases/latest)** | macOS 安装包（DMG）发布后将在此提供；暂无 Release 时可先 [本地构建](#快速开始开发者) 或参考 [DMG 打包指南](docs/DMG打包指南.md)。 |
-
+不需要手动打卡，不上传任何数据，一切都在本机。
 
 ---
 
-### 给路过朋友的一句话（Star）
+## 界面预览
 
-如果 TimeLens 恰好戳中你对「时间去向」的好奇，或者你愿意把**本地优先、可审计的数据底座**这类方向推给更多人 —— 欢迎在仓库右上角 **Star ⭐** 一下。这既是对维护者的鼓励，也能帮助其他开发者更快发现本项目。
-
----
-
-## 为什么选择 TimeLens
-
-
-| 常见困扰              | TimeLens 的做法               |
-| ----------------- | -------------------------- |
-| 感觉忙了一天，产出却对不上     | 会话聚合 + 应用/窗口时长，用数据说话       |
-| 想复盘「昨天下午三点在干什么」   | 切换即记录，配合智能截图回溯情境           |
-| 担心监控类工具碰隐私、上云     | **本地优先**：数据在设备上，不做键盘/剪贴板采集 |
-| 传统时间追踪要不停点「开始/结束」 | **被动采集**：后台静默运行，不打断心流      |
-
-
----
-
-## 核心能力
-
-- **被动行为追踪** — 周期性检测前台窗口变化，记录应用名、窗口标题与时间戳，自动聚合成工作会话。
-- **智能截图** — 窗口切换时抓取画面，结合感知哈希去重、WebP 压缩，控制每日增量体积。
-- **会话与时间线** — 从碎片化事件还原「在某应用、某上下文里连续工作了多久」，便于日报与复盘。
-- **托盘与状态** — 菜单栏常驻，可查看运行状态、今日统计与存储占用，支持快速暂停/恢复。
-
-更完整的产品说明与示例数据见：[docs/TimeLens_功能介绍.md](docs/TimeLens_功能介绍.md)。
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/timelines宣传/今天透视黑色.png" alt="今日透视" width="100%">
+      <sub>今日透视 — 应用时长一览</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/timelines宣传/会话black.png" alt="会话详情" width="100%">
+      <sub>会话详情 — 情境截图回溯</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="50%">
+      <img src="docs/timelines宣传/日报black.png" alt="日报" width="100%">
+      <sub>AI 日报 — 自动生成工作摘要</sub>
+    </td>
+    <td align="center" width="50%">
+      <img src="docs/timelines宣传/ocrblack.png" alt="OCR 搜索" width="100%">
+      <sub>OCR 全文搜索 — 找回任意历史内容</sub>
+    </td>
+  </tr>
+</table>
 
 ---
 
-## 隐私与安全（本地优先）
+## 核心特性
 
-- 数据默认**保存在本机**，不依赖云端同步即可使用核心能力。
-- **不记录**按键内容、剪贴板与密码；采集边界以窗口元数据与可选截图为限。
-- 适合对数据主权敏感的知识工作者与个人用户。
-
----
-
-## 适用人群
-
-- **开发者 / 技术写作者**：对齐编码、调试、文档与沟通的真实耗时。
-- **自由职业与按项目计费**：为工时说明提供客观依据（结合截图情境）。
-- **效率与复盘爱好者**：发现上下文切换成本与「时间黑洞」，优化工作节奏。
+- **被动采集** — 后台检测前台窗口变化，自动记录应用名、窗口标题与时长，不打断工作流
+- **智能截图** — 窗口切换时抓取画面，感知哈希去重 + WebP 压缩，控制磁盘占用
+- **会话聚合** — 把碎片事件还原成连续工作会话，支持按应用、日期筛选与复盘
+- **OCR 全文搜索** — 对截图内容做文字识别，可搜索任意历史屏幕内容
+- **AI 日报** — 基于当天会话自动生成工作摘要（可选，本地模型或自定义 API）
+- **本地优先** — 数据存 SQLite，不依赖云端，不记录键盘内容与剪贴板
 
 ---
 
-## 技术栈
+## 下载
 
-- **桌面端**：Tauri 2 · Rust（`project/src-tauri`）
-- **界面**：React 18 · Vite 6 · Tailwind CSS 4
+| 平台 | 下载方式 |
+|------|---------|
+| macOS | [Releases](https://github.com/gitxuzhefeng/timelines/releases/latest) 下载 `.dmg` |
+| Windows 安装版 | [Releases](https://github.com/gitxuzhefeng/timelines/releases/latest) 下载 `*-setup.exe` |
+| Windows 便携版 | [Releases](https://github.com/gitxuzhefeng/timelines/releases/latest) 下载 `TimeLens.exe`，解压直接运行 |
+
+> 暂无 Release 时，可在 [Actions](https://github.com/gitxuzhefeng/timelines/actions) 页面下载最新构建产物。
 
 ---
 
 ## 快速开始（开发者）
 
-**前置条件**：Node.js、Rust 工具链、各平台 Tauri 系统依赖（macOS 见官方文档；**Windows 见 [Windows 上手](docs/windows兼容项目/Windows上手.md)**；总览见 [Tauri 前置条件](https://v2.tauri.app/start/prerequisites/)）。
+**前置条件**：Node.js · Rust 工具链 · [Tauri 系统依赖](https://v2.tauri.app/start/prerequisites/)
 
 ```bash
-# 仓库根目录：安装依赖并启动开发模式
-cd project && npm install && cd ..
+git clone https://github.com/gitxuzhefeng/timelines.git
+cd timelines/project
+npm install
 npm run tauri dev
 ```
 
-常用脚本（在仓库根目录执行）：
-
-
-| 命令                  | 说明                           |
-| ------------------- | ---------------------------- |
-| `npm run dev`       | 仅前端 Vite 开发服务器               |
-| `npm run tauri dev` | Tauri 桌面应用开发模式               |
-| `npm run build`     | 前端生产构建                       |
-| `npm test`          | 运行 Rust 侧测试                  |
-| `npm run release`   | 发布构建（见 `scripts/release.sh`） |
-
-
-安装包与分发流程可参考：[docs/DMG打包指南.md](docs/DMG打包指南.md)（macOS）、[docs/windows兼容项目/Windows上手.md](docs/windows兼容项目/Windows上手.md) 与 [绿色版打包说明](docs/windows兼容项目/绿色版打包说明.md)（Windows）。
+| 命令 | 说明 |
+|------|------|
+| `npm run tauri dev` | 桌面应用开发模式 |
+| `npm run tauri build` | 生产打包 |
+| `npm test` | Rust 单元测试 |
 
 ---
 
-## 文档索引
+## 技术栈
 
-
-| 文档                                                        | 内容                          |
-| --------------------------------------------------------- | --------------------------- |
-| [TimeLens_功能介绍.md](docs/TimeLens_功能介绍.md)                 | 功能详解、场景与路线图                 |
-| [TimeLens_用户使用手册.md](docs/TimeLens_用户使用手册.md)             | 上手与日常使用                     |
-| [M9_验收与测试.md](docs/M9_验收与测试.md)                           | 验收与测试说明                     |
-| [TimeLens_产品迭代规范.md](docs/TimeLens_产品迭代规范.md)             | 迭代阶段闸门、文档矩阵、接口与测试交付标准       |
-| [windows兼容项目/Windows上手.md](docs/windows兼容项目/Windows上手.md) | Windows 环境版本、开发/构建/绿色版与常见问题 |
-
+[Tauri 2](https://v2.tauri.app/) · [Rust](https://www.rust-lang.org/) · [React 18](https://react.dev/) · [Vite 6](https://vitejs.dev/) · [Tailwind CSS 4](https://tailwindcss.com/) · SQLite
 
 ---
 
-## 路线图（摘要）
+## License
 
-- **一期（当前）**：多维采集、会话模型、基础看板与验证能力。  
-- **二期**：以**日终复盘报告**为核心（本地分析 + 可选 AI 叙事 + 最小可用 UI）；深度 UI 属三期；详见 `prd/PRD_二期_智能洞察.md` v3.1。  
-- **三期**：可选云同步与 GitHub / Notion 等工具链联动。
-
-详见功能介绍文档中的路线图章节。对外讲解时可配合 [产品宣传页](https://timelens-pi.vercel.app/) 中的图示与叙事。
-
----
-
-## 许可证
-
-本项目以 [MIT License](LICENSE) 开源。
-
----
-
-## GitHub 仓库页设置（开源 / 可发现性）
-
-在仓库 **Settings → General** 或主页 **⚙️ About** 中建议填写（需你在网页上操作，无法单靠提交自动生效）：
-
-
-| 项                                 | 建议填写                                                                                                                                              |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Website**                       | [https://timelens-pi.vercel.app/](https://timelens-pi.vercel.app/)                                                                                |
-| **Description**（英文一句，便于检索）        | `Local-first Tauri desktop app: passive window & app tracking, smart screenshots, session timeline — macOS & Windows. Data stays on device.`      |
-| **Topics**（标签，复制到 About 的 topics） | `tauri` `rust` `react` `typescript` `vite` `productivity` `time-tracking` `screen-capture` `local-first` `macos` `windows` `desktop-app` `sqlite` |
-
-
-**说明**：`demo/我的微信二维码.JPG` 已列入根目录 `.gitignore`，避免个人二维码进入公开 Git；本地或 CI 部署 `demo/` 到 Vercel 时，请自行在该路径放置图片，或把 `timelens-product-showcase.html` 中内测区块的图片改为你的托管链接。
-
----
-
-**TimeLens** — 让时间透明，让工作可见。
+[MIT](LICENSE)
