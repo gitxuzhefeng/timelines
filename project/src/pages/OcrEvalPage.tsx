@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type {
   OcrEvalLine,
   OcrEvalSampleRow,
@@ -18,16 +19,17 @@ function formatTime(ms: number): string {
 function dropReasonLabel(reason: string | null | undefined): string {
   if (!reason) return "";
   const m: Record<string, string> = {
-    empty: "空行",
-    too_short: "过短",
-    no_alnum_cjk: "无字母汉字",
-    low_line_conf: "行置信度低",
-    symbol_noise: "符号噪声",
+    empty: "empty",
+    too_short: "too_short",
+    no_alnum_cjk: "no_alnum_cjk",
+    low_line_conf: "low_line_conf",
+    symbol_noise: "symbol_noise",
   };
   return m[reason] ?? reason;
 }
 
 export default function OcrEvalPage() {
+  const { t } = useTranslation();
   const [rows, setRows] = useState<OcrEvalSampleRow[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [evalResult, setEvalResult] = useState<OcrEvaluateSnapshotResult | null>(
@@ -83,10 +85,9 @@ export default function OcrEvalPage() {
     <div className="flex h-full min-h-0 flex-col gap-3 p-4 text-[var(--tl-ink)]">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h1 className="text-lg font-semibold text-[var(--tl-ink)]">OCR 效果评估</h1>
+          <h1 className="text-lg font-semibold text-[var(--tl-ink)]">{t("ocrEval.title")}</h1>
           <p className="mt-1 max-w-2xl text-xs text-[var(--tl-muted)]">
-            本地 Tesseract（tsv）管线：按行置信度与规则闸门过滤乱码；下方「重新识别」仅内存计算、
-            不写库。正式入库结果仍以异步 worker 为准。参数在「设置 → OCR 管线」中调整。
+            {t("ocrEval.description")}
           </p>
         </div>
         <button
@@ -95,7 +96,7 @@ export default function OcrEvalPage() {
           onClick={() => void refreshList()}
           disabled={loadingList}
         >
-          刷新列表
+          {t("ocrEval.refreshList")}
         </button>
       </div>
 
@@ -104,8 +105,8 @@ export default function OcrEvalPage() {
       <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-2">
         <div className="flex min-h-0 flex-col rounded border border-[var(--tl-line)] bg-[var(--tl-surface)]">
           <div className="border-b border-[var(--tl-line)] px-3 py-2 text-xs font-medium text-[var(--tl-muted)]">
-            最近截图
-            {loadingList ? "（加载中）" : `（${rows.length}）`}
+            {t("ocrEval.recentScreenshots")}
+            {loadingList ? `（${t("ocrEval.loading")}）` : `（${rows.length}）`}
           </div>
           <ul className="min-h-0 flex-1 overflow-auto text-sm">
             {rows.map((r) => {
@@ -129,7 +130,7 @@ export default function OcrEvalPage() {
                       )}
                     </div>
                     <div className="mt-0.5 truncate text-xs text-[var(--tl-ink)]/90">
-                      {r.windowTitle || "（无标题）"}
+                      {r.windowTitle || t("common.noTitle")}
                     </div>
                     {r.ocrTextPreview && (
                       <div className="mt-1 line-clamp-2 font-mono text-[11px] text-[var(--tl-muted)]">
@@ -141,7 +142,7 @@ export default function OcrEvalPage() {
               );
             })}
             {!loadingList && rows.length === 0 && (
-              <li className="p-4 text-sm text-[var(--tl-muted)]">暂无截图记录。</li>
+              <li className="p-4 text-sm text-[var(--tl-muted)]">{t("ocrEval.noScreenshots")}</li>
             )}
           </ul>
         </div>
@@ -158,7 +159,7 @@ export default function OcrEvalPage() {
           )}
 
           {loadingEval && (
-            <p className="text-sm text-[var(--tl-muted)]">正在本地识别…</p>
+            <p className="text-sm text-[var(--tl-muted)]">{t("ocrEval.recognizing")}</p>
           )}
           {evalErr && <p className="text-sm text-[var(--tl-status-bad)]">{evalErr}</p>}
 
@@ -168,9 +169,9 @@ export default function OcrEvalPage() {
                 <span
                   className={evalResult.ok ? "text-[var(--tl-status-ok)]" : "text-[var(--tl-status-warn)]"}
                 >
-                  {evalResult.ok ? "识别完成" : "识别失败（仍返回管线配置）"}
+                  {evalResult.ok ? t("ocrEval.recognitionComplete") : t("ocrEval.recognitionFailed")}
                 </span>
-                <span className="text-[var(--tl-muted)]">耗时 {evalResult.durationMs} ms</span>
+                <span className="text-[var(--tl-muted)]">{t("ocrEval.duration", { ms: evalResult.durationMs })}</span>
               </div>
               {evalResult.errorMessage && (
                 <p className="rounded border border-[var(--tl-error-border)] bg-[var(--tl-error-bg)] p-2 text-xs text-[var(--tl-error-text)]">
@@ -193,30 +194,29 @@ export default function OcrEvalPage() {
 
               {metaObj && (
                 <div className="text-xs text-[var(--tl-muted)]">
-                  <span>闸门统计：</span>
-                  {String(metaObj.linesKept ?? "—")} 行保留 /{" "}
-                  {String(metaObj.linesDropped ?? "—")} 行丢弃，平均行置信{" "}
+                  <span>{t("ocrEval.gateStats")}</span>
+                  {String(metaObj.linesKept ?? "—")} {t("ocrEval.linesKeptDropped", { dropped: String(metaObj.linesDropped ?? "—") })}{" "}
                   {String(metaObj.avgLineConf ?? "—")}
                 </div>
               )}
 
               {evalResult.summaryLine && (
                 <div>
-                  <div className="text-xs text-[var(--tl-muted)]">摘要候选（脱敏后）</div>
+                  <div className="text-xs text-[var(--tl-muted)]">{t("ocrEval.summaryCandidate")}</div>
                   <p className="mt-1 text-[var(--tl-ink)]/90">{evalResult.summaryLine}</p>
                 </div>
               )}
 
               <div>
-                <div className="text-xs text-[var(--tl-muted)]">最终正文（脱敏后，多行）</div>
+                <div className="text-xs text-[var(--tl-muted)]">{t("ocrEval.finalText")}</div>
                 <pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-[var(--tl-pre-bg)] p-2 font-mono text-xs text-[var(--tl-ink)]/90">
-                  {evalResult.finalText || "（空）"}
+                  {evalResult.finalText || t("common.empty")}
                 </pre>
               </div>
 
               <div>
                 <div className="mb-2 text-xs text-[var(--tl-muted)]">
-                  行级明细（kept = 通过闸门）
+                  {t("ocrEval.lineDetails")}
                 </div>
                 <ul className="max-h-56 space-y-1 overflow-auto text-xs">
                   {evalResult.lines.map((line: OcrEvalLine, i: number) => (
@@ -230,13 +230,13 @@ export default function OcrEvalPage() {
                     >
                       <div className="flex flex-wrap gap-2 text-[10px] text-[var(--tl-muted)]">
                         <span>conf {line.avgConf}</span>
-                        <span>{line.kept ? "保留" : "丢弃"}</span>
+                        <span>{line.kept ? t("ocrEval.kept") : t("ocrEval.dropped")}</span>
                         {!line.kept && line.dropReason && (
                           <span>{dropReasonLabel(line.dropReason)}</span>
                         )}
                       </div>
                       <div className="mt-0.5 font-mono text-[var(--tl-ink)]/90">
-                        {line.text || "（空行）"}
+                        {line.text || t("common.emptyLine")}
                       </div>
                     </li>
                   ))}
@@ -246,7 +246,7 @@ export default function OcrEvalPage() {
           )}
 
           {!selectedId && !loadingList && (
-            <p className="text-sm text-[var(--tl-muted)]">点击左侧一条截图开始评估。</p>
+            <p className="text-sm text-[var(--tl-muted)]">{t("ocrEval.clickToEval")}</p>
           )}
         </div>
       </div>

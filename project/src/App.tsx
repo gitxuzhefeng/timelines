@@ -5,6 +5,7 @@ import {
   Route,
   Routes,
 } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import AppShell from "./layout/AppShell";
 import { useAppStore } from "./stores/appStore";
 import { useThemeStore } from "./stores/themeStore";
@@ -28,6 +29,7 @@ export default function App() {
   const setPermissions = useAppStore((s) => s.setPermissions);
   const setAfk = useAppStore((s) => s.setAfk);
   const setWriterStats = useAppStore((s) => s.setWriterStats);
+  const { i18n } = useTranslation();
 
   useLayoutEffect(() => {
     if (theme === "white") document.documentElement.setAttribute("data-theme", "white");
@@ -42,6 +44,16 @@ export default function App() {
     } else {
       document.documentElement.removeAttribute("data-win-perf");
     }
+  }, []);
+
+  // 从后端读取持久化语言偏好，覆盖浏览器自动检测结果
+  useEffect(() => {
+    api.getLanguage().then((lang) => {
+      if (lang && lang !== i18n.language) {
+        void i18n.changeLanguage(lang);
+      }
+    }).catch(() => {/* 后端未就绪时静默忽略，保持浏览器检测结果 */});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

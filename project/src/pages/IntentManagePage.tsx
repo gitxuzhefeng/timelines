@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Virtuoso } from "react-virtuoso";
 import {
   INTENT_PRESET_OPTIONS,
@@ -32,6 +33,7 @@ function IntentRow({
   onToggleSelect: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useTranslation();
   const [selectV, setSelectV] = useState("");
   const [custom, setCustom] = useState("");
   const [busy, setBusy] = useState(false);
@@ -78,7 +80,7 @@ function IntentRow({
           checked={selected}
           onChange={onToggleSelect}
           className="mt-0.5 h-4 w-4 rounded border-[var(--tl-line)]"
-          aria-label={`选择 ${row.appName}`}
+          aria-label={t("intents.selectApp", { name: row.appName })}
         />
       </div>
       <div className="min-w-0 flex-1 space-y-1">
@@ -91,9 +93,9 @@ function IntentRow({
           </span>
         </div>
         <div className="font-mono text-[11px] text-[var(--tl-muted)]">
-          {row.bundleId ? row.bundleId : "（无 Bundle ID）"}
+          {row.bundleId ? row.bundleId : t("intents.noBundleId")}
         </div>
-        <div className="text-[11px] text-[var(--tl-muted)]/80">历史会话 {row.sessionCount} 条</div>
+        <div className="text-[11px] text-[var(--tl-muted)]/80">{t("intents.historicalSessions", { count: row.sessionCount })}</div>
       </div>
       <div className="text-[0.78rem] text-[var(--tl-muted)] sm:w-24">
         {row.resolvedIntent?.trim() ? (
@@ -104,7 +106,7 @@ function IntentRow({
       </div>
       <div className="flex min-w-0 flex-[1.5] flex-col gap-2 sm:flex-row sm:items-end">
         <label className="flex min-w-0 flex-1 flex-col font-mono text-[0.62rem] text-[var(--tl-muted)]">
-          调整
+          {t("intents.adjust")}
           <select
             className="mt-0.5 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-2 py-1.5 text-sm text-[var(--tl-ink)]"
             value={selectV === "__custom__" || (selectV === "" && custom) ? "__custom__" : selectV}
@@ -120,15 +122,15 @@ function IntentRow({
                 {o.label}
               </option>
             ))}
-            <option value="__custom__">自定义</option>
+            <option value="__custom__">{t("intents.custom")}</option>
           </select>
         </label>
         <label className="flex min-w-0 flex-1 flex-col font-mono text-[0.62rem] text-[var(--tl-muted)]">
-          自定义
+          {t("intents.custom")}
           <input
             type="text"
             className="mt-0.5 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-2 py-1.5 text-sm text-[var(--tl-ink)]"
-            placeholder="可选"
+            placeholder={t("intents.optional")}
             value={custom}
             onChange={(e) => {
               setCustom(e.target.value);
@@ -143,21 +145,22 @@ function IntentRow({
           className="shrink-0 rounded-lg bg-[var(--tl-btn-primary-bg)] px-3 py-2 text-sm text-[var(--tl-btn-primary-text)] hover:bg-[var(--tl-btn-primary-bg-hover)] disabled:opacity-40"
           onClick={() => void applyOne()}
         >
-          仅此项
+          {t("intents.thisItemOnly")}
         </button>
       </div>
     </div>
   );
 }
 
-const SOURCE_FILTERS: { id: IntentSourceFilter; label: string }[] = [
-  { id: "all", label: "全部" },
-  { id: "none", label: "未映射" },
-  { id: "builtin", label: "内置" },
-  { id: "user", label: "手动" },
+const SOURCE_FILTERS: { id: IntentSourceFilter; labelKey: string }[] = [
+  { id: "all", labelKey: "intents.filterAll" },
+  { id: "none", labelKey: "intents.filterNone" },
+  { id: "builtin", labelKey: "intents.filterBuiltin" },
+  { id: "user", labelKey: "intents.filterUser" },
 ];
 
 export default function IntentManagePage() {
+  const { t } = useTranslation();
   const clearError = useAppStore((s) => s.clearError);
   const error = useAppStore((s) => s.error);
   const refreshSessions = useAppStore((s) => s.refreshSessions);
@@ -252,7 +255,7 @@ export default function IntentManagePage() {
       const byKey = new Map(filtered.map((r) => [rowKey(r), r] as const));
       const items = selectedInFilter.map((k) => {
         const r = byKey.get(k);
-        if (!r) throw new Error("选中的行已不在当前列表中，请重试");
+        if (!r) throw new Error(t("intents.rowNotFound"));
         return {
           appName: r.appName,
           bundleId: r.bundleId,
@@ -283,9 +286,7 @@ export default function IntentManagePage() {
   const runBackfill = useCallback(async () => {
     if (backfillBusy) return;
     if (
-      !window.confirm(
-        "将把「当前还没有分组」的历史会话，按内置字典与你的映射规则自动写入 Intent。\n\n已有 Intent 的会话不会被覆盖。是否继续？",
-      )
+      !window.confirm(t("intents.backfillConfirm"))
     ) {
       return;
     }
@@ -295,7 +296,7 @@ export default function IntentManagePage() {
       useAppStore.setState({ error: null });
       await load();
       void refreshSessions();
-      window.alert(`已补齐 ${n} 条会话记录的分组字段。`);
+      window.alert(t("intents.backfillSuccess", { count: n }));
     } catch (e) {
       useAppStore.setState({ error: String(e) });
     } finally {
@@ -308,14 +309,12 @@ export default function IntentManagePage() {
       <header className="space-y-3 border-b border-[var(--tl-line)] bg-[var(--tl-subheader-bg)] px-4 py-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="max-w-2xl space-y-2">
-            <h1 className="text-lg font-semibold tracking-tight">应用分组</h1>
+            <h1 className="text-lg font-semibold tracking-tight">{t("intents.title")}</h1>
             <p className="text-[0.78rem] leading-relaxed text-[var(--tl-muted)]">
-              按「应用名称 + Bundle」管理时间线中的事项类型。保存后会写入映射并<strong className="text-[var(--tl-ink)]/90">同步该应用下全部历史会话</strong>
-              ；新会话在聚合时也会自动套用。
+              {t("intents.description")}
             </p>
             <p className="text-[0.72rem] leading-relaxed text-[var(--tl-muted)]">
-              系统内置常见桌面应用与 Bundle ID 的<strong className="text-[var(--tl-purple)]">默认分组建议</strong>
-              （优先级低于你的手动设置）。安装或升级应用后会自动刷新词表版本。
+              {t("intents.builtinDesc")}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -324,7 +323,7 @@ export default function IntentManagePage() {
               className="rounded-lg border border-[var(--tl-line)] bg-[var(--tl-capture-idle-bg)] px-3 py-2 text-sm hover:bg-[var(--tl-capture-idle-hover)]"
               onClick={() => void load()}
             >
-              刷新
+              {t("intents.refresh")}
             </button>
             <button
               type="button"
@@ -332,34 +331,34 @@ export default function IntentManagePage() {
               className="rounded-lg border border-[var(--tl-btn-violet-border)] bg-[var(--tl-btn-violet-bg)] px-3 py-2 text-sm text-[var(--tl-btn-violet-text)] hover:bg-[var(--tl-btn-violet-bg-hover)] disabled:opacity-40"
               onClick={() => void runBackfill()}
             >
-              {backfillBusy ? "补齐中…" : "补齐历史未分组会话"}
+              {backfillBusy ? t("intents.backfilling") : t("intents.backfill")}
             </button>
             <Link
               to="/sessions"
               className="rounded-lg border border-[var(--tl-line)] px-3 py-2 text-sm text-[var(--tl-cyan)] hover:bg-[var(--tl-accent-06)]"
             >
-              会话
+              {t("intents.sessions")}
             </Link>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 font-mono text-[0.65rem] text-[var(--tl-muted)]">
-          <span>共 {stats.total} 个应用键</span>
+          <span>{t("intents.totalApps", { count: stats.total })}</span>
           <span className="text-[var(--tl-line)]">·</span>
-          <span>内置 {stats.builtin}</span>
+          <span>{t("intents.builtin", { count: stats.builtin })}</span>
           <span className="text-[var(--tl-line)]">·</span>
-          <span>手动 {stats.user}</span>
+          <span>{t("intents.manual", { count: stats.user })}</span>
           <span className="text-[var(--tl-line)]">·</span>
-          <span>未映射 {stats.none}</span>
+          <span>{t("intents.unmapped", { count: stats.none })}</span>
         </div>
 
         <div className="flex flex-col gap-3 rounded-xl border border-[var(--tl-line)] bg-[var(--tl-panel)] p-3">
           <div className="font-mono text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-[var(--tl-muted)]">
-            批量操作
+            {t("intents.batchOps")}
           </div>
           <div className="flex flex-wrap items-end gap-2">
             <label className="flex flex-col font-mono text-[0.62rem] text-[var(--tl-muted)]">
-              目标分组
+              {t("intents.targetGroup")}
               <select
                 value={bulkSelectV}
                 onChange={(e) => setBulkSelectV(e.target.value)}
@@ -371,19 +370,19 @@ export default function IntentManagePage() {
                     {o.label}
                   </option>
                 ))}
-                <option value="__custom__">自定义</option>
+                <option value="__custom__">{t("intents.custom")}</option>
               </select>
             </label>
             {bulkSelectV === "__custom__" ? (
               <label className="flex min-w-[8rem] flex-1 flex-col font-mono text-[0.62rem] text-[var(--tl-muted)]">
-                自定义名称
+                {t("intents.customName")}
                 <input
                   type="text"
                   value={bulkCustom}
                   onChange={(e) => setBulkCustom(e.target.value)}
                   className="mt-0.5 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-2 py-1.5 text-sm text-[var(--tl-ink)]"
                   disabled={batchBusy}
-                  placeholder="例如：设计创作"
+                  placeholder={t("intents.customNamePlaceholder")}
                 />
               </label>
             ) : null}
@@ -393,14 +392,14 @@ export default function IntentManagePage() {
               className="rounded-lg bg-[var(--tl-btn-primary-bg)] px-4 py-2 text-sm text-[var(--tl-btn-primary-text)] hover:bg-[var(--tl-btn-primary-bg-hover)] disabled:opacity-40"
               onClick={() => void applyBulk()}
             >
-              {batchBusy ? "应用中…" : `应用到选中（${selectedInFilter.length}）`}
+              {batchBusy ? t("intents.applying") : t("intents.applyToSelected", { count: selectedInFilter.length })}
             </button>
             <button
               type="button"
               className="rounded-lg border border-[var(--tl-line)] px-3 py-2 text-sm text-[var(--tl-muted)] hover:text-[var(--tl-ink)]"
               onClick={selectAllFiltered}
             >
-              全选列表
+              {t("intents.selectAll")}
             </button>
             <button
               type="button"
@@ -408,16 +407,16 @@ export default function IntentManagePage() {
               onClick={clearSelection}
               disabled={selected.size === 0}
             >
-              清除选择
+              {t("intents.clearSelection")}
             </button>
           </div>
           <p className="text-[0.68rem] text-[var(--tl-muted)]">
-            先勾选下方列表中的应用，再选择分组并点击「应用到选中」。适合一次性调整多个同类应用。
+            {t("intents.batchInstructions")}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {SOURCE_FILTERS.map(({ id, label }) => (
+          {SOURCE_FILTERS.map(({ id, labelKey }) => (
             <button
               key={id}
               type="button"
@@ -429,12 +428,12 @@ export default function IntentManagePage() {
                   : "bg-[var(--tl-filter-pill-idle)] text-[var(--tl-muted)] hover:text-[var(--tl-ink)]",
               ].join(" ")}
             >
-              {label}
+              {t(labelKey)}
             </button>
           ))}
           <input
             type="search"
-            placeholder="搜索应用名、Bundle、当前分组…"
+            placeholder={t("intents.searchPlaceholder")}
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             className="ml-auto min-w-[12rem] flex-1 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-3 py-1.5 text-sm text-[var(--tl-ink)] sm:max-w-xs"
@@ -446,17 +445,17 @@ export default function IntentManagePage() {
         <div className="flex items-center justify-between border-b border-[var(--tl-error-border)] bg-[var(--tl-error-bg)] px-4 py-2 text-sm text-[var(--tl-error-text)]">
           {error}
           <button type="button" className="text-[var(--tl-error-link)] underline" onClick={() => clearError()}>
-            关闭
+            {t("common.close")}
           </button>
         </div>
       ) : null}
 
       <div className="min-h-0 flex-1">
         {loading ? (
-          <p className="p-4 text-sm text-[var(--tl-muted)]">加载中…</p>
+          <p className="p-4 text-sm text-[var(--tl-muted)]">{t("intents.loading")}</p>
         ) : filtered.length === 0 ? (
           <p className="p-4 text-sm text-[var(--tl-muted)]">
-            {rows.length === 0 ? "暂无历史会话数据。" : "没有符合筛选的应用。"}
+            {rows.length === 0 ? t("intents.noSessionData") : t("intents.noMatchingApps")}
           </p>
         ) : (
           <Virtuoso

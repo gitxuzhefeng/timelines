@@ -262,6 +262,14 @@ export async function setAppBlacklist(apps: string[]): Promise<void> {
   await invoke("set_app_blacklist", { apps });
 }
 
+export async function getLanguage(): Promise<string> {
+  return invoke<string>("get_language");
+}
+
+export async function setLanguage(lang: string): Promise<void> {
+  await invoke("set_language", { lang });
+}
+
 export async function generateDailyAnalysis(date: string): Promise<string> {
   return invoke<string>("generate_daily_analysis", { date });
 }

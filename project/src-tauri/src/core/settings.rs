@@ -25,6 +25,9 @@ const K_OCR_LINE_CONF_MIN: &str = "ocr_line_conf_min";
 const K_OCR_PREPROCESS_SCALE: &str = "ocr_preprocess_scale";
 const K_OCR_PREPROCESS_INVERT: &str = "ocr_preprocess_dark_invert";
 
+const K_LANGUAGE: &str = "ui_language";
+const DEFAULT_LANGUAGE: &str = "en";
+
 const DEFAULT_AI_BASE_URL: &str = "https://api.openai.com/v1";
 const DEFAULT_AI_MODEL: &str = "gpt-4o-mini";
 
@@ -312,6 +315,15 @@ pub fn apply_ocr_pipeline_overrides(
         set_flag(conn, K_OCR_PREPROCESS_INVERT, v)?;
     }
     Ok(())
+}
+
+/// UI 语言偏好（"zh-CN" 或 "en"），缺省返回 "en"。
+pub fn get_language(conn: &Connection) -> String {
+    get_setting_str(conn, K_LANGUAGE, DEFAULT_LANGUAGE)
+}
+
+pub fn set_language(conn: &mut Connection, lang: &str) -> rusqlite::Result<()> {
+    set_setting_str(conn, K_LANGUAGE, lang.trim())
 }
 
 pub fn app_name_blacklisted(name: &str, blacklist: &[String]) -> bool {

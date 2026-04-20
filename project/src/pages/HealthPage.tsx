@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { SystemPermissionPanel } from "../components/SystemPermissionPanel";
 import { detectClientDesktopOs, pipelineHealthPlatformNote } from "../lib/platform";
 import type { PipelineHealth } from "../types";
@@ -9,20 +10,8 @@ function fmtTs(ms: number | null): string {
   return new Date(ms).toLocaleString();
 }
 
-function engineStatusLabel(status: string): string {
-  switch (status) {
-    case "running":
-      return "正常";
-    case "degraded":
-      return "降级";
-    case "stopped":
-      return "已停止";
-    default:
-      return status;
-  }
-}
-
 export default function HealthPage() {
+  const { t } = useTranslation();
   const [h, setH] = useState<PipelineHealth | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const clientOs = useMemo(() => detectClientDesktopOs(), []);
@@ -38,34 +27,43 @@ export default function HealthPage() {
 
   useEffect(() => {
     void refresh();
-    const t = window.setInterval(() => void refresh(), 15_000);
-    return () => clearInterval(t);
+    const timer = window.setInterval(() => void refresh(), 15_000);
+    return () => clearInterval(timer);
   }, [refresh]);
 
   const rows: Array<[string, keyof PipelineHealth]> = [
-    ["采集 / Tracker", "tracker"],
-    ["截图 / Capture", "capture"],
-    ["输入", "inputDynamics"],
-    ["剪贴板", "clipboard"],
-    ["通知", "notifications"],
-    ["环境", "ambientContext"],
-    ["OCR / 屏幕文字", "ocr"],
+    [t("health.trackerEngine"), "tracker"],
+    [t("health.captureEngine"), "capture"],
+    [t("health.inputEngine"), "inputDynamics"],
+    [t("health.clipboardEngine"), "clipboard"],
+    [t("health.notificationsEngine"), "notifications"],
+    [t("health.ambientEngine"), "ambientContext"],
+    [t("health.ocrEngine"), "ocr"],
   ];
+
+  function engineStatusLabel(status: string): string {
+    switch (status) {
+      case "running": return t("health.running");
+      case "degraded": return t("health.degraded");
+      case "stopped": return t("health.stopped");
+      default: return status;
+    }
+  }
 
   return (
     <div className="h-full overflow-auto p-4 text-[var(--tl-ink)]">
       <div className="mb-4 flex items-center gap-3">
-        <h1 className="text-lg font-semibold text-[var(--tl-ink)]">健康度</h1>
+        <h1 className="text-lg font-semibold text-[var(--tl-ink)]">{t("health.title")}</h1>
         <button
           type="button"
           className="rounded border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-ink)] hover:bg-[var(--tl-surface-deep)]"
           onClick={() => void refresh()}
         >
-          立即刷新
+          {t("health.refreshNow")}
         </button>
         {h && (
           <span className="text-xs text-[var(--tl-muted)]">
-            检查时间 {new Date(h.lastCheckMs).toLocaleString()}
+            {t("health.checkTime", { time: new Date(h.lastCheckMs).toLocaleString() })}
           </span>
         )}
       </div>
@@ -73,7 +71,7 @@ export default function HealthPage() {
 
       <div className="mb-6 max-w-2xl rounded border border-[var(--tl-line)] bg-[var(--tl-surface)] p-4">
         <h2 className="text-xs font-medium uppercase tracking-wide text-[var(--tl-muted)]">
-          系统权限
+          {t("health.systemPermissions")}
         </h2>
         <div className="mt-2">
           <SystemPermissionPanel variant="both" />
@@ -86,9 +84,9 @@ export default function HealthPage() {
       <table className="w-full max-w-2xl border-collapse text-sm">
         <thead>
           <tr className="border-b border-[var(--tl-line)] text-left text-[var(--tl-muted)]">
-            <th className="py-2 pr-4">引擎</th>
-            <th className="py-2 pr-4">状态</th>
-            <th className="py-2">最近数据</th>
+            <th className="py-2 pr-4">{t("health.engine")}</th>
+            <th className="py-2 pr-4">{t("common.status")}</th>
+            <th className="py-2">{t("health.recentData")}</th>
           </tr>
         </thead>
         <tbody>

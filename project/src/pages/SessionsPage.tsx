@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Virtuoso } from "react-virtuoso";
 import { SystemPermissionPanel } from "../components/SystemPermissionPanel";
 import { useAppStore } from "../stores/appStore";
@@ -16,6 +17,7 @@ function fmtTime(ms: number): string {
 }
 
 export default function SessionsPage() {
+  const { t } = useTranslation();
   const {
     date,
     setDate,
@@ -59,7 +61,7 @@ export default function SessionsPage() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--tl-overlay-lightbox)] p-4"
           role="dialog"
           aria-modal="true"
-          aria-label="截图大图"
+          aria-label={t("sessions.screenshotAlt")}
           onClick={() => setLightboxSrc(null)}
         >
           <button
@@ -67,20 +69,20 @@ export default function SessionsPage() {
             className="absolute right-4 top-4 rounded bg-[var(--tl-surface-deep)] px-3 py-1 text-sm text-[var(--tl-ink)] hover:opacity-90"
             onClick={() => setLightboxSrc(null)}
           >
-            关闭
+            {t("common.close")}
           </button>
           <img
             src={lightboxSrc}
-            alt="截图大图"
+            alt={t("sessions.screenshotAlt")}
             className="tl-lightbox-image max-h-[92vh] max-w-full object-contain shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           />
         </div>
       ) : null}
       <header className="flex flex-wrap items-center gap-3 border-b border-[var(--tl-line)] bg-[var(--tl-subheader-bg)] px-4 py-3">
-        <h1 className="text-lg font-semibold tracking-tight text-[var(--tl-ink)]">会话</h1>
+        <h1 className="text-lg font-semibold tracking-tight text-[var(--tl-ink)]">{t("sessions.title")}</h1>
         <label className="flex items-center gap-2 text-sm text-[var(--tl-muted)]">
-          日期
+          {t("common.date")}
           <input
             type="date"
             value={date}
@@ -96,7 +98,7 @@ export default function SessionsPage() {
                 : "bg-[var(--tl-tracking-off-bg)] text-[var(--tl-tracking-off-text)]"
             }`}
           >
-            采集 {isTracking ? "运行中" : "已停止"}
+            {t("sessions.tracking", { status: isTracking ? t("sessions.running") : t("sessions.stopped") })}
           </span>
           {isAfk && (
             <span className="rounded bg-[var(--tl-badge-afk-bg)] px-2 py-0.5 text-[var(--tl-badge-afk-text)]">
@@ -117,18 +119,21 @@ export default function SessionsPage() {
             to="/intents"
             className="text-xs text-[var(--tl-muted)] underline-offset-2 hover:text-[var(--tl-ink)] hover:underline"
           >
-            应用分组
+            {t("sessions.appGrouping")}
           </Link>
           <Link
             to="/ocr"
             className="text-xs text-[var(--tl-cyan)] underline-offset-2 hover:underline"
           >
-            OCR 检索
+            {t("sessions.ocrSearch")}
           </Link>
           {activity && (
             <span className="text-xs text-[var(--tl-muted)]">
-              Session {activity.sessionCount} · 截图 {activity.snapshotCount} · 切换{" "}
-              {activity.switchCount}
+              {t("sessions.activityStats", {
+                sessionCount: activity.sessionCount,
+                snapshotCount: activity.snapshotCount,
+                switchCount: activity.switchCount,
+              })}
             </span>
           )}
         </div>
@@ -142,7 +147,7 @@ export default function SessionsPage() {
             className="text-[var(--tl-error-link)] underline"
             onClick={() => clearError()}
           >
-            关闭
+            {t("common.close")}
           </button>
         </div>
       )}
@@ -151,7 +156,7 @@ export default function SessionsPage() {
         <section className="flex min-h-[200px] flex-col border-b border-[var(--tl-line)] lg:min-h-0 lg:border-b-0 lg:border-r">
           <div className="border-b border-[var(--tl-line)] px-3 py-2 text-xs font-medium uppercase tracking-wide text-[var(--tl-muted)]">
             Sessions
-            {loadingSessions && <span className="ml-2 opacity-80">加载中…</span>}
+            {loadingSessions && <span className="ml-2 opacity-80">{t("common.loading")}</span>}
           </div>
           <div className="min-h-0 flex-1">
             <Virtuoso
@@ -170,8 +175,8 @@ export default function SessionsPage() {
                     <span className="font-medium text-[var(--tl-ink)]">{s.appName}</span>
                     <span className="line-clamp-2 text-xs text-[var(--tl-muted)]">{s.windowTitle}</span>
                     <span className="text-[11px] text-[var(--tl-muted)]">
-                      {fmtTime(s.startMs)} · {s.rawEventCount} 条 raw
-                      {s.isActive && " · 活跃"}
+                      {fmtTime(s.startMs)} · {s.rawEventCount} raw
+                      {s.isActive && " · ●"}
                     </span>
                   </button>
                 );
@@ -182,7 +187,7 @@ export default function SessionsPage() {
 
         <section className="flex min-h-[280px] min-w-0 flex-col border-b border-[var(--tl-line)] lg:min-h-0 lg:border-b-0 lg:border-r">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-[var(--tl-line)] px-3 py-2 text-xs text-[var(--tl-muted)]">
-            <span className="font-medium uppercase tracking-wide">截图预览</span>
+            <span className="font-medium uppercase tracking-wide">{t("sessions.screenshotPreview")}</span>
             {selectedSnap ? (
               <>
                 <span className="font-mono">{fmtTime(selectedSnap.capturedAtMs)}</span>
@@ -192,7 +197,7 @@ export default function SessionsPage() {
                 </span>
               </>
             ) : (
-              <span>选择会话与截图</span>
+              <span>{t("sessions.selectSession")}</span>
             )}
           </div>
           <div className="flex min-h-0 flex-1 items-center justify-center bg-[var(--tl-img-placeholder-bg)] p-4">
@@ -200,7 +205,7 @@ export default function SessionsPage() {
               <button
                 type="button"
                 className="tl-interactive-row max-h-full max-w-full cursor-zoom-in border-0 bg-transparent p-0"
-                title="点击放大"
+                title={t("sessions.clickToZoom")}
                 onClick={() => setLightboxSrc(snapshotTimelensUrl(selectedSnap.id))}
               >
                 <img
@@ -213,18 +218,18 @@ export default function SessionsPage() {
                 />
               </button>
             ) : (
-              <p className="text-sm text-[var(--tl-muted)]">选择 Session 与截图</p>
+              <p className="text-sm text-[var(--tl-muted)]">{t("sessions.selectSessionEmpty")}</p>
             )}
           </div>
         </section>
 
         <section className="flex max-h-[36vh] min-h-[160px] flex-col lg:max-h-none lg:min-h-0">
           <div className="border-b border-[var(--tl-line)] px-3 py-2 text-xs font-medium uppercase tracking-wide text-[var(--tl-muted)]">
-            当前 Session 截图
+            {t("sessions.currentSessionScreenshots")}
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {snapshots.length === 0 ? (
-              <p className="p-3 text-xs text-[var(--tl-muted)]">无截图</p>
+              <p className="p-3 text-xs text-[var(--tl-muted)]">{t("sessions.noScreenshots")}</p>
             ) : (
               <ul className="divide-y divide-[var(--tl-line)]">
                 {snapshots.map((sn) => (
@@ -263,7 +268,7 @@ export default function SessionsPage() {
 
       <div className="max-h-32 overflow-hidden border-t border-[var(--tl-line)]">
         <div className="border-b border-[var(--tl-line)] px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--tl-muted)]">
-          最近 Raw（全局）
+          {t("sessions.recentRaw")}
         </div>
         <div className="max-h-24 overflow-x-auto overflow-y-auto px-2 py-1 font-mono text-[10px] leading-tight text-[var(--tl-muted)]">
           {rawEvents.slice(0, 24).map((r) => (
@@ -278,12 +283,18 @@ export default function SessionsPage() {
         <div className="flex flex-wrap gap-x-6 gap-y-2 border-b border-[var(--tl-line)] px-4 py-2 text-xs text-[var(--tl-muted)]">
           {storage && (
             <span>
-              DB {formatBytes(storage.dbSizeBytes)} · 截图 {formatBytes(storage.shotsSizeBytes)}
+              {t("sessions.storage", {
+                db: formatBytes(storage.dbSizeBytes),
+                shots: formatBytes(storage.shotsSizeBytes),
+              })}
             </span>
           )}
           {writer && (
             <span>
-              Writer {writer.totalBatches} 批 · {writer.totalEvents} 事件
+              {t("sessions.writer", {
+                batches: writer.totalBatches,
+                events: writer.totalEvents,
+              })}
             </span>
           )}
         </div>
@@ -294,7 +305,7 @@ export default function SessionsPage() {
             disabled={isTracking}
             onClick={() => void api.startTracking()}
           >
-            开始采集
+            {t("sessions.startTracking")}
           </button>
           <button
             type="button"
@@ -302,7 +313,7 @@ export default function SessionsPage() {
             disabled={!isTracking}
             onClick={() => void api.stopTracking()}
           >
-            停止采集
+            {t("sessions.stopTracking")}
           </button>
           <button
             type="button"
@@ -315,14 +326,14 @@ export default function SessionsPage() {
               }
             }}
           >
-            手动截图
+            {t("sessions.manualScreenshot")}
           </button>
           <button
             type="button"
             className="rounded border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-ink)] hover:bg-[var(--tl-surface-deep)]"
             onClick={() => void api.openDataDir()}
           >
-            数据目录
+            {t("sessions.dataDir")}
           </button>
           <button
             type="button"
@@ -335,12 +346,12 @@ export default function SessionsPage() {
             type="button"
             className="rounded border border-[var(--tl-btn-danger-border)] px-3 py-1.5 text-sm text-[var(--tl-btn-danger-text)] hover:bg-[var(--tl-btn-danger-hover)]"
             onClick={() => {
-              if (window.confirm("将按策略清理 raw 7 天、截图 3 天。确定？")) {
+              if (window.confirm(t("sessions.retentionConfirm"))) {
                 void api.runRetentionCleanup();
               }
             }}
           >
-            保留清理
+            {t("sessions.retentionCleanup")}
           </button>
           <SystemPermissionPanel
             variant="actions"
@@ -353,7 +364,7 @@ export default function SessionsPage() {
             className="ml-auto rounded border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-ink)] hover:bg-[var(--tl-surface-deep)]"
             onClick={() => void refreshAll()}
           >
-            全部刷新
+            {t("sessions.refreshAll")}
           </button>
         </div>
       </footer>

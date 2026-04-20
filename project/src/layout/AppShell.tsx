@@ -1,38 +1,9 @@
 import { useCallback, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAppStore } from "../stores/appStore";
 import { useDevModeStore } from "../stores/devModeStore";
 import * as api from "../services/tauri";
-
-const MAIN_NAV = [
-  { to: "/lens", label: "今日透视", icon: "◉" },
-  { to: "/timeline", label: "时间线", icon: "≡" },
-  { to: "/report", label: "日报告", icon: "¶" },
-  { to: "/intents", label: "应用分组", icon: "⌗" },
-  { to: "/settings", label: "设置", icon: "⚙" },
-] as const;
-
-const DEV_NAV = [
-  { to: "/recap", label: "复盘（旧入口）" },
-  { to: "/sessions", label: "会话" },
-  { to: "/ocr", label: "OCR 检索" },
-  { to: "/ocr-eval", label: "OCR 评估" },
-  { to: "/health", label: "健康" },
-] as const;
-
-function titleForPath(pathname: string): { title: string; sub?: string } {
-  if (pathname.startsWith("/lens")) return { title: "今日透视", sub: "结构 · 管线 · 当日摘要" };
-  if (pathname.startsWith("/timeline")) return { title: "时间线", sub: "按时段核对会话" };
-  if (pathname.startsWith("/report")) return { title: "日报告", sub: "事实层 / AI 增强" };
-  if (pathname.startsWith("/settings")) return { title: "设置", sub: "权限 · 引擎 · OCR · AI" };
-  if (pathname.startsWith("/recap")) return { title: "复盘（旧入口）", sub: "开发工具" };
-  if (pathname.startsWith("/sessions")) return { title: "会话", sub: "开发工具 · 会话与截图" };
-  if (pathname.startsWith("/ocr-eval")) return { title: "OCR 评估", sub: "开发工具" };
-  if (pathname.startsWith("/ocr")) return { title: "OCR 检索", sub: "开发工具" };
-  if (pathname.startsWith("/intents")) return { title: "应用分组", sub: "批量管理 · 内置建议" };
-  if (pathname.startsWith("/health")) return { title: "健康", sub: "开发工具" };
-  return { title: "TimeLens" };
-}
 
 function navCls(active: boolean): string {
   return [
@@ -44,13 +15,45 @@ function navCls(active: boolean): string {
 }
 
 export default function AppShell() {
+  const { t } = useTranslation();
   const location = useLocation();
-  const { title, sub } = titleForPath(location.pathname);
   const date = useAppStore((s) => s.date);
   const setDate = useAppStore((s) => s.setDate);
   const isTracking = useAppStore((s) => s.isTracking);
   const devEnabled = useDevModeStore((s) => s.enabled);
   const [captureBusy, setCaptureBusy] = useState(false);
+
+  const MAIN_NAV = [
+    { to: "/lens", label: t("nav.todayLens"), icon: "◉" },
+    { to: "/timeline", label: t("nav.timeline"), icon: "≡" },
+    { to: "/report", label: t("nav.dailyReport"), icon: "¶" },
+    { to: "/intents", label: t("nav.intents"), icon: "⌗" },
+    { to: "/settings", label: t("nav.settings"), icon: "⚙" },
+  ] as const;
+
+  const DEV_NAV = [
+    { to: "/recap", label: t("nav.recap") },
+    { to: "/sessions", label: t("nav.sessions") },
+    { to: "/ocr", label: t("nav.ocrSearch") },
+    { to: "/ocr-eval", label: t("nav.ocrEval") },
+    { to: "/health", label: t("nav.health") },
+  ] as const;
+
+  function titleForPath(pathname: string): { title: string; sub?: string } {
+    if (pathname.startsWith("/lens")) return { title: t("nav.todayLens"), sub: t("nav.todayLensDesc") };
+    if (pathname.startsWith("/timeline")) return { title: t("nav.timeline"), sub: t("nav.timelineDesc") };
+    if (pathname.startsWith("/report")) return { title: t("nav.dailyReport"), sub: t("nav.dailyReportDesc") };
+    if (pathname.startsWith("/settings")) return { title: t("nav.settings"), sub: t("nav.settingsDesc") };
+    if (pathname.startsWith("/recap")) return { title: t("nav.recap"), sub: t("nav.devTools") };
+    if (pathname.startsWith("/sessions")) return { title: t("nav.sessions"), sub: t("nav.sessionsDesc") };
+    if (pathname.startsWith("/ocr-eval")) return { title: t("nav.ocrEval"), sub: t("nav.devTools") };
+    if (pathname.startsWith("/ocr")) return { title: t("nav.ocrSearch"), sub: t("nav.devTools") };
+    if (pathname.startsWith("/intents")) return { title: t("nav.intents"), sub: t("nav.intentsDesc") };
+    if (pathname.startsWith("/health")) return { title: t("nav.health"), sub: t("nav.devTools") };
+    return { title: "TimeLens" };
+  }
+
+  const { title, sub } = titleForPath(location.pathname);
 
   const toggleCapture = useCallback(async () => {
     if (captureBusy) return;
@@ -70,7 +73,7 @@ export default function AppShell() {
       <div className="tl-shell mx-auto flex min-h-0 w-full max-w-[1320px] flex-1">
         <aside
           className="tl-sidebar tl-shell-blur-surface flex w-[min(278px,100%)] shrink-0 flex-col border-r border-[var(--tl-line)] bg-[var(--tl-sidebar-bg)] backdrop-blur-md"
-          aria-label="主导航"
+          aria-label={t("nav.mainNav")}
         >
           <div className="border-b border-[var(--tl-line)] px-4 py-3">
             <div className="font-mono text-[0.68rem] font-extrabold uppercase tracking-[0.2em] text-[var(--tl-cyan)]">
@@ -80,9 +83,9 @@ export default function AppShell() {
               INSIGHT ENGINE
             </div>
           </div>
-          <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-2 pb-4" aria-label="功能模块">
+          <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-2 pb-4" aria-label={t("nav.featureModules")}>
             <div className="px-2 py-2 font-mono text-[0.58rem] font-semibold uppercase tracking-widest text-[var(--tl-muted)]">
-              功能
+              {t("nav.features")}
             </div>
             {MAIN_NAV.map(({ to, label, icon }) => (
               <NavLink key={to} to={to} className={({ isActive }) => navCls(isActive)}>
@@ -101,7 +104,7 @@ export default function AppShell() {
             {devEnabled && (
               <>
                 <div className="mt-3 px-2 py-2 font-mono text-[0.58rem] font-semibold uppercase tracking-widest text-[var(--tl-muted)]">
-                  开发工具 <span className="text-[var(--tl-purple)]">Dev</span>
+                  {t("nav.devTools")} <span className="text-[var(--tl-purple)]">Dev</span>
                 </div>
                 {DEV_NAV.map(({ to, label }) => (
                   <NavLink key={to} to={to} className={({ isActive }) => navCls(isActive)}>
@@ -128,7 +131,7 @@ export default function AppShell() {
                 onClick={() => void toggleCapture()}
                 disabled={captureBusy}
                 aria-pressed={isTracking}
-                title={isTracking ? "点击停止采集" : "点击开始采集"}
+                title={isTracking ? t("nav.clickToStop") : t("nav.clickToStart")}
                 className={[
                   "tl-interactive-row flex min-w-[9.5rem] flex-col items-stretch rounded-lg border px-3 py-2 text-left transition-colors disabled:opacity-50",
                   isTracking
@@ -137,7 +140,7 @@ export default function AppShell() {
                 ].join(" ")}
               >
                 <span className="font-mono text-[0.58rem] font-semibold uppercase tracking-[0.12em] text-[var(--tl-muted)]">
-                  采集状态
+                  {t("nav.captureStatus")}
                 </span>
                 <span
                   className={[
@@ -145,11 +148,11 @@ export default function AppShell() {
                     isTracking ? "text-[var(--tl-tracking-on-text)]" : "text-[var(--tl-muted)]",
                   ].join(" ")}
                 >
-                  {captureBusy ? "…" : isTracking ? "采集中" : "停止采集"}
+                  {captureBusy ? "…" : isTracking ? t("nav.capturing") : t("nav.stopCapture")}
                 </span>
               </button>
               <label className="flex items-center gap-2 font-mono text-xs text-[var(--tl-muted)]">
-                日期
+                {t("common.date")}
                 <input
                   type="date"
                   value={date}

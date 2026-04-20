@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type {
   AiSettingsDto,
   EngineFlagsResponse,
@@ -17,12 +18,17 @@ import {
 } from "../lib/platform";
 import * as api from "../services/tauri";
 import { useThemeStore } from "../stores/themeStore";
+import {
+  setLanguage,
+  type SupportedLanguage,
+} from "../i18n";
 
 type SettingsFormProps = {
   className?: string;
 };
 
 export function SettingsForm({ className }: SettingsFormProps) {
+  const { t, i18n } = useTranslation();
   const [f, setF] = useState<EngineFlagsResponse | null>(null);
   const [ai, setAi] = useState<AiSettingsDto | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -40,6 +46,9 @@ export function SettingsForm({ className }: SettingsFormProps) {
   const clientOs = useMemo(() => detectClientDesktopOs(), []);
   const theme = useThemeStore((s) => s.theme);
   const setTheme = useThemeStore((s) => s.setTheme);
+  const [currentLang, setCurrentLang] = useState<SupportedLanguage>(
+    () => (i18n.language === "zh-CN" ? "zh-CN" : "en"),
+  );
 
   const refreshFlags = useCallback(async () => {
     const [flags, aicfg, ocrcfg] = await Promise.all([
@@ -138,7 +147,7 @@ export function SettingsForm({ className }: SettingsFormProps) {
       );
       setAiKeyInput("");
       await refreshFlags();
-      setAiCfgMsg("已保存（API Key 仅在本机 settings 表，请妥善保管设备）");
+      setAiCfgMsg(t("settings.byokSaved"));
     } catch (e) {
       setErr(String(e));
     }
@@ -150,7 +159,7 @@ export function SettingsForm({ className }: SettingsFormProps) {
     try {
       await api.setAiSettings(null, null, "");
       await refreshFlags();
-      setAiCfgMsg("已清除 API Key");
+      setAiCfgMsg(t("settings.keyCleared"));
     } catch (e) {
       setErr(String(e));
     }
@@ -181,7 +190,7 @@ export function SettingsForm({ className }: SettingsFormProps) {
       setOcr(cfg);
       setOcrPipe(cfg.pipeline);
       setOcrPrivacyOpen(false);
-      setOcrMsg("已开启屏幕文字识别（OCR）");
+      setOcrMsg(t("settings.ocrEnabled"));
     } catch (e) {
       setErr(String(e));
     }
@@ -196,14 +205,14 @@ export function SettingsForm({ className }: SettingsFormProps) {
         .map((s) => s.trim())
         .filter(Boolean);
       await api.setAppBlacklist(apps);
-      setBlMsg(`已保存 ${apps.length} 条；采集线程将立即按黑名单过滤。`);
+      setBlMsg(t("settings.blacklistSaved", { count: apps.length }));
     } catch (e) {
       setErr(String(e));
     }
   }
 
   if (!f || !ai || !ocr) {
-    return <p className="p-4 text-[var(--tl-muted)]">加载设置…</p>;
+    return <p className="p-4 text-[var(--tl-muted)]">{t("settings.loading")}</p>;
   }
 
   return (
@@ -216,15 +225,15 @@ export function SettingsForm({ className }: SettingsFormProps) {
       {err && <p className="mb-3 text-sm text-[var(--tl-status-bad)]">{err}</p>}
 
       <section className="mb-6 rounded border border-[var(--tl-line)] bg-[var(--tl-surface)] p-4">
-        <h2 className="text-sm font-medium text-[var(--tl-muted)]">界面主题</h2>
+        <h2 className="text-sm font-medium text-[var(--tl-muted)]">{t("settings.theme")}</h2>
         <p className="mt-1 text-xs text-[var(--tl-muted)]">
-          科技风为默认深色霓虹风格；白色风为浅色背景，适合日间阅读。选项保存在本机。
+          {t("settings.themeDesc")}
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           {(
             [
-              ["tech", "科技风"],
-              ["white", "白色风"],
+              ["tech", t("settings.themeTech")],
+              ["white", t("settings.themeWhite")],
             ] as const
           ).map(([id, label]) => (
             <button
@@ -244,10 +253,39 @@ export function SettingsForm({ className }: SettingsFormProps) {
       </section>
 
       <section className="mb-6 rounded border border-[var(--tl-line)] bg-[var(--tl-surface)] p-4">
-        <h2 className="text-sm font-medium text-[var(--tl-muted)]">系统权限</h2>
+        <h2 className="text-sm font-medium text-[var(--tl-muted)]">{t("settings.language")}</h2>
         <p className="mt-1 text-xs text-[var(--tl-muted)]">
-          采集、截图与通知依赖系统授权；下方按钮会打开当前系统对应的设置页（macOS
-          与 Windows 文案不同属正常）。
+          {t("settings.languageDesc")}
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {(
+            [
+              ["zh-CN", t("settings.languageZh")],
+              ["en", t("settings.languageEn")],
+            ] as [SupportedLanguage, string][]
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => {
+                setLanguage(id);
+                setCurrentLang(id);
+              }}
+              className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                currentLang === id
+                  ? "border-[var(--tl-accent-45)] bg-[var(--tl-accent-12)] text-[var(--tl-ink)]"
+                  : "border-[var(--tl-line)] bg-[var(--tl-glass-20)] text-[var(--tl-muted)] hover:border-[var(--tl-accent-25)]"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-6 rounded border border-[var(--tl-line)] bg-[var(--tl-surface)] p-4">
+        <p className="mt-1 text-xs text-[var(--tl-muted)]">
+          {t("settings.permissionsDesc")}
         </p>
         <div className="mt-3">
           <SystemPermissionPanel variant="both" />
@@ -263,18 +301,12 @@ export function SettingsForm({ className }: SettingsFormProps) {
         >
           <div className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-lg border border-[var(--tl-line)] bg-[var(--tl-modal-surface)] p-5 shadow-xl">
             <h2 id="ocr-privacy-title" className="mb-3 text-base font-semibold text-[var(--tl-ink)]">
-              开启屏幕文字识别（OCR）前请确认
+              {t("settings.ocrConfirmTitle")}
             </h2>
             <div className="space-y-2 text-sm leading-relaxed text-[var(--tl-ink)]/90">
-              <p>
-                启用后，TimeLens 会在本机对<strong className="text-[var(--tl-ink)]">已采集截图</strong>
-                异步识别可见文字，用于会话摘要与关键词检索。
-              </p>
-              <p>
-                识别与索引<strong className="text-[var(--tl-ink)]">默认仅保存在本机</strong>；向 AI
-                复盘传递 OCR 摘要须单独勾选，且仍受 BYOK 与出境规则约束。
-              </p>
-              <p>命中采集黑名单的应用不会进行 OCR；敏感样式文本会脱敏且不参与检索。</p>
+              <p>{t("settings.ocrConfirmDesc1")}</p>
+              <p>{t("settings.ocrConfirmDesc2")}</p>
+              <p>{t("settings.ocrConfirmDesc3")}</p>
             </div>
             <div className="mt-5 flex flex-wrap gap-2">
               <button
@@ -282,14 +314,14 @@ export function SettingsForm({ className }: SettingsFormProps) {
                 className="rounded bg-[var(--tl-btn-primary-bg)] px-3 py-1.5 text-sm text-[var(--tl-btn-primary-text)] hover:bg-[var(--tl-btn-primary-bg-hover)]"
                 onClick={() => void confirmOcrPrivacyAndEnable()}
               >
-                已阅读并同意
+                {t("settings.agreedAndRead")}
               </button>
               <button
                 type="button"
                 className="rounded border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-ink)] hover:bg-[var(--tl-surface-deep)]"
                 onClick={() => setOcrPrivacyOpen(false)}
               >
-                取消
+                {t("common.cancel")}
               </button>
             </div>
           </div>
@@ -305,20 +337,12 @@ export function SettingsForm({ className }: SettingsFormProps) {
         >
           <div className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-lg border border-[var(--tl-line)] bg-[var(--tl-modal-surface)] p-5 shadow-xl">
             <h2 id="privacy-title" className="mb-3 text-base font-semibold text-[var(--tl-ink)]">
-              开启 AI 增强前请确认
+              {t("settings.aiConfirmTitle")}
             </h2>
             <div className="space-y-2 text-sm leading-relaxed text-[var(--tl-ink)]/90">
-              <p>
-                启用后，你可在本地将当日的{" "}
-                <strong className="text-[var(--tl-ink)]">daily_analysis 聚合 JSON</strong>{" "}
-                发送到你自行配置的模型端点（BYOK），用于生成解读文字。
-              </p>
-              <p>
-                <strong className="text-[var(--tl-ink)]">不会</strong>上传：raw_events 全表、窗口标题原文、剪贴板正文、按键序列等明细。
-              </p>
-              <p>
-                出境内容限于聚合指标与应用名、Intent 名等 PRD 允许字段；请自行评估模型服务商与合规要求。
-              </p>
+              <p>{t("settings.aiConfirmDesc1")}</p>
+              <p>{t("settings.aiConfirmDesc2")}</p>
+              <p>{t("settings.aiConfirmDesc3")}</p>
             </div>
             <div className="mt-5 flex flex-wrap gap-2">
               <button
@@ -326,14 +350,14 @@ export function SettingsForm({ className }: SettingsFormProps) {
                 className="rounded bg-[var(--tl-btn-primary-bg)] px-3 py-1.5 text-sm text-[var(--tl-btn-primary-text)] hover:bg-[var(--tl-btn-primary-bg-hover)]"
                 onClick={() => void confirmPrivacyAndEnable()}
               >
-                已阅读并同意
+                {t("settings.agreedAndRead")}
               </button>
               <button
                 type="button"
                 className="rounded border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-ink)] hover:bg-[var(--tl-surface-deep)]"
                 onClick={() => setPrivacyOpen(false)}
               >
-                取消
+                {t("common.cancel")}
               </button>
             </div>
           </div>
@@ -341,13 +365,13 @@ export function SettingsForm({ className }: SettingsFormProps) {
       )}
 
       <section className="mb-6 space-y-3">
-        <h2 className="text-sm font-medium text-[var(--tl-muted)]">采集引擎</h2>
+        <h2 className="text-sm font-medium text-[var(--tl-muted)]">{t("settings.engines")}</h2>
         {(
           [
-            ["input", "输入采样", f.engineInput],
-            ["clipboard", "剪贴板", f.engineClipboard],
-            ["notifications", "通知启发式", f.engineNotifications],
-            ["ambient", "环境上下文", f.engineAmbient],
+            ["input", t("settings.engineInput"), f.engineInput],
+            ["clipboard", t("settings.engineClipboard"), f.engineClipboard],
+            ["notifications", t("settings.engineNotifications"), f.engineNotifications],
+            ["ambient", t("settings.engineAmbient"), f.engineAmbient],
           ] as const
         ).map(([id, label, on]) => (
           <label key={id} className="flex items-center gap-2 text-sm">
@@ -362,7 +386,7 @@ export function SettingsForm({ className }: SettingsFormProps) {
       </section>
 
       <section className="mb-6 space-y-3 rounded border border-[var(--tl-line)] bg-[var(--tl-surface)] p-4">
-        <h2 className="text-sm font-medium text-[var(--tl-muted)]">屏幕文字（OCR，默认关闭）</h2>
+        <h2 className="text-sm font-medium text-[var(--tl-muted)]">{t("settings.ocrSection")}</h2>
         <p className="text-xs text-[var(--tl-muted)]">{ocrDependencySummary(clientOs)}</p>
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -370,7 +394,7 @@ export function SettingsForm({ className }: SettingsFormProps) {
             checked={ocr.enabled}
             onChange={(e) => void toggleOcrEnabled(e.target.checked)}
           />
-          启用 OCR（新截图将异步识别）
+          {t("settings.enableOcr")}
         </label>
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -386,7 +410,7 @@ export function SettingsForm({ className }: SettingsFormProps) {
                 .catch((err) => setErr(String(err)))
             }
           />
-          在会话页展示「来自屏幕文字」的一行摘要
+          {t("settings.showOcrSummary")}
         </label>
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -402,18 +426,16 @@ export function SettingsForm({ className }: SettingsFormProps) {
                 .catch((err) => setErr(String(err)))
             }
           />
-          生成 AI 复盘时附带脱敏 OCR 会话摘要（仍不传原图）
+          {t("settings.exportOcrToAi")}
         </label>
 
         {ocrPipe && (
           <details className="mt-3 rounded border border-[var(--tl-line)] bg-[var(--tl-surface-deep)] p-3">
             <summary className="cursor-pointer text-xs text-[var(--tl-muted)]">
-              OCR 管线参数（语言 / PSM / 闸门 / 预处理）
+              {t("settings.ocrPipelineParams")}
             </summary>
             <p className="mt-2 text-[11px] leading-relaxed text-[var(--tl-muted)]">
-              {ocrPipelineDetailsIntro(clientOs)} 行内拼接时，相邻汉字（及数字与汉字/数字）之间
-              <span className="text-[var(--tl-muted)]">不再插入空格</span>
-              ，避免「微 信」式断字导致关键词搜不到。
+              {ocrPipelineDetailsIntro(clientOs)} {t("settings.cjkConcatNote")}
             </p>
             <div className="mt-3 grid max-w-xl gap-3 text-xs">
               <label className="grid gap-1">
@@ -449,9 +471,9 @@ export function SettingsForm({ className }: SettingsFormProps) {
                 />
               </label>
               <label className="grid gap-1">
-                <span className="text-[var(--tl-muted)]">词置信度下限（0–100）</span>
+                <span className="text-[var(--tl-muted)]">{t("settings.wordConfMin")}</span>
                 <p className="text-[11px] leading-relaxed text-[var(--tl-muted)]">
-                  单字/单词置信度低于此值则丢弃。调高更干净、易漏字；调低更全、易带噪声。
+                  {t("settings.wordConfMinDesc")}
                 </p>
                 <input
                   type="number"
@@ -469,9 +491,9 @@ export function SettingsForm({ className }: SettingsFormProps) {
                 />
               </label>
               <label className="grid gap-1">
-                <span className="text-[var(--tl-muted)]">行置信度下限（0–100）</span>
+                <span className="text-[var(--tl-muted)]">{t("settings.lineConfMin")}</span>
                 <p className="text-[11px] leading-relaxed text-[var(--tl-muted)]">
-                  一行内保留下来的词的平均置信度低于此值则整行丢弃。
+                  {t("settings.lineConfMinDesc")}
                 </p>
                 <input
                   type="number"
@@ -501,10 +523,10 @@ export function SettingsForm({ className }: SettingsFormProps) {
                       })
                     }
                   />
-                  小图放大预处理
+                  {t("settings.preprocessScale")}
                 </span>
                 <p className="text-[11px] leading-relaxed text-[var(--tl-muted)]">
-                  截图最大边过小时先放大再识别，减轻字太小发糊；略增耗时。
+                  {t("settings.preprocessScaleDesc")}
                 </p>
               </label>
               <label className="grid gap-1">
@@ -520,10 +542,10 @@ export function SettingsForm({ className }: SettingsFormProps) {
                       })
                     }
                   />
-                  暗色界面反相增强（保守）
+                  {t("settings.preprocessInvert")}
                 </span>
                 <p className="text-[11px] leading-relaxed text-[var(--tl-muted)]">
-                  整图偏暗时先反相再识别，深色主题可试；若变差请关闭。
+                  {t("settings.preprocessInvertDesc")}
                 </p>
               </label>
               <button
@@ -542,13 +564,13 @@ export function SettingsForm({ className }: SettingsFormProps) {
                     .then((cfg) => {
                       setOcr(cfg);
                       setOcrPipe(cfg.pipeline);
-                      setOcrMsg("已保存 OCR 管线参数");
+                      setOcrMsg(t("settings.pipelineParamsSaved"));
                       setTimeout(() => setOcrMsg(null), 2500);
                     })
                     .catch((err) => setErr(String(err)))
                 }
               >
-                保存管线参数
+                {t("settings.savePipelineParams")}
               </button>
             </div>
           </details>
@@ -557,12 +579,12 @@ export function SettingsForm({ className }: SettingsFormProps) {
       </section>
 
       <section className="mb-6 space-y-2">
-        <h2 className="text-sm font-medium text-[var(--tl-muted)]">应用黑名单（M5 / M4-05）</h2>
+        <h2 className="text-sm font-medium text-[var(--tl-muted)]">{t("settings.blacklist")}</h2>
         <p className="text-xs text-[var(--tl-muted)]">
-          每行一个前台应用名（与系统前台 `app_name` **精确匹配**，大小写敏感）。命中时：不写 raw / 切换 / Session / 截图；剪贴板流水也不会在黑名单前台落库。
+          {t("settings.blacklistDesc")}
           {clientOs === "windows" ? (
             <span className="mt-1 block text-[var(--tl-muted)]">
-              Windows 下 `app_name` 多来自前台进程可执行文件名（不含路径），与任务栏标题可能不一致，请以会话列表中显示的名称为准。
+              {t("settings.blacklistWindowsNote")}
             </span>
           ) : null}
         </p>
@@ -571,31 +593,30 @@ export function SettingsForm({ className }: SettingsFormProps) {
           onChange={(e) => setBlacklistText(e.target.value)}
           rows={5}
           className="w-full max-w-md rounded border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-2 py-1.5 font-mono text-xs text-[var(--tl-ink)]"
-          placeholder={"WeChat\nChrome"}
+          placeholder={t("settings.blacklistPlaceholder")}
         />
         <button
           type="button"
           className="rounded bg-[var(--tl-btn-muted)] px-3 py-1.5 text-sm text-[var(--tl-ink)] hover:opacity-90"
           onClick={() => void saveBlacklist()}
         >
-          保存黑名单
+          {t("settings.saveBlacklist")}
         </button>
         {blMsg && <p className="text-xs text-[var(--tl-status-ok)]">{blMsg}</p>}
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-sm font-medium text-[var(--tl-muted)]">AI 增强（BYOK，默认关闭）</h2>
+        <h2 className="text-sm font-medium text-[var(--tl-muted)]">{t("settings.aiSection")}</h2>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
             checked={f.aiEnabled}
             onChange={(e) => void toggleAi(e.target.checked)}
           />
-          启用 AI 增强复盘
+          {t("settings.enableAi")}
         </label>
         <p className="text-xs text-[var(--tl-muted)]">
-          关闭时不发起外网请求。开启后须在下方配置 API Key；仅 OpenAI 兼容 <code className="text-[var(--tl-muted)]">/v1/chat/completions</code>{" "}
-          端点。
+          {t("settings.aiDesc")}
         </p>
 
         <div className="max-w-md space-y-2 rounded border border-[var(--tl-line)] bg-[var(--tl-surface)] p-3">
@@ -610,7 +631,7 @@ export function SettingsForm({ className }: SettingsFormProps) {
             />
           </label>
           <label className="block text-xs text-[var(--tl-muted)]">
-            模型名
+            {t("settings.modelName")}
             <input
               type="text"
               value={aiModel}
@@ -620,14 +641,14 @@ export function SettingsForm({ className }: SettingsFormProps) {
             />
           </label>
           <label className="block text-xs text-[var(--tl-muted)]">
-            API Key（{ai.hasApiKey ? "已配置，留空则不修改" : "未配置"}）
+            {t("settings.apiKey", { status: ai.hasApiKey ? t("settings.apiKeyConfigured") : t("settings.apiKeyNotConfigured") })}
             <input
               type="password"
               autoComplete="off"
               value={aiKeyInput}
               onChange={(e) => setAiKeyInput(e.target.value)}
               className="mt-1 w-full rounded border border-[var(--tl-line)] bg-[var(--tl-surface-deep)] px-2 py-1 font-mono text-sm text-[var(--tl-ink)]"
-              placeholder="sk-…"
+              placeholder={t("settings.apiKeyPlaceholder")}
             />
           </label>
           <div className="flex flex-wrap gap-2 pt-1">
@@ -636,7 +657,7 @@ export function SettingsForm({ className }: SettingsFormProps) {
               className="rounded bg-[var(--tl-btn-muted)] px-3 py-1.5 text-sm text-[var(--tl-ink)] hover:opacity-90"
               onClick={() => void saveAiByok()}
             >
-              保存 BYOK 配置
+              {t("settings.saveByok")}
             </button>
             {ai.hasApiKey && (
               <button
@@ -644,7 +665,7 @@ export function SettingsForm({ className }: SettingsFormProps) {
                 className="rounded border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-ink)]/90 hover:bg-[var(--tl-surface-deep)]"
                 onClick={() => void clearAiKey()}
               >
-                清除 Key
+                {t("settings.clearKey")}
               </button>
             )}
           </div>

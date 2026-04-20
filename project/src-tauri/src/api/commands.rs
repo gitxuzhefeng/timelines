@@ -469,6 +469,18 @@ pub fn checkpoint_wal(state: State<'_, AppState>) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+pub fn get_language(state: State<'_, AppState>) -> String {
+    let conn = state.0.read_conn.lock();
+    settings::get_language(&conn)
+}
+
+#[tauri::command]
+pub fn set_language(state: State<'_, AppState>, lang: String) -> Result<(), String> {
+    let mut c = open_db_rw(&state.0.paths.db_path)?;
+    settings::set_language(&mut c, &lang).map_err(|e| e.to_string())
+}
+
 fn max_ts(conn: &rusqlite::Connection, sql: &str) -> Option<i64> {
     conn.query_row(sql, [], |r| r.get::<_, Option<i64>>(0))
         .ok()

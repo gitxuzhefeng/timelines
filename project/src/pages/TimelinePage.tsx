@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import type { DailyAnalysisDto, Snapshot, WindowSession } from "../types";
 import { snapshotTimelensUrl } from "../types";
 import { parseIntentBreakdown, parseTopApps } from "../lib/dailyAnalysisParsed";
@@ -91,6 +92,7 @@ function aggregateAppsFromSessions(sessions: WindowSession[]): { app: string; du
 }
 
 export default function TimelinePage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const date = useAppStore((s) => s.date);
   const [sessions, setSessions] = useState<WindowSession[]>([]);
@@ -228,7 +230,7 @@ export default function TimelinePage() {
           className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--tl-overlay-lightbox)] p-4"
           role="dialog"
           aria-modal="true"
-          aria-label="截图大图"
+          aria-label={t("sessions.screenshotAlt")}
           onClick={() => setLightbox(null)}
         >
           <button
@@ -236,7 +238,7 @@ export default function TimelinePage() {
             className="absolute right-4 top-4 rounded-lg bg-[var(--tl-surface-deep)] px-3 py-1 text-sm text-[var(--tl-ink)]"
             onClick={() => setLightbox(null)}
           >
-            关闭
+            {t("common.close")}
           </button>
           <img
             src={lightbox}
@@ -252,10 +254,8 @@ export default function TimelinePage() {
           to="/lens"
           className="mb-5 inline-flex items-center gap-1.5 text-[0.78rem] font-medium tracking-wide text-[var(--tl-muted)] hover:text-[var(--tl-ink)]"
         >
-          <span aria-hidden className="opacity-75">
-            ←
-          </span>
-          返回今日透视
+          <span aria-hidden className="opacity-75">←</span>
+          {t("timeline.backToLens")}
         </Link>
 
         <header className="mb-5 flex flex-wrap items-start justify-between gap-4 border-b border-[var(--tl-line)] pb-4">
@@ -264,20 +264,20 @@ export default function TimelinePage() {
               TimeLens
             </p>
             <h1 className="mt-1.5 text-[1.45rem] font-bold leading-snug tracking-wide text-[var(--tl-ink)]">
-              今日<span className="text-[var(--tl-p3-accent)]">完整时间线</span>
+              {t("timeline.title").split("完整时间线")[0]}<span className="text-[var(--tl-p3-accent)]">{t("timeline.title").includes("完整时间线") ? "完整时间线" : t("timeline.title")}</span>
             </h1>
           </div>
           <div className="text-right text-[0.72rem] text-[var(--tl-muted)]">
             <strong className="mb-0.5 block text-[0.95rem] font-semibold text-[var(--tl-ink)]">
               {zhDateLabel(date)}
             </strong>
-            <span>按前台会话段拼接 · {loading ? "…" : `共 ${sessions.length} 条`}</span>
+            <span>{loading ? "…" : t("timeline.sessionCount", { count: sessions.length })}</span>
           </div>
         </header>
 
-        <section className="tl-p3-bridge mb-6" aria-label="当日摘要">
+        <section className="tl-p3-bridge mb-6" aria-label={t("timeline.sameCalibration")}>
           <p className="mb-2 text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-[var(--tl-muted)]">
-            与今日透视同一口径 · daily_analysis
+            {t("timeline.sameCalibration")}
           </p>
           <div className="mb-3 flex h-2 overflow-hidden rounded" role="img" aria-label="意图占比">
             {bridgeBar.length === 0 ? (
@@ -298,13 +298,13 @@ export default function TimelinePage() {
                 {loading ? "…" : formatDurationMs(bridgeTotalMs)}
               </p>
               <p className="mt-0.5 text-[0.62rem] font-medium tracking-wide text-[var(--tl-muted)]">
-                已记录前台时长
+                {t("timeline.recordedTime")}
               </p>
             </div>
             <div className="flex max-w-full flex-wrap justify-end gap-1.5">
               {bridgeChips.length === 0 && !loading ? (
                 <span className="rounded-md border border-[var(--tl-line)] bg-[var(--tl-chip-bg)] px-2 py-1 text-[0.65rem] text-[var(--tl-muted)]">
-                  暂无 Top 应用
+                  {t("timeline.noTopApps")}
                 </span>
               ) : (
                 bridgeChips.map((c) => (
@@ -323,8 +323,8 @@ export default function TimelinePage() {
 
         <div className="mb-5">
           <div className="mb-1.5 flex justify-between text-[0.58rem] uppercase tracking-[0.08em] text-[var(--tl-muted)]">
-            <span>今日活动密度</span>
-            <span>08:00 — 24:00</span>
+            <span>{t("timeline.activityDensity")}</span>
+            <span>{t("timeline.timeRange")}</span>
           </div>
           <div
             className="relative h-3.5 overflow-hidden rounded-full bg-white/[0.04]"
@@ -349,14 +349,13 @@ export default function TimelinePage() {
         </div>
 
         <p className="mb-4 text-[0.78rem] leading-relaxed text-[var(--tl-muted)]">
-          下列为按时间顺序排列的<strong className="text-[var(--tl-ink)]">前台会话段</strong>
-          。点击单段可下钻到会话详情与关键帧。
+          {t("timeline.sessionListDesc").split("前台会话段")[0]}<strong className="text-[var(--tl-ink)]">{t("timeline.sessionListDesc").includes("前台会话段") ? "前台会话段" : ""}</strong>{t("timeline.sessionListDesc").split("前台会话段")[1] ?? ""}
         </p>
 
         {loading ? (
-          <p className="text-sm text-[var(--tl-muted)]">加载中…</p>
+          <p className="text-sm text-[var(--tl-muted)]">{t("timeline.loading")}</p>
         ) : sessions.length === 0 ? (
-          <p className="text-center text-sm text-[var(--tl-muted)]">当日暂无会话记录</p>
+          <p className="text-center text-sm text-[var(--tl-muted)]">{t("timeline.noSessions")}</p>
         ) : (
           DAYPART_ORDER.map(({ key, label }) => {
             const list = byPart[key];
@@ -407,10 +406,10 @@ export default function TimelinePage() {
                             </span>
                           </div>
                           <p className="text-[0.74rem] leading-snug text-[var(--tl-muted)] [word-break:break-word]">
-                            {s.windowTitle || "（无窗口标题）"}
+                            {s.windowTitle || t("timeline.noWindowTitle")}
                           </p>
                           <p className="mt-2 font-mono text-[0.62rem] text-[var(--tl-muted)] opacity-90">
-                            session · {s.rawEventCount} 条事件
+                            {t("timeline.sessionEvents", { count: s.rawEventCount })}
                             {s.bundleId ? ` · ${s.bundleId}` : ""}
                           </p>
                         </button>
@@ -425,19 +424,19 @@ export default function TimelinePage() {
 
         <nav
           className="mt-7 flex flex-wrap gap-x-4 gap-y-2 border-t border-[var(--tl-line)] pt-5"
-          aria-label="相关页面"
+          aria-label={t("timeline.openReport")}
         >
           <button
             type="button"
             className="border-0 bg-transparent p-0 text-[0.78rem] font-medium text-[var(--tl-p3-accent)] hover:underline"
             onClick={() => navigate("/report")}
           >
-            打开今日事实报告（日终复盘）
+            {t("timeline.openReport")}
           </button>
         </nav>
 
         <p className="mt-5 text-center text-[0.6rem] tracking-wide text-[var(--tl-muted)]">
-          条段以库内会话为准；摘要条与今日透视同源字段。
+          {t("timeline.dataNote")}
         </p>
       </div>
 
@@ -446,7 +445,7 @@ export default function TimelinePage() {
           <button
             type="button"
             className="absolute inset-0 cursor-default border-0 bg-transparent"
-            aria-label="关闭"
+            aria-label={t("common.close")}
             onClick={() => setPick(null)}
           />
           <div
@@ -458,7 +457,7 @@ export default function TimelinePage() {
           >
             <div className="flex items-center justify-between border-b border-[var(--tl-line)] px-4 py-3">
               <h2 id="tl-sheet-title" className="text-base font-semibold">
-                会话详情
+                {t("timeline.sessionDetails")}
               </h2>
               <button
                 type="button"
@@ -476,11 +475,11 @@ export default function TimelinePage() {
               </p>
               {pick.intent && (
                 <p className="mt-2 text-sm">
-                  Intent: <span className="text-[var(--tl-cyan)]">{pick.intent}</span>
+                  {t("timeline.intent", { intent: pick.intent })}
                 </p>
               )}
               <p className="mt-4 text-xs font-medium uppercase tracking-wide text-[var(--tl-muted)]">
-                截图
+                {t("timeline.screenshots")}
               </p>
               <div className="mt-2 flex min-h-[160px] items-center justify-center rounded-lg border border-[var(--tl-line)] bg-[var(--tl-glass-30)] p-2">
                 {selectedSnap?.filePath ? (
@@ -496,7 +495,7 @@ export default function TimelinePage() {
                     />
                   </button>
                 ) : (
-                  <span className="text-sm text-[var(--tl-muted)]">无截图</span>
+                  <span className="text-sm text-[var(--tl-muted)]">{t("timeline.noScreenshots")}</span>
                 )}
               </div>
               {snaps.length > 0 && (

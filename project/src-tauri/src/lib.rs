@@ -416,6 +416,8 @@ pub fn run() {
             api::search_ocr_text,
             api::list_ocr_eval_samples,
             api::evaluate_ocr_snapshot,
+            api::get_language,
+            api::set_language,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

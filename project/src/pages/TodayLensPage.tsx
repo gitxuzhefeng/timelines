@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import type { DailyAnalysisDto, PipelineHealth } from "../types";
 import {
   parseDegradedSections,
@@ -22,12 +23,12 @@ import {
 import * as api from "../services/tauri";
 import { useAppStore } from "../stores/appStore";
 
-const PIPE_KEYS = [
-  { k: "capture" as const, icon: "▣", label: "截屏", sub: "采集帧" },
-  { k: "ocr" as const, icon: "◇", label: "OCR", sub: "屏幕文字" },
-  { k: "tracker" as const, icon: "◎", label: "前台", sub: "窗口元数据" },
-  { k: "clipboard" as const, icon: "≡", label: "剪贴板", sub: "跨应用流" },
-  { k: "notifications" as const, icon: "✦", label: "通知", sub: "打断启发" },
+const PIPE_KEYS_BASE = [
+  { k: "capture" as const, icon: "▣", labelKey: "todayLens.pipeCapture", subKey: "todayLens.pipeCaptureFrames" },
+  { k: "ocr" as const, icon: "◇", labelKey: null, subKey: "todayLens.pipeOcrSub" },
+  { k: "tracker" as const, icon: "◎", labelKey: "todayLens.pipeForeground", subKey: "todayLens.pipeWindowMeta" },
+  { k: "clipboard" as const, icon: "≡", labelKey: "todayLens.pipeClipboard", subKey: "todayLens.pipeClipboardFlow" },
+  { k: "notifications" as const, icon: "✦", labelKey: "todayLens.pipeNotifications", subKey: "todayLens.pipeInterruptHint" },
 ];
 
 function engineDot(status: string): string {
@@ -43,15 +44,15 @@ const SEG_COLORS = [
   "bg-slate-500/90",
 ];
 
-const DEGRADED_LABELS: Record<string, string> = {
-  clipboard_flows: "剪贴板流水",
-  ambient_context: "环境上下文",
-  notifications: "系统通知",
-  input_dynamics: "输入采样",
-  ocr: "OCR",
+const DEGRADED_LABEL_KEYS: Record<string, string> = {
+  clipboard_flows: "todayLens.degradedClipboardFlows",
+  ambient_context: "todayLens.degradedAmbientContext",
+  notifications: "todayLens.degradedNotifications",
+  input_dynamics: "todayLens.degradedInputDynamics",
 };
 
 export default function TodayLensPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const date = useAppStore((s) => s.date);
   const activity = useAppStore((s) => s.activity);
@@ -145,27 +146,27 @@ export default function TodayLensPage() {
     if (top && app0) {
       return (
         <>
-          当日以 <span className="text-[var(--tl-cyan)]">{top[0]}</span> 为主，在{" "}
-          <span className="text-[var(--tl-cyan)]">{app0.app}</span> 上停留最久
+          {t("todayLens.headlinePre1")} <span className="text-[var(--tl-cyan)]">{top[0]}</span> {t("todayLens.headlineMid1")}{" "}
+          <span className="text-[var(--tl-cyan)]">{app0.app}</span> {t("todayLens.headlineSuf1")}
         </>
       );
     }
     if (top) {
       return (
         <>
-          当日结构以 <span className="text-[var(--tl-cyan)]">{top[0]}</span> 为主
+          {t("todayLens.headlinePre2")} <span className="text-[var(--tl-cyan)]">{top[0]}</span> {t("todayLens.headlineSuf2")}
         </>
       );
     }
-    return <>当日活动时间结构</>;
-  }, [analysis, intentEntries, topApps]);
+    return <>{t("todayLens.headlineDefault")}</>;
+  }, [analysis, intentEntries, topApps, t]);
 
   const loading = analysis === undefined;
 
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center p-8 text-[var(--tl-muted)]">
-        加载透视…
+        {t("todayLens.loading")}
       </div>
     );
   }
@@ -175,13 +176,13 @@ export default function TodayLensPage() {
       <div className="h-full overflow-y-auto p-5">
         <div className="mx-auto max-w-lg rounded-xl border border-[var(--tl-line)] bg-[var(--tl-card)] p-8 text-center">
           <div className="mb-3 text-3xl opacity-80">📭</div>
-          <h2 className="text-lg font-semibold text-[var(--tl-ink)]">这一天还没有可用的透视</h2>
+          <h2 className="text-lg font-semibold text-[var(--tl-ink)]">{t("todayLens.noLens")}</h2>
           <p className="mt-2 text-sm text-[var(--tl-muted)]">
-            尚未生成当日分析汇总，或这一天没有会话记录。可先检查采集与权限，再重新生成。
+            {t("todayLens.noAnalysis")}
           </p>
           {activity && (
             <p className="mt-2 text-xs text-[var(--tl-muted)]">
-              当日已有记录：工作片段 {activity.sessionCount} 段 · 截图 {activity.snapshotCount} 张
+              {t("todayLens.dailyRecords", { sessionCount: activity.sessionCount, snapshotCount: activity.snapshotCount })}
             </p>
           )}
           {err && <p className="mt-3 text-sm text-[var(--tl-status-bad)]">{err}</p>}
@@ -203,13 +204,13 @@ export default function TodayLensPage() {
                 }
               }}
             >
-              {busy ? "生成中…" : "生成当日分析 + 事实报告"}
+              {busy ? t("todayLens.generating") : t("todayLens.generateAnalysis")}
             </button>
             <Link
               to="/settings"
               className="rounded-lg border border-[var(--tl-line)] px-4 py-2 text-sm text-[var(--tl-muted)] hover:text-[var(--tl-ink)]"
             >
-              打开设置
+              {t("todayLens.openSettings")}
             </Link>
           </div>
         </div>
@@ -225,10 +226,10 @@ export default function TodayLensPage() {
         </p>
         <h2 className="mb-3 text-xl font-bold leading-snug tracking-tight md:text-2xl">{headline}</h2>
         <p className="mb-1 font-mono text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-[var(--tl-cyan)]">
-          语言洞察
+          {t("todayLens.languageInsights")}
         </p>
         <p className="mb-2 text-[0.65rem] leading-relaxed text-[var(--tl-muted)]">
-          基于当日已采集指标自动组句，无需 AI；三种读法对应不同关注点，可切换查看。
+          {t("todayLens.languageInsightsDesc")}
         </p>
         <div className="mb-2 flex flex-wrap gap-1.5">
           {LENS_NARRATIVE_SCENES.map((s) => {
@@ -264,32 +265,34 @@ export default function TodayLensPage() {
         {snippet ? (
           <div className="mb-4 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-glass-15)] p-3">
             <p className="mb-1 font-mono text-[0.5rem] font-semibold uppercase tracking-[0.12em] text-[var(--tl-muted)]">
-              事实报告摘录
+              {t("todayLens.factReportExcerpt")}
             </p>
             <p className="text-sm leading-relaxed text-[var(--tl-ink)]/80">{snippet}</p>
           </div>
         ) : (
           <p className="mb-4 text-[0.65rem] text-[var(--tl-muted)]">
-            尚未生成事实层报告时，以上摘要仅来自透视指标；可在「日报告」生成事实层后在此对照阅读。
+            {t("todayLens.noFactReport")}
           </p>
         )}
 
         <p className="mb-2 font-mono text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-[var(--tl-cyan)]">
-          数据管线
+          {t("todayLens.dataPipeline")}
         </p>
         <div className="mb-4 flex flex-wrap items-center gap-0.5">
-          {PIPE_KEYS.map((p, i) => {
+          {PIPE_KEYS_BASE.map((p, i) => {
             const st = health?.[p.k]?.status ?? "stopped";
+            const label = p.labelKey ? t(p.labelKey) : "OCR";
+            const sub = t(p.subKey);
             return (
               <div key={p.k} className="contents">
                 <div className="min-w-[4.5rem] max-w-[5.5rem] flex-1 rounded-lg border border-[var(--tl-accent-22)] bg-[var(--tl-accent-06)] px-1.5 py-2 text-center">
                   <span className={`block text-lg ${engineDot(st)}`}>{p.icon}</span>
                   <span className="block font-mono text-[0.5rem] font-semibold uppercase tracking-wider text-[var(--tl-cyan-dim)]">
-                    {p.label}
+                    {label}
                   </span>
-                  <span className="mt-0.5 block text-[0.58rem] text-[var(--tl-ink)]/75">{p.sub}</span>
+                  <span className="mt-0.5 block text-[0.58rem] text-[var(--tl-ink)]/75">{sub}</span>
                 </div>
-                {i < PIPE_KEYS.length - 1 ? (
+                {i < PIPE_KEYS_BASE.length - 1 ? (
                   <div className="tl-fp-link mx-px hidden min-[480px]:block">
                     <span
                       className="tl-fp-beam block"
@@ -307,21 +310,21 @@ export default function TodayLensPage() {
             {degraded.map((key) => (
               <span
                 key={key}
-                title="该数据源当日缺失或降级，相关模块指标可能不完整"
+                title={t("todayLens.degraded", { key })}
                 className="rounded-md border border-[var(--tl-warn-amber-border)] bg-[var(--tl-warn-amber-bg)] px-2 py-0.5 text-[0.65rem] text-[var(--tl-warn-amber-text)]"
               >
-                降级 · {DEGRADED_LABELS[key] ?? key}
+                {t("todayLens.degraded", { key: DEGRADED_LABEL_KEYS[key] ? t(DEGRADED_LABEL_KEYS[key]) : key })}
               </span>
             ))}
           </div>
         )}
 
         <p className="mb-2 font-mono text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-[var(--tl-cyan)]">
-          心流分段（长段会话）
+          {t("todayLens.flowSegments")}
         </p>
         <div className="mb-4 flex flex-wrap gap-1">
           {deepSegs.length === 0 ? (
-            <span className="text-sm text-[var(--tl-muted)]">暂无满足最小时长的心流分段</span>
+            <span className="text-sm text-[var(--tl-muted)]">{t("todayLens.noFlowSegments")}</span>
           ) : (
             deepSegs.map((s) => (
               <span
@@ -335,11 +338,11 @@ export default function TodayLensPage() {
         </div>
 
         <p className="mb-2 font-mono text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-[var(--tl-cyan)]">
-          剪贴板路径（Top）
+          {t("todayLens.clipboardPaths")}
         </p>
         <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
           {topFlows.length === 0 ? (
-            <span className="text-[var(--tl-muted)]">暂无 copy→paste 流（或当日剪贴板流水降级）</span>
+            <span className="text-[var(--tl-muted)]">{t("todayLens.noClipboard")}</span>
           ) : (
             <>
               <span className="rounded-lg border border-[var(--tl-violet-35)] bg-[var(--tl-violet-08)] px-2 py-1.5 text-center text-[0.7rem] text-[var(--tl-purple)]">
@@ -355,11 +358,11 @@ export default function TodayLensPage() {
         </div>
 
         <p className="mb-2 font-mono text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-[var(--tl-cyan)]">
-          打断来源
+          {t("todayLens.interruptSources")}
         </p>
         <div className="mb-4 flex min-h-[52px] items-end gap-1 border-b border-[var(--tl-accent-15b)] pb-2">
           {interrupters.length === 0 ? (
-            <span className="text-sm text-[var(--tl-muted)]">暂无通知类打断统计</span>
+            <span className="text-sm text-[var(--tl-muted)]">{t("todayLens.noInterrupts")}</span>
           ) : (
             interrupters.map((it, idx) => {
               const h = 12 + Math.min(28, it.count * 4);
@@ -380,12 +383,12 @@ export default function TodayLensPage() {
         </div>
         {analysis.notificationCount > 0 && (
           <p className="mb-3 font-mono text-xs text-[var(--tl-muted)]">
-            通知条数（当日）: {analysis.notificationCount} · 深度时段内打断: {analysis.interruptsInDeep}
+            {t("todayLens.notificationCount", { count: analysis.notificationCount, interrupts: analysis.interruptsInDeep })}
           </p>
         )}
 
         <p className="mb-2 text-[0.72rem] font-medium tracking-wide text-[var(--tl-muted)]">
-          时间结构 · 按事项类型
+          {t("todayLens.timeStructure")}
         </p>
         <div className="flex h-3 w-full overflow-hidden rounded-md bg-[var(--tl-glass-40)]">
           {totalIntentMs > 0
@@ -401,7 +404,7 @@ export default function TodayLensPage() {
         </div>
         <div className="mt-3 flex flex-wrap justify-between gap-2 text-sm">
           <div>
-            <span className="text-[var(--tl-muted)]">有效活动</span>{" "}
+            <span className="text-[var(--tl-muted)]">{t("todayLens.activeTime")}</span>{" "}
             <span className="font-mono text-[var(--tl-cyan)]">
               {formatDurationMs(analysis.totalActiveMs)}
             </span>
@@ -419,22 +422,22 @@ export default function TodayLensPage() {
 
       <div className="rounded-xl border border-[var(--tl-line)] bg-[var(--tl-card)] p-4">
         <p className="text-sm leading-relaxed text-[var(--tl-ink)]/90">
-          深度工作累计{" "}
+          {t("todayLens.deepWorkPre")}{" "}
           <span className="font-mono text-[var(--tl-cyan)]">
             {formatDurationMs(analysis.deepWorkTotalMs)}
           </span>
-          ，切换碎片化约{" "}
+          {t("todayLens.deepWorkMid")}{" "}
           <span className="font-mono">{analysis.fragmentationPct.toFixed(1)}%</span>
           {analysis.totalSwitches > 0 && (
             <>
-              ，总切换{" "}
-              <span className="font-mono">{analysis.totalSwitches}</span> 次
+              {t("todayLens.totalSwitchesPre")}{" "}
+              <span className="font-mono">{analysis.totalSwitches}</span> {t("todayLens.totalSwitchesSuf")}
             </>
           )}
           。
         </p>
         <p className="mt-3 text-[0.65rem] font-medium uppercase tracking-wide text-[var(--tl-muted)]">
-          时间占比 Top 3 应用
+          {t("todayLens.topApps")}
         </p>
         <ul className="mt-2 space-y-1.5">
           {topApps.slice(0, 3).map((r) => (
@@ -444,7 +447,7 @@ export default function TodayLensPage() {
             </li>
           ))}
           {topApps.length === 0 && (
-            <li className="text-sm text-[var(--tl-muted)]">暂无</li>
+            <li className="text-sm text-[var(--tl-muted)]">{t("common.none")}</li>
           )}
         </ul>
         <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--tl-line)] pt-4">
@@ -453,14 +456,14 @@ export default function TodayLensPage() {
             className="tl-interactive-row rounded-lg border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-cyan)] hover:bg-[var(--tl-accent-08)]"
             onClick={() => navigate("/timeline")}
           >
-            打开时间线 →
+            {t("todayLens.openTimeline")}
           </button>
           <button
             type="button"
             className="tl-interactive-row rounded-lg border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-cyan)] hover:bg-[var(--tl-accent-08)]"
             onClick={() => navigate("/report")}
           >
-            打开日报告 →
+            {t("todayLens.openDailyReport")}
           </button>
         </div>
       </div>

@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { useTranslation } from "react-i18next";
 import { useAppStore } from "../stores/appStore";
 import * as api from "../services/tauri";
 
 type ReportView = "fact_only" | "ai_enhanced";
 
 type RecapContentProps = {
-  /** 为 true 时不渲染日期选择（由外壳统一提供） */
   hideDateControl?: boolean;
   className?: string;
 };
@@ -15,6 +15,7 @@ export function RecapContent({
   hideDateControl = false,
   className = "",
 }: RecapContentProps) {
+  const { t } = useTranslation();
   const date = useAppStore((s) => s.date);
   const setDate = useAppStore((s) => s.setDate);
   const [md, setMd] = useState("");
@@ -71,7 +72,7 @@ export function RecapContent({
       <div className="flex flex-wrap items-center gap-3">
         {!hideDateControl && (
           <label className="flex items-center gap-2 text-sm text-[var(--tl-muted)]">
-            日期
+            {t("recap.date")}
             <input
               type="date"
               value={date}
@@ -91,7 +92,7 @@ export function RecapContent({
               }`}
               onClick={() => setView("fact_only")}
             >
-              事实
+              {t("recap.fact")}
             </button>
             <button
               type="button"
@@ -102,7 +103,7 @@ export function RecapContent({
               }`}
               onClick={() => setView("ai_enhanced")}
             >
-              AI 增强
+              {t("recap.aiEnhanced")}
             </button>
           </div>
         )}
@@ -118,7 +119,7 @@ export function RecapContent({
               await api.generateDailyReport(date, false);
               setView("fact_only");
               await load();
-              setMsg("已生成分析与事实报告");
+              setMsg(t("recap.reportGenerated"));
             } catch (e) {
               setMsg(String(e));
             } finally {
@@ -126,16 +127,16 @@ export function RecapContent({
             }
           }}
         >
-          {busy ? "处理中…" : "生成分析 + 事实报告"}
+          {busy ? t("recap.processing") : t("recap.generateReport")}
         </button>
         <button
           type="button"
           disabled={busy || !aiOn || !hasKey}
           title={
             !aiOn
-              ? "请先在设置中开启 AI"
+              ? t("recap.enableAiFirst")
               : !hasKey
-                ? "请先在设置中配置 API Key"
+                ? t("recap.configureApiKey")
                 : undefined
           }
           className="rounded bg-[var(--tl-btn-primary-bg)] px-3 py-1.5 text-sm text-[var(--tl-btn-primary-text)] hover:bg-[var(--tl-btn-primary-bg-hover)] disabled:opacity-40"
@@ -147,17 +148,15 @@ export function RecapContent({
               await api.generateDailyReport(date, true);
               setView("ai_enhanced");
               await load();
-              setMsg("已生成 AI 增强报告（含事实层 + 解读）");
+              setMsg(t("recap.aiReportGenerated"));
             } catch (e) {
-              setMsg(
-                `${String(e)}。可改用「生成分析 + 事实报告」仅生成本地事实层。`,
-              );
+              setMsg(t("recap.errorFallback", { error: String(e) }));
             } finally {
               setBusy(false);
             }
           }}
         >
-          生成 AI 增强报告
+          {t("recap.generateAiReport")}
         </button>
         <button
           type="button"
@@ -167,7 +166,7 @@ export function RecapContent({
             setBusy(true);
             try {
               const p = await api.exportDailyReport(date, view);
-              setMsg(`已导出: ${p}`);
+              setMsg(t("recap.exported", { path: p }));
             } catch (e) {
               setMsg(String(e));
             } finally {
@@ -175,24 +174,23 @@ export function RecapContent({
             }
           }}
         >
-          导出 Markdown
+          {t("recap.exportMarkdown")}
         </button>
         <button
           type="button"
           className="rounded border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-ink)] hover:bg-[var(--tl-surface-deep)]"
           onClick={() => void load()}
         >
-          刷新
+          {t("common.refresh")}
         </button>
       </div>
       {view === "ai_enhanced" && meta.model && (
         <p className="text-xs text-[var(--tl-muted)]">
-          模型: <span className="font-mono">{meta.model}</span>
+          {t("recap.model", { model: meta.model })}
           {meta.hash && (
             <>
               {" "}
-              · prompt 哈希:{" "}
-              <span className="font-mono">{meta.hash.slice(0, 12)}…</span>
+              · {t("recap.promptHash", { hash: meta.hash.slice(0, 12) })}
             </>
           )}
         </p>
@@ -204,8 +202,8 @@ export function RecapContent({
         ) : (
           <p className="text-[var(--tl-muted)]">
             {view === "ai_enhanced"
-              ? "暂无 AI 增强报告。请先生成当日 daily_analysis，再点击「生成 AI 增强报告」。"
-              : "暂无报告。请选择有数据的日期并点击生成。"}
+              ? t("recap.noAiReport")
+              : t("recap.noReport")}
           </p>
         )}
       </div>
