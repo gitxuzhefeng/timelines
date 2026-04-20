@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- TimeLens 不使用沙箱，需要直接调用系统 API（辅助功能 / 屏幕录制） -->
+    <key>com.apple.security.app-sandbox</key>
+    <false/>
+
+    <!-- WKWebView (Tauri) 需要 JIT 权限 -->
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+
+    <!-- 允许非签名的可执行内存（WKWebView 内部需要） -->
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+
+    <!-- 允许加载未签名的动态库（Tauri 运行时依赖） -->
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+</dict>
+</plist>

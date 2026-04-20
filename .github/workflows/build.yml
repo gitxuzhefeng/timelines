@@ -40,8 +40,25 @@ jobs:
         working-directory: project
         run: npm ci
 
+      - name: Import Apple signing certificate (macOS)
+        if: matrix.os == 'macos-latest' && env.APPLE_CERTIFICATE != ''
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          echo "$APPLE_CERTIFICATE" | base64 --decode > certificate.p12
+          security create-keychain -p "timelens_ci" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "timelens_ci" build.keychain
+          security import certificate.p12 -k build.keychain \
+            -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "timelens_ci" build.keychain
+          rm certificate.p12
+
       - name: Build Tauri app
         working-directory: project
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: npm run tauri build
 
       - name: Upload Windows installer (NSIS)
