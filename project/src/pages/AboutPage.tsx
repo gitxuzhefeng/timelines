@@ -9,7 +9,7 @@ const ISSUES_URL = "https://github.com/gitxuzhefeng/timelines/issues/new";
 const BUY_ME_COFFEE_URL = "https://www.buymeacoffee.com/";
 
 function openUrl(url: string) {
-  window.open(url, "_blank", "noopener,noreferrer");
+  void api.openUrl(url);
 }
 
 export default function AboutPage() {

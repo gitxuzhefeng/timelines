@@ -499,17 +499,30 @@ pub struct UpdateCheckResult {
 pub async fn check_for_update(app: AppHandle) -> Result<UpdateCheckResult, String> {
     let current = app.package_info().version.to_string();
     let client = reqwest::Client::builder()
-        .user_agent("TimeLens-UpdateChecker")
+        .user_agent(format!("TimeLens/{} update-checker", current))
         .timeout(std::time::Duration::from_secs(10))
         .build()
         .map_err(|e| e.to_string())?;
     let resp = client
         .get("https://api.github.com/repos/gitxuzhefeng/timelines/releases/latest")
+        .header("Accept", "application/vnd.github+json")
+        .header("X-GitHub-Api-Version", "2022-11-28")
         .send()
         .await
         .map_err(|e| e.to_string())?;
-    if !resp.status().is_success() {
-        return Err(format!("GitHub API error: {}", resp.status()));
+    let status = resp.status();
+    // 404 = 还没有发布任何 Release，视为"已是最新"
+    if status.as_u16() == 404 {
+        return Ok(UpdateCheckResult {
+            has_update: false,
+            latest_version: current,
+            release_url: String::new(),
+            release_notes: String::new(),
+        });
+    }
+    if !status.is_success() {
+        return Err(format!("GitHub API 错误: {} {}", status.as_u16(),
+            status.canonical_reason().unwrap_or("")));
     }
     let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
     let tag = json["tag_name"]
@@ -526,6 +539,12 @@ pub async fn check_for_update(app: AppHandle) -> Result<UpdateCheckResult, Strin
         release_url,
         release_notes,
     })
+}
+
+/// 用系统默认浏览器打开 URL（window.open 在 Tauri 2 中不会开系统浏览器）
+#[tauri::command]
+pub fn open_url(url: String) -> Result<(), String> {
+    open::that(url).map_err(|e| e.to_string())
 }
 
 fn max_ts(conn: &rusqlite::Connection, sql: &str) -> Option<i64> {

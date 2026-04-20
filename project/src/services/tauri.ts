@@ -285,6 +285,10 @@ export async function checkForUpdate(): Promise<UpdateCheckResult> {
   return invoke<UpdateCheckResult>("check_for_update");
 }
 
+export async function openUrl(url: string): Promise<void> {
+  await invoke("open_url", { url });
+}
+
 export async function generateDailyAnalysis(date: string): Promise<string> {
   return invoke<string>("generate_daily_analysis", { date });
 }

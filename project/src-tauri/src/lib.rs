@@ -420,6 +420,7 @@ pub fn run() {
             api::set_language,
             api::get_app_version,
             api::check_for_update,
+            api::open_url,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
