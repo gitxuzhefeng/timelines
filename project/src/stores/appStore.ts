@@ -41,6 +41,8 @@ interface AppState {
   pipelineHealth: PipelineHealth | null;
   loadingSessions: boolean;
   error: string | null;
+  updateAvailable: boolean;
+  latestVersion: string | null;
   formatBytes: (n: number) => string;
   setDate: (d: string) => void;
   refreshAll: () => Promise<void>;
@@ -70,6 +72,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   pipelineHealth: null,
   loadingSessions: false,
   error: null,
+  updateAvailable: false,
+  latestVersion: null,
   formatBytes,
 
   setDate: (d) => {

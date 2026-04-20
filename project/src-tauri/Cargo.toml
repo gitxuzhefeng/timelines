@@ -1,6 +1,6 @@
 [package]
 name = "timelens"
-version = "0.3.1"
+version = "0.6.0"
 description = "TimeLens — local activity data lens (P0)"
 authors = ["TimeLens"]
 edition = "2021"

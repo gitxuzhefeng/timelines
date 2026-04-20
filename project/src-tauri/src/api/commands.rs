@@ -481,6 +481,53 @@ pub fn set_language(state: State<'_, AppState>, lang: String) -> Result<(), Stri
     settings::set_language(&mut c, &lang).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub fn get_app_version(app: AppHandle) -> String {
+    app.package_info().version.to_string()
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateCheckResult {
+    pub has_update: bool,
+    pub latest_version: String,
+    pub release_url: String,
+    pub release_notes: String,
+}
+
+#[tauri::command]
+pub async fn check_for_update(app: AppHandle) -> Result<UpdateCheckResult, String> {
+    let current = app.package_info().version.to_string();
+    let client = reqwest::Client::builder()
+        .user_agent("TimeLens-UpdateChecker")
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let resp = client
+        .get("https://api.github.com/repos/gitxuzhefeng/timelines/releases/latest")
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+    if !resp.status().is_success() {
+        return Err(format!("GitHub API error: {}", resp.status()));
+    }
+    let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+    let tag = json["tag_name"]
+        .as_str()
+        .unwrap_or("")
+        .trim_start_matches('v')
+        .to_string();
+    let release_url = json["html_url"].as_str().unwrap_or("").to_string();
+    let release_notes = json["body"].as_str().unwrap_or("").to_string();
+    let has_update = !tag.is_empty() && tag != current;
+    Ok(UpdateCheckResult {
+        has_update,
+        latest_version: tag,
+        release_url,
+        release_notes,
+    })
+}
+
 fn max_ts(conn: &rusqlite::Connection, sql: &str) -> Option<i64> {
     conn.query_row(sql, [], |r| r.get::<_, Option<i64>>(0))
         .ok()

@@ -20,6 +20,7 @@ import TodayLensPage from "./pages/TodayLensPage";
 import TimelinePage from "./pages/TimelinePage";
 import DailyReportPage from "./pages/DailyReportPage";
 import SettingsShellPage from "./pages/SettingsShellPage";
+import AboutPage from "./pages/AboutPage";
 import { detectClientDesktopOs } from "./lib/platform";
 
 export default function App() {
@@ -53,6 +54,16 @@ export default function App() {
         void i18n.changeLanguage(lang);
       }
     }).catch(() => {/* 后端未就绪时静默忽略，保持浏览器检测结果 */});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 启动时静默检查更新，有新版本时在导航显示红点
+  useEffect(() => {
+    api.checkForUpdate().then((r) => {
+      if (r.hasUpdate) {
+        useAppStore.setState({ updateAvailable: true, latestVersion: r.latestVersion });
+      }
+    }).catch(() => {/* 网络不可用时静默忽略 */});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -130,6 +141,7 @@ export default function App() {
           <Route path="/ocr-eval" element={<OcrEvalPage />} />
           <Route path="/intents" element={<IntentManagePage />} />
           <Route path="/health" element={<HealthPage />} />
+          <Route path="/about" element={<AboutPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/lens" replace />} />

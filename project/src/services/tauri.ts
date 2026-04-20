@@ -270,6 +270,21 @@ export async function setLanguage(lang: string): Promise<void> {
   await invoke("set_language", { lang });
 }
 
+export async function getAppVersion(): Promise<string> {
+  return invoke<string>("get_app_version");
+}
+
+export interface UpdateCheckResult {
+  hasUpdate: boolean;
+  latestVersion: string;
+  releaseUrl: string;
+  releaseNotes: string;
+}
+
+export async function checkForUpdate(): Promise<UpdateCheckResult> {
+  return invoke<UpdateCheckResult>("check_for_update");
+}
+
 export async function generateDailyAnalysis(date: string): Promise<string> {
   return invoke<string>("generate_daily_analysis", { date });
 }

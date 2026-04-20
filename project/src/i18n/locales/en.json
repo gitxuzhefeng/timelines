@@ -45,7 +45,9 @@
     "clickToStop": "Click to stop capture",
     "clickToStart": "Click to start capture",
     "mainNav": "Main navigation",
-    "featureModules": "Feature modules"
+    "featureModules": "Feature modules",
+    "about": "About",
+    "aboutDesc": "Version · Links · Updates · Feedback"
   },
   "permissions": {
     "refreshPermissions": "Refresh system permissions",
@@ -354,5 +356,27 @@
     "languageDesc": "Choose the display language. Takes effect immediately.",
     "languageZh": "中文",
     "languageEn": "English"
+  },
+  "about": {
+    "title": "About",
+    "titleDesc": "Version · Links · Updates · Feedback",
+    "version": "Version",
+    "currentVersion": "Current version",
+    "checkUpdate": "Check for updates",
+    "checking": "Checking…",
+    "upToDate": "You're on the latest version",
+    "updateAvailable": "New version available: {{version}}",
+    "viewRelease": "View release notes",
+    "updateError": "Update check failed",
+    "links": "Links",
+    "github": "GitHub Repository",
+    "homepage": "Product homepage",
+    "feedback": "Feedback & Suggestions",
+    "feedbackDesc": "Found a bug or have a feature request? Open an issue on GitHub.",
+    "openIssue": "Open GitHub Issue",
+    "sponsor": "Support & Sponsor",
+    "sponsorDesc": "TimeLens is free and open source. If it helps you, consider buying me a coffee.",
+    "buyMeCoffee": "Buy Me a Coffee",
+    "wechatSponsor": "WeChat Sponsor"
   }
 }

@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 import { useAppStore } from "../stores/appStore";
 import { useDevModeStore } from "../stores/devModeStore";
 import * as api from "../services/tauri";
-
 function navCls(active: boolean): string {
   return [
     "tl-nav-item tl-interactive-row flex w-full items-center gap-2 rounded-lg border-0 px-2.5 py-2 text-left text-sm font-medium transition-colors",
@@ -21,6 +20,7 @@ export default function AppShell() {
   const setDate = useAppStore((s) => s.setDate);
   const isTracking = useAppStore((s) => s.isTracking);
   const devEnabled = useDevModeStore((s) => s.enabled);
+  const updateAvailable = useAppStore((s) => s.updateAvailable);
   const [captureBusy, setCaptureBusy] = useState(false);
 
   const MAIN_NAV = [
@@ -29,6 +29,7 @@ export default function AppShell() {
     { to: "/report", label: t("nav.dailyReport"), icon: "¶" },
     { to: "/intents", label: t("nav.intents"), icon: "⌗" },
     { to: "/settings", label: t("nav.settings"), icon: "⚙" },
+    { to: "/about", label: t("nav.about"), icon: "ℹ" },
   ] as const;
 
   const DEV_NAV = [
@@ -50,6 +51,7 @@ export default function AppShell() {
     if (pathname.startsWith("/ocr")) return { title: t("nav.ocrSearch"), sub: t("nav.devTools") };
     if (pathname.startsWith("/intents")) return { title: t("nav.intents"), sub: t("nav.intentsDesc") };
     if (pathname.startsWith("/health")) return { title: t("nav.health"), sub: t("nav.devTools") };
+    if (pathname.startsWith("/about")) return { title: t("nav.about"), sub: t("nav.aboutDesc") };
     return { title: "TimeLens" };
   }
 
@@ -96,7 +98,10 @@ export default function AppShell() {
                     >
                       {icon}
                     </span>
-                    {label}
+                    <span className="flex-1">{label}</span>
+                    {to === "/about" && updateAvailable && (
+                      <span className="ml-auto h-2 w-2 rounded-full bg-[var(--tl-status-bad)]" />
+                    )}
                   </>
                 )}
               </NavLink>
