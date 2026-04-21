@@ -47,7 +47,9 @@
     "mainNav": "Main navigation",
     "featureModules": "Feature modules",
     "about": "About",
-    "aboutDesc": "Version · Links · Updates · Feedback"
+    "aboutDesc": "Version · Links · Updates · Feedback",
+    "weeklyReport": "Weekly Report",
+    "weeklyReportDesc": "Weekly aggregation · Trend analysis"
   },
   "permissions": {
     "refreshPermissions": "Refresh system permissions",
@@ -292,7 +294,19 @@
     "model": "Model: {{model}}",
     "promptHash": "Prompt hash: {{hash}}…",
     "noAiReport": "No AI-enhanced report. Generate today's daily_analysis first, then click \"Generate AI-enhanced report\".",
-    "noReport": "No report. Select a date with data and click generate."
+    "noReport": "No report. Select a date with data and click generate.",
+    "export": "Export",
+    "exportTitle": "Export Daily Report",
+    "exportFormat": "Format",
+    "exportFormatMd": "Markdown (with frontmatter, for Obsidian / Notion)",
+    "exportFormatHtml": "HTML (self-contained, open in browser)",
+    "exportFormatCsv": "CSV (session data, for Excel / analysis)",
+    "exportFormatJson": "JSON (full analysis data, for programmatic use)",
+    "exportBtn": "Export",
+    "exportSuccess": "Exported to {{path}}",
+    "exportNoReport": "Please generate a report before exporting",
+    "exportNoAnalysis": "Please generate analysis before exporting CSV / JSON",
+    "exportProHint": "Batch export (last 7 / 30 days) coming soon · Pro feature"
   },
   "settings": {
     "title": "Settings",
@@ -372,7 +386,11 @@
     "language": "Language",
     "languageDesc": "Choose the display language. Takes effect immediately.",
     "languageZh": "中文",
-    "languageEn": "English"
+    "languageEn": "English",
+    "weekStartDay": "Week start day",
+    "weekStartDayDesc": "Affects the week range in Weekly Report",
+    "weekStartMonday": "Monday",
+    "weekStartSunday": "Sunday"
   },
   "about": {
     "title": "About",
@@ -395,5 +413,53 @@
     "sponsorDesc": "TimeLens is free and open source. If it helps you, consider buying me a coffee.",
     "buyMeCoffee": "Buy Me a Coffee",
     "wechatSponsor": "WeChat Sponsor"
+  },
+  "weekly": {
+    "title": "Weekly Report",
+    "noData": "No data this week",
+    "noDataDesc": "Data will appear here after you start using the app.",
+    "insufficientData": "Insufficient data",
+    "insufficientDataDesc": "Only {{days}} day(s) of data available. AI analysis requires at least 3 days.",
+    "generating": "Generating…",
+    "generate": "Generate report",
+    "refresh": "Regenerate",
+    "weekOf": "{{start}} ~ {{end}}",
+    "validDays": "Valid days",
+    "totalTime": "Total time",
+    "avgFlow": "Avg flow score",
+    "heatmap": {
+      "title": "Focus Heatmap",
+      "desc": "Darker color = higher focus in that hour",
+      "noData": "No heatmap data",
+      "hour": "{{hour}}:00",
+      "day": {
+        "0": "Sun",
+        "1": "Mon",
+        "2": "Tue",
+        "3": "Wed",
+        "4": "Thu",
+        "5": "Fri",
+        "6": "Sat"
+      }
+    },
+    "trend": {
+      "title": "Productivity Score Trend",
+      "noData": "No score data",
+      "score": "Score",
+      "peak": "Peak",
+      "low": "Low"
+    },
+    "apps": {
+      "title": "App Usage Trend",
+      "noData": "No app data",
+      "daily": "Daily usage"
+    },
+    "ai": {
+      "title": "AI Weekly Narrative",
+      "noData": "No AI analysis",
+      "insufficientDays": "AI narrative requires at least 3 days of data (current: {{days}})",
+      "aiDisabled": "AI is not enabled. Enable it in Settings.",
+      "generating": "Generating AI analysis…"
+    }
   }
 }

@@ -698,6 +698,7 @@ pub fn generate_daily_analysis_into(conn: &mut Connection, date: &str) -> Result
         let (k, v) = row;
         *intent_map.entry(k).or_insert(0) += v;
     }
+    drop(stmt);
     let intent_breakdown = serde_json::to_string(&intent_map).map_err(|e| e.to_string())?;
 
     let mut top_apps_arr = Vec::new();
@@ -713,6 +714,7 @@ pub fn generate_daily_analysis_into(conn: &mut Connection, date: &str) -> Result
     for x in tr {
         top_apps_arr.push(x.map_err(|e| e.to_string())?);
     }
+    drop(stmt);
     let top_apps = serde_json::to_string(&Value::Array(top_apps_arr)).map_err(|e| e.to_string())?;
 
     let switches_per_hour =
@@ -841,6 +843,10 @@ pub fn generate_daily_analysis_into(conn: &mut Connection, date: &str) -> Result
         ],
     )
     .map_err(|e| e.to_string())?;
+
+    // 写入后将该日所属周标记为 stale，使周报下次进入时自动重算
+    let week_start_day = crate::core::settings::get_week_start_day(conn);
+    let _ = crate::analysis::weekly::mark_week_stale_for_date(conn, date, week_start_day);
 
     Ok(id)
 }

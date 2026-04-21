@@ -1535,6 +1535,245 @@ pub fn export_daily_report(
     Ok(path.to_string_lossy().into_owned())
 }
 
+// ── 九期：结构化导出命令 ──────────────────────────────────────────────────────
+
+fn exports_subdir(state: &AppState, sub: &str) -> Result<std::path::PathBuf, String> {
+    let dir = state.0.paths.exports_dir.join(sub);
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir)
+}
+
+#[tauri::command]
+pub fn export_sessions_csv(
+    state: State<'_, AppState>,
+    date: String,
+) -> Result<String, String> {
+    use crate::core::time_range::local_day_bounds_ms;
+    let (start_ms, end_ms) = local_day_bounds_ms(&date)?;
+    let sessions: Vec<WindowSession> = {
+        let conn = state.0.read_conn.lock();
+        let mut stmt = conn
+            .prepare(
+                "SELECT id, start_ms, end_ms, duration_ms, app_name, bundle_id, window_title, \
+                 extracted_url, extracted_file_path, intent, raw_event_count, is_active \
+                 FROM window_sessions WHERE start_ms >= ?1 AND start_ms < ?2 ORDER BY start_ms",
+            )
+            .map_err(|e| e.to_string())?;
+        let rows: Vec<WindowSession> = stmt
+            .query_map(params![start_ms, end_ms], |r| {
+                Ok(WindowSession {
+                    id: r.get(0)?,
+                    start_ms: r.get(1)?,
+                    end_ms: r.get(2)?,
+                    duration_ms: r.get(3)?,
+                    app_name: r.get(4)?,
+                    bundle_id: r.get(5)?,
+                    window_title: r.get(6)?,
+                    extracted_url: r.get(7)?,
+                    extracted_file_path: r.get(8)?,
+                    intent: r.get(9)?,
+                    raw_event_count: r.get(10)?,
+                    is_active: r.get(11)?,
+                })
+            })
+            .map_err(|e| e.to_string())?
+            .filter_map(|r| r.ok())
+            .collect();
+        rows
+    };
+    if sessions.is_empty() {
+        return Err("当日暂无会话数据".into());
+    }
+    let bytes = crate::export::csv::sessions_to_csv(&sessions)?;
+    let dir = exports_subdir(&state, &date)?;
+    let path = dir.join(format!("timelens-sessions-{date}.csv"));
+    fs::write(&path, bytes).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+pub fn export_daily_json(
+    state: State<'_, AppState>,
+    date: String,
+) -> Result<String, String> {
+    let conn = state.0.read_conn.lock();
+    let raw: String = conn
+        .query_row(
+            "SELECT id, analysis_date, generated_at_ms, version, total_active_ms, intent_breakdown, top_apps, \
+             total_switches, switches_per_hour, top_switch_pairs, deep_work_segments, deep_work_total_ms, \
+             fragmentation_pct, notification_count, top_interrupters, interrupts_in_deep, avg_kpm, kpm_by_hour, \
+             avg_delete_ratio, flow_score_avg, struggle_score_avg, clipboard_pairs, top_flows, scene_breakdown, \
+             degraded_sections FROM daily_analysis WHERE analysis_date = ?1",
+            [&date],
+            |r| {
+                let obj = serde_json::json!({
+                    "id": r.get::<_, String>(0)?,
+                    "analysis_date": r.get::<_, String>(1)?,
+                    "generated_at_ms": r.get::<_, i64>(2)?,
+                    "version": r.get::<_, i64>(3)?,
+                    "total_active_ms": r.get::<_, i64>(4)?,
+                    "intent_breakdown": serde_json::from_str::<serde_json::Value>(&r.get::<_, String>(5)?).unwrap_or_default(),
+                    "top_apps": serde_json::from_str::<serde_json::Value>(&r.get::<_, String>(6)?).unwrap_or_default(),
+                    "total_switches": r.get::<_, i64>(7)?,
+                    "switches_per_hour": serde_json::from_str::<serde_json::Value>(&r.get::<_, String>(8)?).unwrap_or_default(),
+                    "top_switch_pairs": serde_json::from_str::<serde_json::Value>(&r.get::<_, String>(9)?).unwrap_or_default(),
+                    "deep_work_segments": serde_json::from_str::<serde_json::Value>(&r.get::<_, String>(10)?).unwrap_or_default(),
+                    "deep_work_total_ms": r.get::<_, i64>(11)?,
+                    "fragmentation_pct": r.get::<_, f64>(12)?,
+                    "notification_count": r.get::<_, i64>(13)?,
+                    "top_interrupters": serde_json::from_str::<serde_json::Value>(&r.get::<_, String>(14)?).unwrap_or_default(),
+                    "interrupts_in_deep": r.get::<_, i64>(15)?,
+                    "avg_kpm": r.get::<_, Option<f64>>(16)?,
+                    "kpm_by_hour": serde_json::from_str::<serde_json::Value>(&r.get::<_, String>(17)?).unwrap_or_default(),
+                    "avg_delete_ratio": r.get::<_, Option<f64>>(18)?,
+                    "flow_score_avg": r.get::<_, Option<f64>>(19)?,
+                    "struggle_score_avg": r.get::<_, Option<f64>>(20)?,
+                    "clipboard_pairs": r.get::<_, Option<i64>>(21)?,
+                    "top_flows": r.get::<_, Option<String>>(22)?.and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()),
+                    "scene_breakdown": r.get::<_, Option<String>>(23)?.and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()),
+                    "degraded_sections": serde_json::from_str::<serde_json::Value>(&r.get::<_, String>(24)?).unwrap_or_default(),
+                });
+                Ok(obj.to_string())
+            },
+        )
+        .map_err(|_| "没有可导出的分析数据，请先生成当日分析".to_string())?;
+    drop(conn);
+    let json_out = crate::export::json::daily_analysis_to_json(&raw)?;
+    let dir = exports_subdir(&state, &date)?;
+    let path = dir.join(format!("timelens-analysis-{date}.json"));
+    fs::write(&path, json_out).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+pub fn export_daily_markdown(
+    state: State<'_, AppState>,
+    date: String,
+    report_type: Option<String>,
+) -> Result<String, String> {
+    let t = report_type.unwrap_or_else(|| "fact_only".into());
+    let conn = state.0.read_conn.lock();
+    let content_md: String = conn
+        .query_row(
+            "SELECT content_md FROM daily_reports WHERE report_date = ?1 AND report_type = ?2 \
+             ORDER BY generated_at_ms DESC LIMIT 1",
+            rusqlite::params![date, t],
+            |r| r.get(0),
+        )
+        .map_err(|_| "没有可导出的报告，请先生成日报".to_string())?;
+    // 从 daily_analysis 取 top_app 和 total_active_ms
+    let (total_active_ms, top_app): (i64, Option<String>) = conn
+        .query_row(
+            "SELECT total_active_ms, top_apps FROM daily_analysis WHERE analysis_date = ?1",
+            [&date],
+            |r| {
+                let ms: i64 = r.get(0)?;
+                let top_apps_json: String = r.get(1)?;
+                let top_app = serde_json::from_str::<Vec<serde_json::Value>>(&top_apps_json)
+                    .ok()
+                    .and_then(|arr| {
+                        arr.first()
+                            .and_then(|v| v.get("app"))
+                            .and_then(|x| x.as_str())
+                            .map(|s| s.to_string())
+                    });
+                Ok((ms, top_app))
+            },
+        )
+        .unwrap_or((0, None));
+    drop(conn);
+    let total_active_hours = total_active_ms as f64 / 3_600_000.0;
+    let md_with_fm = crate::export::markdown::add_daily_frontmatter(
+        &date,
+        &content_md,
+        total_active_hours,
+        top_app.as_deref(),
+    );
+    let dir = exports_subdir(&state, &date)?;
+    let suffix = if t == "ai_enhanced" { "-ai" } else { "" };
+    let path = dir.join(format!("timelens-daily-{date}{suffix}.md"));
+    fs::write(&path, md_with_fm).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+pub fn export_daily_html(
+    state: State<'_, AppState>,
+    date: String,
+) -> Result<String, String> {
+    let conn = state.0.read_conn.lock();
+    let content_md: String = conn
+        .query_row(
+            "SELECT content_md FROM daily_reports WHERE report_date = ?1 \
+             ORDER BY generated_at_ms DESC LIMIT 1",
+            [&date],
+            |r| r.get(0),
+        )
+        .map_err(|_| "没有可导出的报告，请先生成日报".to_string())?;
+    let top_apps_json: String = conn
+        .query_row(
+            "SELECT top_apps FROM daily_analysis WHERE analysis_date = ?1",
+            [&date],
+            |r| r.get(0),
+        )
+        .unwrap_or_default();
+    drop(conn);
+    let version = env!("CARGO_PKG_VERSION");
+    let generated_at = chrono::Local::now().format("%Y-%m-%d %H:%M").to_string();
+    let html = crate::export::html::render_html(
+        &content_md,
+        &top_apps_json,
+        &date,
+        version,
+        &generated_at,
+    );
+    let dir = exports_subdir(&state, &date)?;
+    let path = dir.join(format!("timelens-daily-{date}.html"));
+    fs::write(&path, html).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+pub fn export_weekly_markdown(
+    state: State<'_, AppState>,
+    week_start: String,
+) -> Result<String, String> {
+    let conn = state.0.read_conn.lock();
+    // 查询 weekly_reports 表（八期引入）
+    let row: Option<(String, i64, f64)> = conn
+        .query_row(
+            "SELECT content, valid_days, avg_flow_score FROM weekly_reports wr \
+             JOIN weekly_analysis wa ON wr.week_start = wa.week_start \
+             WHERE wr.week_start = ?1 ORDER BY wr.created_at DESC LIMIT 1",
+            [&week_start],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .optional()
+        .map_err(|e| e.to_string())?;
+    drop(conn);
+    let (content_md, valid_days, avg_flow_score) =
+        row.ok_or_else(|| "没有可导出的周报，请先生成周报".to_string())?;
+    // 计算 week_end（week_start + 6 天）
+    let week_end = chrono::NaiveDate::parse_from_str(&week_start, "%Y-%m-%d")
+        .map(|d| {
+            (d + chrono::Duration::days(6))
+                .format("%Y-%m-%d")
+                .to_string()
+        })
+        .unwrap_or_else(|_| week_start.clone());
+    let md_with_fm = crate::export::markdown::add_weekly_frontmatter(
+        &week_start,
+        &week_end,
+        &content_md,
+        valid_days,
+        avg_flow_score,
+    );
+    let dir = exports_subdir(&state, &week_start)?;
+    let path = dir.join(format!("timelens-weekly-{week_start}.md"));
+    fs::write(&path, md_with_fm).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().into_owned())
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OcrSettingsDto {
@@ -1992,6 +2231,551 @@ pub fn evaluate_ocr_snapshot(
             ocr_meta: None,
         }),
     }
+}
+
+// ── 八期：周报命令 ────────────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WeeklyAnalysisDto {
+    pub id: String,
+    pub week_start: String,
+    pub week_end: String,
+    pub valid_days: i64,
+    pub total_tracked_seconds: i64,
+    pub avg_flow_score: Option<f64>,
+    pub daily_flow_scores: Option<String>,
+    pub hourly_heatmap: Option<String>,
+    pub top_apps_by_day: Option<String>,
+    pub weekly_top_apps: Option<String>,
+    pub avg_deep_work_minutes: Option<f64>,
+    pub avg_fragmentation_pct: Option<f64>,
+    pub peak_focus_day: Option<String>,
+    pub peak_focus_hour_range: Option<String>,
+    pub generated_at: String,
+    pub is_stale: i64,
+}
+
+#[tauri::command]
+pub fn get_week_start_for_date(
+    state: State<'_, AppState>,
+    date: String,
+) -> Result<String, String> {
+    let conn = state.0.read_conn.lock();
+    let wsd = crate::core::settings::get_week_start_day(&conn);
+    crate::analysis::weekly::week_start_for_date(&date, wsd)
+}
+
+#[tauri::command]
+pub fn set_week_start_day(
+    state: State<'_, AppState>,
+    day: u8,
+) -> Result<(), String> {
+    let mut c = open_db_rw(&state.0.paths.db_path)?;
+    crate::core::settings::set_week_start_day(&mut c, day).map_err(|e| e.to_string())?;
+    crate::analysis::weekly::mark_all_weeks_stale(&mut c)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_week_start_day(state: State<'_, AppState>) -> Result<u8, String> {
+    let conn = state.0.read_conn.lock();
+    Ok(crate::core::settings::get_week_start_day(&conn))
+}
+
+#[tauri::command]
+pub fn generate_weekly_analysis(
+    state: State<'_, AppState>,
+    week_start: String,
+) -> Result<String, String> {
+    let mut c = open_db_rw(&state.0.paths.db_path)?;
+    let wsd = crate::core::settings::get_week_start_day(&c);
+    crate::analysis::weekly::generate_weekly_analysis_into(&mut c, &week_start, wsd)
+}
+
+#[tauri::command]
+pub fn get_weekly_analysis(
+    state: State<'_, AppState>,
+    week_start: String,
+) -> Result<Option<WeeklyAnalysisDto>, String> {
+    let conn = state.0.read_conn.lock();
+    let row = conn
+        .query_row(
+            "SELECT id, week_start, week_end, valid_days, total_tracked_seconds, avg_flow_score, \
+             daily_flow_scores, hourly_heatmap, top_apps_by_day, weekly_top_apps, \
+             avg_deep_work_minutes, avg_fragmentation_pct, peak_focus_day, peak_focus_hour_range, \
+             generated_at, is_stale \
+             FROM weekly_analysis WHERE week_start = ?1",
+            [&week_start],
+            |r| {
+                Ok(WeeklyAnalysisDto {
+                    id: r.get(0)?,
+                    week_start: r.get(1)?,
+                    week_end: r.get(2)?,
+                    valid_days: r.get(3)?,
+                    total_tracked_seconds: r.get(4)?,
+                    avg_flow_score: r.get(5)?,
+                    daily_flow_scores: r.get(6)?,
+                    hourly_heatmap: r.get(7)?,
+                    top_apps_by_day: r.get(8)?,
+                    weekly_top_apps: r.get(9)?,
+                    avg_deep_work_minutes: r.get(10)?,
+                    avg_fragmentation_pct: r.get(11)?,
+                    peak_focus_day: r.get(12)?,
+                    peak_focus_hour_range: r.get(13)?,
+                    generated_at: r.get(14)?,
+                    is_stale: r.get(15)?,
+                })
+            },
+        )
+        .optional()
+        .map_err(|e| e.to_string())?;
+    Ok(row)
+}
+
+#[tauri::command]
+pub fn generate_weekly_report(
+    state: State<'_, AppState>,
+    week_start: String,
+    with_ai: bool,
+    lang: String,
+) -> Result<crate::analysis::weekly_report::WeeklyReportDto, String> {
+    if with_ai {
+        if !state.0.ai_enabled.load(Ordering::Relaxed) {
+            return Err("AI 未开启：请先在设置中开启并配置".into());
+        }
+    }
+    let mut c = open_db_rw(&state.0.paths.db_path)?;
+    crate::analysis::weekly_report::generate_weekly_report_into(&mut c, &week_start, with_ai, &lang)
+}
+
+#[tauri::command]
+pub fn get_weekly_report(
+    state: State<'_, AppState>,
+    week_start: String,
+    report_type: Option<String>,
+) -> Result<Option<crate::analysis::weekly_report::WeeklyReportDto>, String> {
+    let t = report_type.unwrap_or_else(|| "fact_only".into());
+    let conn = state.0.read_conn.lock();
+    let row = conn
+        .query_row(
+            "SELECT id, week_start, report_type, content_md, lang, created_at \
+             FROM weekly_reports WHERE week_start = ?1 AND report_type = ?2 \
+             ORDER BY created_at DESC LIMIT 1",
+            rusqlite::params![week_start, t],
+            |r| {
+                Ok(crate::analysis::weekly_report::WeeklyReportDto {
+                    id: r.get(0)?,
+                    week_start: r.get(1)?,
+                    report_type: r.get(2)?,
+                    content_md: r.get(3)?,
+                    lang: r.get(4)?,
+                    created_at: r.get(5)?,
+                })
+            },
+        )
+        .optional()
+        .map_err(|e| e.to_string())?;
+    Ok(row)
+}
+
+// ── 十期：AI 对话助手命令 ────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AssistantMessageDto {
+    pub id: String,
+    pub role: String,
+    pub content: String,
+    pub created_at: i64,
+}
+
+#[tauri::command]
+pub fn get_assistant_history(
+    state: State<'_, AppState>,
+    limit: Option<i32>,
+) -> Result<Vec<AssistantMessageDto>, String> {
+    let lim = limit.unwrap_or(40).clamp(10, 200);
+    let conn = state.0.read_conn.lock();
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, role, content, created_at FROM assistant_history \
+             ORDER BY created_at DESC LIMIT ?1",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([lim], |r| {
+            Ok(AssistantMessageDto {
+                id: r.get(0)?,
+                role: r.get(1)?,
+                content: r.get(2)?,
+                created_at: r.get(3)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    let mut items: Vec<AssistantMessageDto> = rows
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+    items.reverse(); // ascending order for display
+    Ok(items)
+}
+
+#[tauri::command]
+pub fn clear_assistant_history(state: State<'_, AppState>) -> Result<(), String> {
+    let mut c = open_db_rw(&state.0.paths.db_path)?;
+    c.execute("DELETE FROM assistant_history", [])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Build a context snapshot from today's daily_analysis for the assistant.
+#[tauri::command]
+pub fn get_assistant_context(
+    state: State<'_, AppState>,
+    date: String,
+) -> Result<Option<serde_json::Value>, String> {
+    let conn = state.0.read_conn.lock();
+    let row: Option<(
+        Option<i64>,
+        Option<String>,
+        Option<String>,
+        Option<i32>,
+        Option<f64>,
+        Option<f64>,
+        Option<f64>,
+        Option<f64>,
+        Option<i64>,
+        Option<String>,
+    )> = conn
+        .query_row(
+            "SELECT total_active_ms, intent_breakdown, top_apps, total_switches, \
+             deep_work_total_ms, fragmentation_pct, flow_score_avg, struggle_score_avg, \
+             notification_count, scene_breakdown \
+             FROM daily_analysis WHERE analysis_date = ?1",
+            [&date],
+            |r| {
+                Ok((
+                    r.get(0)?,
+                    r.get(1)?,
+                    r.get(2)?,
+                    r.get(3)?,
+                    r.get(4)?,
+                    r.get(5)?,
+                    r.get(6)?,
+                    r.get(7)?,
+                    r.get(8)?,
+                    r.get(9)?,
+                ))
+            },
+        )
+        .optional()
+        .map_err(|e| e.to_string())?;
+    let Some((
+        total_active_ms,
+        intent_breakdown,
+        top_apps,
+        total_switches,
+        deep_work_total_ms,
+        fragmentation_pct,
+        flow_score_avg,
+        struggle_score_avg,
+        notification_count,
+        scene_breakdown,
+    )) = row
+    else {
+        return Ok(None);
+    };
+    let ctx = json!({
+        "analysis_date": date,
+        "total_active_ms": total_active_ms,
+        "total_active_minutes": total_active_ms.map(|v| v / 60000),
+        "intent_breakdown": intent_breakdown.and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()),
+        "top_apps": top_apps.and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()),
+        "total_switches": total_switches,
+        "deep_work_total_ms": deep_work_total_ms,
+        "deep_work_minutes": deep_work_total_ms.map(|v| (v / 60000.0) as i64),
+        "fragmentation_pct": fragmentation_pct,
+        "flow_score_avg": flow_score_avg,
+        "struggle_score_avg": struggle_score_avg,
+        "notification_count": notification_count,
+        "scene_breakdown": scene_breakdown.and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()),
+    });
+    Ok(Some(ctx))
+}
+
+#[tauri::command]
+pub fn query_assistant(
+    state: State<'_, AppState>,
+    question: String,
+    context_date: Option<String>,
+) -> Result<AssistantMessageDto, String> {
+    if !state.0.ai_enabled.load(Ordering::Relaxed) {
+        return Err("AI 未开启：请先在设置中开启并配置 AI".into());
+    }
+    let (base_url, api_key, model) = {
+        let conn = state.0.read_conn.lock();
+        let url = settings::get_ai_base_url(&conn);
+        let key = settings::get_ai_api_key(&conn)
+            .ok_or_else(|| "AI API Key 未配置，请在设置页填写".to_string())?;
+        let m = settings::get_ai_model(&conn);
+        let lang = settings::get_language(&conn);
+        (url, key, (m, lang))
+    };
+    let (model_name, lang) = model;
+
+    // Get conversation history
+    let history: Vec<crate::analysis::assistant::ChatMessage> = {
+        let conn = state.0.read_conn.lock();
+        let mut stmt = conn
+            .prepare(
+                "SELECT role, content FROM assistant_history ORDER BY created_at ASC LIMIT 20",
+            )
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |r| {
+                Ok(crate::analysis::assistant::ChatMessage {
+                    role: r.get(0)?,
+                    content: r.get(1)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?
+    };
+
+    // Get context snapshot
+    let context_snapshot = if let Some(date) = context_date {
+        let conn = state.0.read_conn.lock();
+        let row: Option<(
+            Option<i64>, Option<String>, Option<String>,
+            Option<i32>, Option<f64>, Option<f64>, Option<f64>,
+        )> = conn
+            .query_row(
+                "SELECT total_active_ms, intent_breakdown, top_apps, total_switches, \
+                 deep_work_total_ms, fragmentation_pct, flow_score_avg \
+                 FROM daily_analysis WHERE analysis_date = ?1",
+                [&date],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?)),
+            )
+            .optional()
+            .map_err(|e| e.to_string())?;
+        row.map(|(tam, ib, ta, ts, dwtm, fp, fsa)| {
+            json!({
+                "analysis_date": date,
+                "total_active_minutes": tam.map(|v| v / 60000),
+                "intent_breakdown": ib.and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()),
+                "top_apps": ta.and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()),
+                "total_switches": ts,
+                "deep_work_minutes": dwtm.map(|v| (v / 60000.0) as i64),
+                "fragmentation_pct": fp,
+                "flow_score_avg": fsa,
+            })
+        })
+    } else {
+        None
+    };
+
+    // Save user message first
+    let user_id = Uuid::new_v4().to_string();
+    let now_ms = Utc::now().timestamp_millis();
+    {
+        let mut c = open_db_rw(&state.0.paths.db_path)?;
+        c.execute(
+            "INSERT INTO assistant_history (id, role, content, context_snapshot, created_at) \
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![user_id, "user", question, Option::<String>::None, now_ms],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+
+    // Call AI
+    let answer = crate::analysis::assistant::query_assistant(
+        &base_url,
+        &api_key,
+        &model_name,
+        context_snapshot.as_ref(),
+        &history,
+        &question,
+        &lang,
+    )?;
+
+    // Save assistant response
+    let reply_id = Uuid::new_v4().to_string();
+    let reply_ms = Utc::now().timestamp_millis();
+    {
+        let mut c = open_db_rw(&state.0.paths.db_path)?;
+        c.execute(
+            "INSERT INTO assistant_history (id, role, content, context_snapshot, created_at) \
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![reply_id, "assistant", answer, Option::<String>::None, reply_ms],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+
+    Ok(AssistantMessageDto {
+        id: reply_id,
+        role: "assistant".into(),
+        content: answer,
+        created_at: reply_ms,
+    })
+}
+
+// ── 十期：开机自启动 ────────────────────────────────────────────────────────
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AutostartDto {
+    pub enabled: bool,
+}
+
+#[tauri::command]
+pub fn get_autostart_enabled(state: State<'_, AppState>) -> Result<AutostartDto, String> {
+    let conn = state.0.read_conn.lock();
+    let enabled = settings::get_autostart_enabled(&conn);
+    Ok(AutostartDto { enabled })
+}
+
+#[tauri::command]
+pub fn set_autostart_enabled(
+    state: State<'_, AppState>,
+    enabled: bool,
+) -> Result<AutostartDto, String> {
+    let mut c = open_db_rw(&state.0.paths.db_path)?;
+    settings::set_autostart_enabled(&mut c, enabled).map_err(|e| e.to_string())?;
+    drop(c);
+
+    // Apply platform-level autostart
+    apply_platform_autostart(enabled)?;
+
+    Ok(AutostartDto { enabled })
+}
+
+fn apply_platform_autostart(enabled: bool) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        macos_set_autostart(enabled)
+    }
+    #[cfg(target_os = "windows")]
+    {
+        windows_set_autostart(enabled)
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        let _ = enabled;
+        Ok(())
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn macos_set_autostart(enabled: bool) -> Result<(), String> {
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let bundle_path = {
+        // Walk up from .../TimeLens.app/Contents/MacOS/timelens -> .../TimeLens.app
+        let mut p = exe.clone();
+        for _ in 0..3 {
+            p = p.parent().map(|x| x.to_path_buf()).unwrap_or(p.clone());
+        }
+        p
+    };
+    let label = "com.timelens.app";
+    let home = dirs::home_dir().ok_or("找不到 Home 目录")?;
+    let plist_dir = home.join("Library/LaunchAgents");
+    let plist_path = plist_dir.join(format!("{label}.plist"));
+    if enabled {
+        std::fs::create_dir_all(&plist_dir).map_err(|e| e.to_string())?;
+        let contents = format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+ "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>{label}</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>{exe}</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>
+"#,
+            label = label,
+            exe = exe.to_string_lossy()
+        );
+        let _ = bundle_path; // bundled app path collected but plist uses exe directly
+        std::fs::write(&plist_path, contents).map_err(|e| e.to_string())?;
+        let _ = std::process::Command::new("launchctl")
+            .args(["load", "-w", &plist_path.to_string_lossy()])
+            .output();
+    } else {
+        if plist_path.exists() {
+            let _ = std::process::Command::new("launchctl")
+                .args(["unload", "-w", &plist_path.to_string_lossy()])
+                .output();
+            std::fs::remove_file(&plist_path).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn windows_set_autostart(enabled: bool) -> Result<(), String> {
+    use windows::Win32::System::Registry::{
+        RegCloseKey, RegCreateKeyExW, RegDeleteValueW, RegSetValueExW,
+        HKEY_CURRENT_USER, KEY_WRITE, REG_OPTION_NON_VOLATILE, REG_SZ,
+    };
+    use windows::core::PCWSTR;
+
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let reg_key_path = "Software\\Microsoft\\Windows\\CurrentVersion\\Run\0";
+    let value_name = "TimeLens\0";
+    let wide_path: Vec<u16> = reg_key_path.encode_utf16().collect();
+    let wide_name: Vec<u16> = value_name.encode_utf16().collect();
+
+    unsafe {
+        let mut hkey = windows::Win32::System::Registry::HKEY::default();
+        let res = RegCreateKeyExW(
+            HKEY_CURRENT_USER,
+            PCWSTR(wide_path.as_ptr()),
+            0,
+            PCWSTR::null(),
+            REG_OPTION_NON_VOLATILE,
+            KEY_WRITE,
+            None,
+            &mut hkey,
+            None,
+        );
+        if res.is_err() {
+            return Err(format!("无法打开注册表键: {:?}", res));
+        }
+        if enabled {
+            let exe_str = exe.to_string_lossy();
+            let exe_wide: Vec<u16> = exe_str.encode_utf16().chain(std::iter::once(0)).collect();
+            let bytes = std::slice::from_raw_parts(
+                exe_wide.as_ptr() as *const u8,
+                exe_wide.len() * 2,
+            );
+            let res = RegSetValueExW(
+                hkey,
+                PCWSTR(wide_name.as_ptr()),
+                0,
+                REG_SZ,
+                Some(bytes),
+            );
+            let _ = RegCloseKey(hkey);
+            if res.is_err() {
+                return Err(format!("写入注册表失败: {:?}", res));
+            }
+        } else {
+            let res = RegDeleteValueW(hkey, PCWSTR(wide_name.as_ptr()));
+            let _ = RegCloseKey(hkey);
+            // Ignore error if value doesn't exist
+            let _ = res;
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
