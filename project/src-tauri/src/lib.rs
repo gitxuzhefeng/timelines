@@ -396,6 +396,7 @@ pub fn run() {
             api::get_ai_settings,
             api::set_ai_settings,
             api::set_ai_privacy_acknowledged,
+            api::test_ai_connection,
             api::update_session_intent,
             api::list_app_intent_aggregates,
             api::set_intent_for_app_aggregate,

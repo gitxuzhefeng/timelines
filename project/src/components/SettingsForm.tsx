@@ -23,6 +23,27 @@ import {
   type SupportedLanguage,
 } from "../i18n";
 
+type AiProvider = "claude" | "deepseek" | "qwen" | "custom";
+
+const PROVIDER_PRESETS: Record<Exclude<AiProvider, "custom">, { baseUrl: string; model: string }> = {
+  claude:   { baseUrl: "https://api.anthropic.com/v1",                          model: "claude-sonnet-4-6" },
+  deepseek: { baseUrl: "https://api.deepseek.com/v1",                           model: "deepseek-chat" },
+  qwen:     { baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",     model: "qwen-plus" },
+};
+
+const PROVIDER_GUIDE_URLS: Partial<Record<AiProvider, string>> = {
+  claude:   "https://console.anthropic.com/settings/keys",
+  deepseek: "https://platform.deepseek.com/api_keys",
+  qwen:     "https://bailian.console.aliyun.com/",
+};
+
+function inferProvider(baseUrl: string): AiProvider {
+  for (const [key, preset] of Object.entries(PROVIDER_PRESETS)) {
+    if (baseUrl === preset.baseUrl) return key as AiProvider;
+  }
+  return "custom";
+}
+
 type SettingsFormProps = {
   className?: string;
 };
@@ -39,6 +60,9 @@ export function SettingsForm({ className }: SettingsFormProps) {
   const [aiModel, setAiModel] = useState("");
   const [aiKeyInput, setAiKeyInput] = useState("");
   const [aiCfgMsg, setAiCfgMsg] = useState<string | null>(null);
+  const [activeProvider, setActiveProvider] = useState<AiProvider>("custom");
+  const [testResult, setTestResult] = useState<{ ok: boolean; ms?: number; error?: string } | null>(null);
+  const [testing, setTesting] = useState(false);
   const [ocr, setOcr] = useState<OcrSettingsDto | null>(null);
   const [ocrPrivacyOpen, setOcrPrivacyOpen] = useState(false);
   const [ocrMsg, setOcrMsg] = useState<string | null>(null);
@@ -62,6 +86,7 @@ export function SettingsForm({ className }: SettingsFormProps) {
     setOcrPipe(ocrcfg.pipeline);
     setAiBaseUrl(aicfg.baseUrl);
     setAiModel(aicfg.model);
+    setActiveProvider(inferProvider(aicfg.baseUrl));
     setAiKeyInput("");
   }, []);
 
@@ -76,6 +101,7 @@ export function SettingsForm({ className }: SettingsFormProps) {
         setAi(aicfg);
         setAiBaseUrl(aicfg.baseUrl);
         setAiModel(aicfg.model);
+        setActiveProvider(inferProvider(aicfg.baseUrl));
       })
       .catch(() => {});
     void api
@@ -162,6 +188,35 @@ export function SettingsForm({ className }: SettingsFormProps) {
       setAiCfgMsg(t("settings.keyCleared"));
     } catch (e) {
       setErr(String(e));
+    }
+  }
+
+  async function selectProvider(p: AiProvider) {
+    setActiveProvider(p);
+    setTestResult(null);
+    setAiCfgMsg(null);
+    if (p !== "custom") {
+      const preset = PROVIDER_PRESETS[p];
+      setAiBaseUrl(preset.baseUrl);
+      setAiModel(preset.model);
+      try {
+        await api.setAiSettings(preset.baseUrl, preset.model, null);
+      } catch (e) {
+        setErr(String(e));
+      }
+    }
+  }
+
+  async function handleTestConnection() {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await api.testAiConnection(aiBaseUrl, aiModel, aiKeyInput);
+      setTestResult({ ok: res.ok, ms: res.latencyMs, error: res.error ?? undefined });
+    } catch (e) {
+      setTestResult({ ok: false, error: String(e) });
+    } finally {
+      setTesting(false);
     }
   }
 
@@ -619,56 +674,134 @@ export function SettingsForm({ className }: SettingsFormProps) {
           {t("settings.aiDesc")}
         </p>
 
-        <div className="max-w-md space-y-2 rounded border border-[var(--tl-line)] bg-[var(--tl-surface)] p-3">
-          <label className="block text-xs text-[var(--tl-muted)]">
-            Base URL
-            <input
-              type="text"
-              value={aiBaseUrl}
-              onChange={(e) => setAiBaseUrl(e.target.value)}
-              className="mt-1 w-full rounded border border-[var(--tl-line)] bg-[var(--tl-surface-deep)] px-2 py-1 font-mono text-sm text-[var(--tl-ink)]"
-              placeholder="https://api.openai.com/v1"
-            />
-          </label>
-          <label className="block text-xs text-[var(--tl-muted)]">
-            {t("settings.modelName")}
-            <input
-              type="text"
-              value={aiModel}
-              onChange={(e) => setAiModel(e.target.value)}
-              className="mt-1 w-full rounded border border-[var(--tl-line)] bg-[var(--tl-surface-deep)] px-2 py-1 font-mono text-sm text-[var(--tl-ink)]"
-              placeholder="gpt-4o-mini"
-            />
-          </label>
-          <label className="block text-xs text-[var(--tl-muted)]">
-            {t("settings.apiKey", { status: ai.hasApiKey ? t("settings.apiKeyConfigured") : t("settings.apiKeyNotConfigured") })}
-            <input
-              type="password"
-              autoComplete="off"
-              value={aiKeyInput}
-              onChange={(e) => setAiKeyInput(e.target.value)}
-              className="mt-1 w-full rounded border border-[var(--tl-line)] bg-[var(--tl-surface-deep)] px-2 py-1 font-mono text-sm text-[var(--tl-ink)]"
-              placeholder={t("settings.apiKeyPlaceholder")}
-            />
-          </label>
-          <div className="flex flex-wrap gap-2 pt-1">
-            <button
-              type="button"
-              className="rounded bg-[var(--tl-btn-muted)] px-3 py-1.5 text-sm text-[var(--tl-ink)] hover:opacity-90"
-              onClick={() => void saveAiByok()}
-            >
-              {t("settings.saveByok")}
-            </button>
-            {ai.hasApiKey && (
-              <button
-                type="button"
-                className="rounded border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-ink)]/90 hover:bg-[var(--tl-surface-deep)]"
-                onClick={() => void clearAiKey()}
+        <p className="text-xs font-medium text-[var(--tl-muted)]">{t("settings.aiProviderLabel")}</p>
+        <div className="max-w-md space-y-2">
+          {(["claude", "deepseek", "qwen", "custom"] as AiProvider[]).map((p) => {
+            const isActive = activeProvider === p;
+            const descKey = `settings.aiProvider${p.charAt(0).toUpperCase() + p.slice(1)}Desc` as const;
+            const labelMap: Record<AiProvider, string> = {
+              claude: "Claude",
+              deepseek: "DeepSeek",
+              qwen: "Qwen",
+              custom: t("settings.aiProviderCustom"),
+            };
+            const label = labelMap[p];
+            return (
+              <div
+                key={p}
+                className={`rounded border px-3 py-2 cursor-pointer transition-colors ${
+                  isActive
+                    ? "border-[var(--tl-accent)] bg-[var(--tl-surface)]"
+                    : "border-[var(--tl-line)] bg-[var(--tl-surface)] hover:border-[var(--tl-accent)]/50"
+                }`}
+                onClick={() => void selectProvider(p)}
               >
-                {t("settings.clearKey")}
-              </button>
-            )}
-          </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-sm font-medium text-[var(--tl-ink)]">{label}</span>
+                    <span className="ml-2 text-xs text-[var(--tl-muted)]">{t(descKey)}</span>
+                  </div>
+                  <div className={`h-3 w-3 rounded-full border-2 flex-shrink-0 ${
+                    isActive ? "border-[var(--tl-accent)] bg-[var(--tl-accent)]" : "border-[var(--tl-muted)]"
+                  }`} />
+                </div>
+
+                {isActive && (
+                  <div className="mt-3 space-y-2" onClick={(e) => e.stopPropagation()}>
+                    {/* hint + guide link */}
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-xs text-[var(--tl-muted)] leading-relaxed">
+                        {t(`settings.aiProvider${p.charAt(0).toUpperCase() + p.slice(1)}Hint`)}
+                      </p>
+                      {PROVIDER_GUIDE_URLS[p] && (
+                        <button
+                          type="button"
+                          className="flex-shrink-0 text-xs text-[var(--tl-accent)] hover:underline"
+                          onClick={() => void api.openUrl(PROVIDER_GUIDE_URLS[p]!)}
+                        >
+                          {t(`settings.aiProvider${p.charAt(0).toUpperCase() + p.slice(1)}Guide`)}
+                        </button>
+                      )}
+                    </div>
+                    <label className="block text-xs text-[var(--tl-muted)]">
+                      Base URL
+                      <input
+                        type="text"
+                        value={aiBaseUrl}
+                        readOnly={p !== "custom"}
+                        onChange={(e) => setAiBaseUrl(e.target.value)}
+                        className={`mt-1 w-full rounded border border-[var(--tl-line)] px-2 py-1 font-mono text-sm text-[var(--tl-ink)] ${
+                          p !== "custom"
+                            ? "bg-[var(--tl-surface-deep)] opacity-60 cursor-default"
+                            : "bg-[var(--tl-surface-deep)]"
+                        }`}
+                        placeholder="https://api.openai.com/v1"
+                      />
+                    </label>
+                    <label className="block text-xs text-[var(--tl-muted)]">
+                      {t("settings.modelName")}
+                      <input
+                        type="text"
+                        value={aiModel}
+                        readOnly={p !== "custom"}
+                        onChange={(e) => setAiModel(e.target.value)}
+                        className={`mt-1 w-full rounded border border-[var(--tl-line)] px-2 py-1 font-mono text-sm text-[var(--tl-ink)] ${
+                          p !== "custom"
+                            ? "bg-[var(--tl-surface-deep)] opacity-60 cursor-default"
+                            : "bg-[var(--tl-surface-deep)]"
+                        }`}
+                        placeholder="gpt-4o-mini"
+                      />
+                    </label>
+                    <label className="block text-xs text-[var(--tl-muted)]">
+                      {t("settings.apiKey", { status: ai?.hasApiKey ? t("settings.apiKeyConfigured") : t("settings.apiKeyNotConfigured") })}
+                      <input
+                        type="password"
+                        autoComplete="off"
+                        value={aiKeyInput}
+                        onChange={(e) => setAiKeyInput(e.target.value)}
+                        className="mt-1 w-full rounded border border-[var(--tl-line)] bg-[var(--tl-surface-deep)] px-2 py-1 font-mono text-sm text-[var(--tl-ink)]"
+                        placeholder={t("settings.apiKeyPlaceholder")}
+                      />
+                    </label>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        className="rounded bg-[var(--tl-btn-muted)] px-3 py-1.5 text-sm text-[var(--tl-ink)] hover:opacity-90"
+                        onClick={() => void saveAiByok()}
+                      >
+                        {t("settings.saveByok")}
+                      </button>
+                      {ai?.hasApiKey && (
+                        <button
+                          type="button"
+                          className="rounded border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-ink)]/90 hover:bg-[var(--tl-surface-deep)]"
+                          onClick={() => void clearAiKey()}
+                        >
+                          {t("settings.clearKey")}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        disabled={testing}
+                        className="rounded border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-ink)]/90 hover:bg-[var(--tl-surface-deep)] disabled:opacity-50"
+                        onClick={() => void handleTestConnection()}
+                      >
+                        {testing ? t("settings.testConnecting") : t("settings.testConnection")}
+                      </button>
+                    </div>
+                    {testResult && (
+                      <p className={`text-xs ${testResult.ok ? "text-[var(--tl-status-ok)]" : "text-[var(--tl-status-err,#e05)]"}`}>
+                        {testResult.ok
+                          ? t("settings.testSuccess", { ms: testResult.ms })
+                          : t("settings.testFailed", { error: testResult.error })}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
         {aiCfgMsg && <p className="text-xs text-[var(--tl-status-ok)]">{aiCfgMsg}</p>}
       </section>

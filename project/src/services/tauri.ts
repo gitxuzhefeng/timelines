@@ -18,6 +18,7 @@ import type {
   SessionOcrContextDto,
   Snapshot,
   StorageStats,
+  TestAiConnectionResponse,
   WindowSession,
   WriterStats,
 } from "../types";
@@ -207,6 +208,14 @@ export async function setAiSettings(
   apiKey: string | null,
 ): Promise<void> {
   await invoke("set_ai_settings", { baseUrl, model, apiKey });
+}
+
+export async function testAiConnection(
+  baseUrl: string,
+  model: string,
+  apiKey: string,
+): Promise<TestAiConnectionResponse> {
+  return invoke<TestAiConnectionResponse>("test_ai_connection", { baseUrl, model, apiKey });
 }
 
 export async function updateSessionIntent(

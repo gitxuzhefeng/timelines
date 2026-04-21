@@ -255,6 +255,12 @@ export interface AiSettingsDto {
   hasApiKey: boolean;
 }
 
+export interface TestAiConnectionResponse {
+  ok: boolean;
+  latencyMs: number;
+  error: string | null;
+}
+
 /**
  * 截图预览 URL（对应 Rust `register_uri_scheme_protocol("timelens", …)`）。
  *
