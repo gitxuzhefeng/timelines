@@ -269,6 +269,23 @@ CREATE VIRTUAL TABLE IF NOT EXISTS snapshot_ocr_fts USING fts5(
 ALTER TABLE snapshot_ocr ADD COLUMN ocr_meta TEXT;
 "#,
     },
+    Migration {
+        version: 5,
+        description: "AI assistant history + autostart setting",
+        sql: r#"
+CREATE TABLE IF NOT EXISTS assistant_history (
+    id TEXT PRIMARY KEY,
+    role TEXT NOT NULL,
+    content TEXT NOT NULL,
+    context_snapshot TEXT,
+    created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_assistant_history_created_at ON assistant_history(created_at);
+INSERT INTO settings (key, value, updated_at)
+VALUES ('autostart_enabled', '0', strftime('%s','now') * 1000)
+ON CONFLICT(key) DO NOTHING;
+"#,
+    },
 ];
 
 fn current_version(conn: &Connection) -> rusqlite::Result<i32> {
@@ -324,7 +341,7 @@ mod tests {
                 |r| r.get(0),
             )
             .unwrap();
-        assert_eq!(v, 4);
+        assert_eq!(v, 5);
         let tables: i64 = c
             .query_row(
                 "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='daily_analysis'",

@@ -28,6 +28,7 @@ export default function AppShell() {
     { to: "/timeline", label: t("nav.timeline"), icon: "≡" },
     { to: "/report", label: t("nav.dailyReport"), icon: "¶" },
     { to: "/weekly", label: t("nav.weeklyReport"), icon: "⊞" },
+    { to: "/assistant", label: t("nav.assistant"), icon: "✦" },
     { to: "/intents", label: t("nav.intents"), icon: "⌗" },
     { to: "/settings", label: t("nav.settings"), icon: "⚙" },
     { to: "/about", label: t("nav.about"), icon: "ℹ" },
@@ -46,6 +47,7 @@ export default function AppShell() {
     if (pathname.startsWith("/timeline")) return { title: t("nav.timeline"), sub: t("nav.timelineDesc") };
     if (pathname.startsWith("/report")) return { title: t("nav.dailyReport"), sub: t("nav.dailyReportDesc") };
     if (pathname.startsWith("/weekly")) return { title: t("nav.weeklyReport"), sub: t("nav.weeklyReportDesc") };
+    if (pathname.startsWith("/assistant")) return { title: t("nav.assistant"), sub: t("nav.assistantDesc") };
     if (pathname.startsWith("/settings")) return { title: t("nav.settings"), sub: t("nav.settingsDesc") };
     if (pathname.startsWith("/recap")) return { title: t("nav.recap"), sub: t("nav.devTools") };
     if (pathname.startsWith("/sessions")) return { title: t("nav.sessions"), sub: t("nav.sessionsDesc") };
