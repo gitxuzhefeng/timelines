@@ -144,6 +144,84 @@ pub fn complete_narrative(
     Ok(t.to_string())
 }
 
+pub fn complete_weekly_narrative(
+    base_url: &str,
+    api_key: &str,
+    model: &str,
+    analysis_json: &Value,
+    lang: &str,
+) -> Result<String, String> {
+    let is_en = lang == "en";
+    let system_prompt = if is_en {
+        crate::analysis::weekly_report::WEEKLY_SYSTEM_PROMPT_EN
+    } else {
+        crate::analysis::weekly_report::WEEKLY_SYSTEM_PROMPT_ZH
+    };
+
+    let week_start = analysis_json
+        .get("week_start")
+        .and_then(|v| v.as_str())
+        .unwrap_or("");
+    let json_pretty =
+        serde_json::to_string_pretty(analysis_json).map_err(|e| e.to_string())?;
+    let user = if is_en {
+        format!(
+            "Below is the weekly aggregated data for week_start={week_start} (JSON). Please generate the \"AI Weekly Recap\" body (Markdown, may be multiple paragraphs).\n\n```json\n{json_pretty}\n```"
+        )
+    } else {
+        format!(
+            "以下为 week_start={week_start} 的周度聚合数据（JSON）。请生成「AI 周度解读」正文（Markdown，可为多段）。\n\n```json\n{json_pretty}\n```"
+        )
+    };
+
+    let url = normalize_chat_url(base_url);
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(120))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let body = json!({
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user}
+        ],
+        "temperature": 0.3
+    });
+
+    let resp = client
+        .post(&url)
+        .header("Authorization", format!("Bearer {api_key}"))
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .map_err(|e| format!("网络或连接失败: {e}"))?;
+
+    if !resp.status().is_success() {
+        let status = resp.status();
+        let text = resp.text().unwrap_or_default();
+        return Err(format!(
+            "模型 API 错误 ({status}): {}",
+            truncate_err(&text)
+        ));
+    }
+
+    let v: Value = resp.json().map_err(|e| e.to_string())?;
+    let content = v
+        .get("choices")
+        .and_then(|c| c.as_array())
+        .and_then(|a| a.first())
+        .and_then(|c| c.get("message"))
+        .and_then(|m| m.get("content"))
+        .and_then(|c| c.as_str())
+        .ok_or_else(|| "模型响应缺少 choices[0].message.content".to_string())?;
+    let t = content.trim();
+    if t.is_empty() {
+        return Err("模型返回空内容".into());
+    }
+    Ok(t.to_string())
+}
+
 fn normalize_chat_url(base: &str) -> String {
     let b = base.trim().trim_end_matches('/');
     if b.ends_with("/chat/completions") {
