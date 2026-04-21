@@ -28,6 +28,9 @@ const K_OCR_PREPROCESS_INVERT: &str = "ocr_preprocess_dark_invert";
 const K_LANGUAGE: &str = "ui_language";
 const DEFAULT_LANGUAGE: &str = "en";
 
+const K_WEEK_START_DAY: &str = "week_start_day";
+const K_AUTOSTART_ENABLED: &str = "autostart_enabled";
+
 const DEFAULT_AI_BASE_URL: &str = "https://api.openai.com/v1";
 const DEFAULT_AI_MODEL: &str = "gpt-4o-mini";
 
@@ -324,6 +327,27 @@ pub fn get_language(conn: &Connection) -> String {
 
 pub fn set_language(conn: &mut Connection, lang: &str) -> rusqlite::Result<()> {
     set_setting_str(conn, K_LANGUAGE, lang.trim())
+}
+
+/// 周起始日：0 = 周日，1 = 周一（默认）。
+pub fn get_week_start_day(conn: &Connection) -> u8 {
+    get_setting_str(conn, K_WEEK_START_DAY, "1")
+        .parse::<u8>()
+        .unwrap_or(1)
+        .min(1)
+}
+
+pub fn set_week_start_day(conn: &mut Connection, day: u8) -> rusqlite::Result<()> {
+    let v = (day.min(1)).to_string();
+    set_setting_str(conn, K_WEEK_START_DAY, &v)
+}
+
+pub fn get_autostart_enabled(conn: &Connection) -> bool {
+    get_bool(conn, K_AUTOSTART_ENABLED, false)
+}
+
+pub fn set_autostart_enabled(conn: &mut Connection, v: bool) -> rusqlite::Result<()> {
+    set_flag(conn, K_AUTOSTART_ENABLED, v)
 }
 
 pub fn app_name_blacklisted(name: &str, blacklist: &[String]) -> bool {

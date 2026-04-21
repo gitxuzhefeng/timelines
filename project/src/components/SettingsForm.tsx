@@ -73,12 +73,16 @@ export function SettingsForm({ className }: SettingsFormProps) {
   const [currentLang, setCurrentLang] = useState<SupportedLanguage>(
     () => (i18n.language === "zh-CN" ? "zh-CN" : "en"),
   );
+  const [weekStartDay, setWeekStartDayState] = useState<number>(1);
+  const [autostartEnabled, setAutostartEnabledState] = useState(false);
 
   const refreshFlags = useCallback(async () => {
-    const [flags, aicfg, ocrcfg] = await Promise.all([
+    const [flags, aicfg, ocrcfg, wsd, autostart] = await Promise.all([
       api.getEngineFlags(),
       api.getAiSettings(),
       api.getOcrSettings(),
+      api.getWeekStartDay(),
+      api.getAutostartEnabled(),
     ]);
     setF(flags);
     setAi(aicfg);
@@ -88,6 +92,8 @@ export function SettingsForm({ className }: SettingsFormProps) {
     setAiModel(aicfg.model);
     setActiveProvider(inferProvider(aicfg.baseUrl));
     setAiKeyInput("");
+    setWeekStartDayState(wsd);
+    setAutostartEnabledState(autostart.enabled);
   }, []);
 
   useEffect(() => {
@@ -111,6 +117,8 @@ export function SettingsForm({ className }: SettingsFormProps) {
         setOcrPipe(oc.pipeline);
       })
       .catch(() => {});
+    void api.getWeekStartDay().then(setWeekStartDayState).catch(() => {});
+    void api.getAutostartEnabled().then((r) => setAutostartEnabledState(r.enabled)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -336,6 +344,52 @@ export function SettingsForm({ className }: SettingsFormProps) {
             </button>
           ))}
         </div>
+      </section>
+
+      <section className="mb-6 rounded border border-[var(--tl-line)] bg-[var(--tl-surface)] p-4">
+        <h2 className="text-sm font-medium text-[var(--tl-muted)]">{t("settings.weekStartDay")}</h2>
+        <p className="mt-1 text-xs text-[var(--tl-muted)]">{t("settings.weekStartDayDesc")}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {([1, 0] as const).map((day) => (
+            <button
+              key={day}
+              type="button"
+              onClick={async () => {
+                setWeekStartDayState(day);
+                await api.setWeekStartDay(day);
+              }}
+              className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                weekStartDay === day
+                  ? "border-[var(--tl-accent-45)] bg-[var(--tl-accent-12)] text-[var(--tl-ink)]"
+                  : "border-[var(--tl-line)] bg-[var(--tl-glass-20)] text-[var(--tl-muted)] hover:border-[var(--tl-accent-25)]"
+              }`}
+            >
+              {day === 1 ? t("settings.weekStartMonday") : t("settings.weekStartSunday")}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="mb-6 rounded border border-[var(--tl-line)] bg-[var(--tl-surface)] p-4">
+        <h2 className="text-sm font-medium text-[var(--tl-muted)]">{t("settings.autostart")}</h2>
+        <p className="mt-1 text-xs text-[var(--tl-muted)]">{t("settings.autostartDesc")}</p>
+        <label className="mt-3 flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={autostartEnabled}
+            onChange={async (e) => {
+              const next = e.target.checked;
+              setAutostartEnabledState(next);
+              try {
+                await api.setAutostartEnabled(next);
+              } catch (err) {
+                setErr(String(err));
+                setAutostartEnabledState(!next);
+              }
+            }}
+          />
+          {t("settings.autostartEnable")}
+        </label>
       </section>
 
       <section className="mb-6 rounded border border-[var(--tl-line)] bg-[var(--tl-surface)] p-4">

@@ -21,6 +21,7 @@ import TimelinePage from "./pages/TimelinePage";
 import DailyReportPage from "./pages/DailyReportPage";
 import SettingsShellPage from "./pages/SettingsShellPage";
 import AboutPage from "./pages/AboutPage";
+import WeeklyReportPage from "./pages/WeeklyReportPage";
 import { detectClientDesktopOs } from "./lib/platform";
 
 export default function App() {
@@ -134,6 +135,7 @@ export default function App() {
           <Route path="/lens" element={<TodayLensPage />} />
           <Route path="/timeline" element={<TimelinePage />} />
           <Route path="/report" element={<DailyReportPage />} />
+          <Route path="/weekly" element={<WeeklyReportPage />} />
           <Route path="/settings" element={<SettingsShellPage />} />
           <Route path="/recap" element={<RecapPage />} />
           <Route path="/sessions" element={<SessionsPage />} />

@@ -387,6 +387,9 @@
     "languageDesc": "Choose the display language. Takes effect immediately.",
     "languageZh": "中文",
     "languageEn": "English",
+    "autostart": "Launch at startup",
+    "autostartDesc": "Automatically start TimeLens in the background when the system boots. The tray icon will always be available.",
+    "autostartEnable": "Launch TimeLens at startup",
     "weekStartDay": "Week start day",
     "weekStartDayDesc": "Affects the week range in Weekly Report",
     "weekStartMonday": "Monday",
@@ -460,6 +463,29 @@
       "insufficientDays": "AI narrative requires at least 3 days of data (current: {{days}})",
       "aiDisabled": "AI is not enabled. Enable it in Settings.",
       "generating": "Generating AI analysis…"
+    }
+  },
+  "assistant": {
+    "insightTitle": "Today's Insight",
+    "insightHighFlow": "Flow score reached {{score}} today — great focus! Anything you'd like to explore?",
+    "insightHighFrag": "Context switching fragmentation was ~{{pct}}% today. Want to dig into why?",
+    "insightDeepWork": "Deep work totaled {{min}} minutes today — solid performance!",
+    "insightActiveTime": "Active time today: {{min}} minutes.",
+    "emptyHint": "Hi! I'm your dedicated analyst.\nAsk me about today's work habits, productivity insights, or improvement suggestions.",
+    "thinking": "Analyzing…",
+    "send": "Send",
+    "inputPlaceholder": "Ask about today's data… (Enter to send, Shift+Enter for newline)",
+    "contextDate": "Data context: {{date}}",
+    "clearHistory": "Clear conversation",
+    "clearConfirm": "Click again to confirm",
+    "error": "AI error: {{error}}",
+    "quick1": "How was my work today?",
+    "quick2": "What productivity issues should I watch out for?",
+    "quick3": "Give me some improvement suggestions",
+    "action": {
+      "timeline": "View timeline {{param}}",
+      "report": "View daily report {{param}}",
+      "lens": "View today's lens {{param}}"
     }
   }
 }
