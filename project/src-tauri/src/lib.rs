@@ -1,6 +1,7 @@
 mod analysis;
 mod api;
 mod core;
+mod export;
 
 use std::borrow::Cow;
 use std::sync::atomic::{AtomicBool, AtomicI64, AtomicUsize, Ordering};
@@ -409,6 +410,11 @@ pub fn run() {
             api::generate_daily_report,
             api::get_daily_report,
             api::export_daily_report,
+            api::export_sessions_csv,
+            api::export_daily_json,
+            api::export_daily_markdown,
+            api::export_daily_html,
+            api::export_weekly_markdown,
             api::get_ocr_settings,
             api::set_ocr_settings,
             api::set_ocr_privacy_acknowledged,
@@ -422,6 +428,19 @@ pub fn run() {
             api::get_app_version,
             api::check_for_update,
             api::open_url,
+            api::get_week_start_for_date,
+            api::set_week_start_day,
+            api::get_week_start_day,
+            api::generate_weekly_analysis,
+            api::get_weekly_analysis,
+            api::generate_weekly_report,
+            api::get_weekly_report,
+            api::get_assistant_history,
+            api::clear_assistant_history,
+            api::get_assistant_context,
+            api::query_assistant,
+            api::get_autostart_enabled,
+            api::set_autostart_enabled,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

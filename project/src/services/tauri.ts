@@ -335,6 +335,102 @@ export async function exportDailyReport(
   });
 }
 
+// ── Phase 8: Weekly Report ────────────────────────────────────────────────────
+
+export interface WeeklyAnalysisDto {
+  id: string;
+  weekStart: string;
+  weekEnd: string;
+  validDays: number;
+  totalTrackedSeconds: number;
+  avgFlowScore: number | null;
+  dailyFlowScores: string | null;
+  hourlyHeatmap: string | null;
+  topAppsByDay: string | null;
+  weeklyTopApps: string | null;
+  avgDeepWorkMinutes: number | null;
+  avgFragmentationPct: number | null;
+  peakFocusDay: string | null;
+  peakFocusHourRange: string | null;
+  generatedAt: string;
+  isStale: number;
+}
+
+export interface WeeklyReportDto {
+  id: string;
+  weekStart: string;
+  reportType: string;
+  contentMd: string;
+  lang: string;
+  createdAt: string;
+}
+
+export async function getWeekStartForDate(date: string): Promise<string> {
+  return invoke<string>("get_week_start_for_date", { date });
+}
+
+export async function getWeekStartDay(): Promise<number> {
+  return invoke<number>("get_week_start_day");
+}
+
+export async function setWeekStartDay(day: number): Promise<void> {
+  await invoke("set_week_start_day", { day });
+}
+
+export async function generateWeeklyAnalysis(weekStart: string): Promise<string> {
+  return invoke<string>("generate_weekly_analysis", { weekStart });
+}
+
+export async function getWeeklyAnalysis(weekStart: string): Promise<WeeklyAnalysisDto | null> {
+  return invoke<WeeklyAnalysisDto | null>("get_weekly_analysis", { weekStart });
+}
+
+export async function generateWeeklyReport(
+  weekStart: string,
+  withAi: boolean,
+  lang: string,
+): Promise<WeeklyReportDto> {
+  return invoke<WeeklyReportDto>("generate_weekly_report", { weekStart, withAi, lang });
+}
+
+export async function getWeeklyReport(
+  weekStart: string,
+  reportType?: string | null,
+): Promise<WeeklyReportDto | null> {
+  return invoke<WeeklyReportDto | null>("get_weekly_report", {
+    weekStart,
+    reportType: reportType ?? null,
+  });
+}
+
+// ── Phase 9: Data Export ──────────────────────────────────────────────────────
+
+export async function exportSessionsCsv(date: string): Promise<string> {
+  return invoke<string>("export_sessions_csv", { date });
+}
+
+export async function exportDailyJson(date: string): Promise<string> {
+  return invoke<string>("export_daily_json", { date });
+}
+
+export async function exportDailyMarkdown(
+  date: string,
+  reportType?: string | null,
+): Promise<string> {
+  return invoke<string>("export_daily_markdown", {
+    date,
+    reportType: reportType ?? null,
+  });
+}
+
+export async function exportDailyHtml(date: string): Promise<string> {
+  return invoke<string>("export_daily_html", { date });
+}
+
+export async function exportWeeklyMarkdown(weekStart: string): Promise<string> {
+  return invoke<string>("export_weekly_markdown", { weekStart });
+}
+
 export type EventPayloads = {
   window_event_updated: WindowSession;
   new_snapshot_saved: { snapshot: Snapshot };
@@ -352,4 +448,49 @@ export function listenEvent<K extends keyof EventPayloads>(
   return listen<EventPayloads[K]>(key, (e) => {
     handler(e.payload);
   });
+}
+
+// ── Phase 10: AI Assistant ──────────────────────────────────────────────────
+
+export interface AssistantMessageDto {
+  id: string;
+  role: string;
+  content: string;
+  createdAt: number;
+}
+
+export async function getAssistantHistory(limit?: number | null): Promise<AssistantMessageDto[]> {
+  return invoke<AssistantMessageDto[]>("get_assistant_history", { limit: limit ?? null });
+}
+
+export async function clearAssistantHistory(): Promise<void> {
+  await invoke("clear_assistant_history");
+}
+
+export async function getAssistantContext(date: string): Promise<Record<string, unknown> | null> {
+  return invoke<Record<string, unknown> | null>("get_assistant_context", { date });
+}
+
+export async function queryAssistant(
+  question: string,
+  contextDate?: string | null,
+): Promise<AssistantMessageDto> {
+  return invoke<AssistantMessageDto>("query_assistant", {
+    question,
+    contextDate: contextDate ?? null,
+  });
+}
+
+// ── Phase 10: Autostart ─────────────────────────────────────────────────────
+
+export interface AutostartDto {
+  enabled: boolean;
+}
+
+export async function getAutostartEnabled(): Promise<AutostartDto> {
+  return invoke<AutostartDto>("get_autostart_enabled");
+}
+
+export async function setAutostartEnabled(enabled: boolean): Promise<AutostartDto> {
+  return invoke<AutostartDto>("set_autostart_enabled", { enabled });
 }

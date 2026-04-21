@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../stores/appStore";
 import * as api from "../services/tauri";
+import { ExportPanel } from "./ExportPanel";
 
 type ReportView = "fact_only" | "ai_enhanced";
 
@@ -25,6 +26,7 @@ export function RecapContent({
   const [aiOn, setAiOn] = useState(false);
   const [hasKey, setHasKey] = useState(false);
   const [hasAiReport, setHasAiReport] = useState(false);
+  const [showExport, setShowExport] = useState(false);
   const [meta, setMeta] = useState<{ model: string | null; hash: string | null }>(
     { model: null, hash: null },
   );
@@ -162,19 +164,9 @@ export function RecapContent({
           type="button"
           disabled={busy || !md}
           className="rounded border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-ink)] hover:bg-[var(--tl-surface-deep)] disabled:opacity-40"
-          onClick={async () => {
-            setBusy(true);
-            try {
-              const p = await api.exportDailyReport(date, view);
-              setMsg(t("recap.exported", { path: p }));
-            } catch (e) {
-              setMsg(String(e));
-            } finally {
-              setBusy(false);
-            }
-          }}
+          onClick={() => setShowExport(true)}
         >
-          {t("recap.exportMarkdown")}
+          {t("recap.export")}
         </button>
         <button
           type="button"
@@ -207,6 +199,14 @@ export function RecapContent({
           </p>
         )}
       </div>
+      {showExport && (
+        <ExportPanel
+          date={date}
+          reportView={view}
+          hasReport={Boolean(md)}
+          onClose={() => setShowExport(false)}
+        />
+      )}
     </div>
   );
 }

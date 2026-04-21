@@ -47,7 +47,11 @@
     "mainNav": "主导航",
     "featureModules": "功能模块",
     "about": "关于",
-    "aboutDesc": "版本 · 链接 · 更新 · 反馈"
+    "aboutDesc": "版本 · 链接 · 更新 · 反馈",
+    "weeklyReport": "周报告",
+    "weeklyReportDesc": "周维度聚合 · 趋势分析",
+    "assistant": "AI 助手",
+    "assistantDesc": "专属分析师 · 按数据问答"
   },
   "permissions": {
     "refreshPermissions": "刷新系统权限",
@@ -292,7 +296,19 @@
     "model": "模型: {{model}}",
     "promptHash": "prompt 哈希: {{hash}}…",
     "noAiReport": "暂无 AI 增强报告。请先生成当日 daily_analysis，再点击「生成 AI 增强报告」。",
-    "noReport": "暂无报告。请选择有数据的日期并点击生成。"
+    "noReport": "暂无报告。请选择有数据的日期并点击生成。",
+    "export": "导出",
+    "exportTitle": "导出日报",
+    "exportFormat": "格式",
+    "exportFormatMd": "Markdown（含 frontmatter，适合 Obsidian / Notion）",
+    "exportFormatHtml": "HTML（自包含，双击即可在浏览器预览）",
+    "exportFormatCsv": "CSV（会话数据，适合 Excel / 数据分析）",
+    "exportFormatJson": "JSON（完整分析数据，适合程序处理）",
+    "exportBtn": "导出",
+    "exportSuccess": "已导出到 {{path}}",
+    "exportNoReport": "请先生成报告再导出",
+    "exportNoAnalysis": "请先生成分析再导出 CSV / JSON",
+    "exportProHint": "批量导出（最近 7 天 / 30 天）即将推出 · Pro 功能"
   },
   "settings": {
     "title": "设置",
@@ -372,7 +388,11 @@
     "language": "语言",
     "languageDesc": "选择界面显示语言，切换后立即生效。",
     "languageZh": "中文",
-    "languageEn": "English"
+    "languageEn": "English",
+    "weekStartDay": "周起始日",
+    "weekStartDayDesc": "影响周报的周范围计算",
+    "weekStartMonday": "周一",
+    "weekStartSunday": "周日"
   },
   "about": {
     "title": "关于",
@@ -395,5 +415,53 @@
     "sponsorDesc": "TimeLens 免费开源，如果对你有帮助，欢迎请我喝杯咖啡。",
     "buyMeCoffee": "Buy Me a Coffee",
     "wechatSponsor": "微信赞赏"
+  },
+  "weekly": {
+    "title": "周报告",
+    "noData": "本周暂无数据",
+    "noDataDesc": "开始使用后，数据将在这里汇总展示。",
+    "insufficientData": "数据不足",
+    "insufficientDataDesc": "当前仅有 {{days}} 天数据，AI 分析需至少 3 天。",
+    "generating": "生成中…",
+    "generate": "生成周报",
+    "refresh": "重新生成",
+    "weekOf": "{{start}} ~ {{end}}",
+    "validDays": "有效天数",
+    "totalTime": "总计时长",
+    "avgFlow": "平均专注分",
+    "heatmap": {
+      "title": "高效时段热力图",
+      "desc": "颜色越深表示该时段专注度越高",
+      "noData": "暂无热力图数据",
+      "hour": "{{hour}}:00",
+      "day": {
+        "0": "周日",
+        "1": "周一",
+        "2": "周二",
+        "3": "周三",
+        "4": "周四",
+        "5": "周五",
+        "6": "周六"
+      }
+    },
+    "trend": {
+      "title": "生产力评分走势",
+      "noData": "暂无评分数据",
+      "score": "评分",
+      "peak": "最高",
+      "low": "最低"
+    },
+    "apps": {
+      "title": "应用使用趋势",
+      "noData": "暂无应用数据",
+      "daily": "每日用量"
+    },
+    "ai": {
+      "title": "AI 周报叙事",
+      "noData": "暂无 AI 分析",
+      "insufficientDays": "AI 叙事需要至少 3 天数据（当前 {{days}} 天）",
+      "aiDisabled": "AI 功能未启用，可在设置中开启。",
+      "generating": "AI 分析生成中…"
+    }
   }
 }
