@@ -2422,7 +2422,7 @@ pub fn get_assistant_history(
 
 #[tauri::command]
 pub fn clear_assistant_history(state: State<'_, AppState>) -> Result<(), String> {
-    let mut c = open_db_rw(&state.0.paths.db_path)?;
+    let c = open_db_rw(&state.0.paths.db_path)?;
     c.execute("DELETE FROM assistant_history", [])
         .map_err(|e| e.to_string())?;
     Ok(())
@@ -2578,7 +2578,7 @@ pub fn query_assistant(
     let user_id = Uuid::new_v4().to_string();
     let now_ms = Utc::now().timestamp_millis();
     {
-        let mut c = open_db_rw(&state.0.paths.db_path)?;
+        let c = open_db_rw(&state.0.paths.db_path)?;
         c.execute(
             "INSERT INTO assistant_history (id, role, content, context_snapshot, created_at) \
              VALUES (?1, ?2, ?3, ?4, ?5)",
@@ -2602,7 +2602,7 @@ pub fn query_assistant(
     let reply_id = Uuid::new_v4().to_string();
     let reply_ms = Utc::now().timestamp_millis();
     {
-        let mut c = open_db_rw(&state.0.paths.db_path)?;
+        let c = open_db_rw(&state.0.paths.db_path)?;
         c.execute(
             "INSERT INTO assistant_history (id, role, content, context_snapshot, created_at) \
              VALUES (?1, ?2, ?3, ?4, ?5)",

@@ -8,7 +8,7 @@ use screenshots::Screen;
 use windows::UI::Notifications::Management::{
     UserNotificationListener, UserNotificationListenerAccessStatus,
 };
-use windows::Win32::Foundation::{ERROR_SUCCESS, HWND, LPARAM, LRESULT, WPARAM};
+use windows::Win32::Foundation::{ERROR_SUCCESS, LPARAM, LRESULT, WPARAM};
 use windows::Win32::NetworkManagement::WiFi::{
     wlan_interface_state_connected, wlan_intf_opcode_current_connection, WlanCloseHandle,
     WlanEnumInterfaces, WlanFreeMemory, WlanOpenHandle, WlanQueryInterface, DOT11_SSID,

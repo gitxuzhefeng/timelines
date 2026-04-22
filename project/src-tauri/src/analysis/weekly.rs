@@ -40,7 +40,7 @@ pub fn week_dates(week_start: &str) -> Result<Vec<String>, String> {
 pub fn generate_weekly_analysis_into(
     conn: &mut Connection,
     week_start: &str,
-    week_start_day: u8,
+    _week_start_day: u8,
 ) -> Result<String, String> {
     let dates = week_dates(week_start)?;
     let week_end = dates.last().cloned().unwrap_or_default();
