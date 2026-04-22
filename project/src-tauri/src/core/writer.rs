@@ -58,6 +58,8 @@ fn event_sort_key(e: &WriteEvent) -> u8 {
         WriteEvent::ClipboardFlow(_) => 6,
         WriteEvent::Notification(_) => 7,
         WriteEvent::AmbientContext(_) => 8,
+        WriteEvent::FocusSession(_) => 8,
+        WriteEvent::NudgeLog(_) => 8,
         WriteEvent::Retention { .. } => 9,
         WriteEvent::WalCheckpoint => 10,
         WriteEvent::Shutdown => 0,
@@ -356,6 +358,43 @@ fn apply_batch(conn: &mut Connection, batch: &[WriteEvent]) -> rusqlite::Result<
                         r.is_dnd_enabled,
                         r.screen_brightness,
                         r.active_space_index,
+                    ],
+                )?;
+            }
+            WriteEvent::FocusSession(r) => {
+                tx.execute(
+                    r#"INSERT INTO focus_sessions (
+                        id, start_ms, end_ms, planned_duration_min, actual_duration_ms,
+                        status, summary_json, created_at
+                    ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+                    ON CONFLICT(id) DO UPDATE SET
+                        end_ms = excluded.end_ms,
+                        actual_duration_ms = excluded.actual_duration_ms,
+                        status = excluded.status,
+                        summary_json = excluded.summary_json"#,
+                    params![
+                        r.id,
+                        r.start_ms,
+                        r.end_ms,
+                        r.planned_duration_min,
+                        r.actual_duration_ms,
+                        r.status,
+                        r.summary_json,
+                        r.created_at,
+                    ],
+                )?;
+            }
+            WriteEvent::NudgeLog(r) => {
+                tx.execute(
+                    r#"INSERT INTO nudge_log (
+                        id, timestamp_ms, nudge_type, payload_json, dismissed
+                    ) VALUES (?1, ?2, ?3, ?4, ?5)"#,
+                    params![
+                        r.id,
+                        r.timestamp_ms,
+                        r.nudge_type,
+                        r.payload_json,
+                        r.dismissed,
                     ],
                 )?;
             }

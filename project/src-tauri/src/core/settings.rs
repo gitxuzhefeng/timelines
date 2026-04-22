@@ -31,6 +31,23 @@ const DEFAULT_LANGUAGE: &str = "en";
 const K_WEEK_START_DAY: &str = "week_start_day";
 const K_AUTOSTART_ENABLED: &str = "autostart_enabled";
 
+const K_NUDGE_ENABLED: &str = "nudge_enabled";
+const K_NUDGE_REST_MINUTES: &str = "nudge_rest_minutes";
+const K_NUDGE_FRAG_THRESHOLD: &str = "nudge_frag_threshold";
+const K_NUDGE_FRAG_WINDOW_MIN: &str = "nudge_frag_window_min";
+const K_NUDGE_DEEP_WORK_MINUTES: &str = "nudge_deep_work_minutes";
+const K_NUDGE_DEEP_WORK_DND: &str = "nudge_deep_work_dnd";
+const K_DIGEST_ENABLED: &str = "digest_enabled";
+const K_DIGEST_TIME: &str = "digest_time";
+const K_FOCUS_MODE_ACTIVE: &str = "focus_mode_active";
+const K_FOCUS_SESSION_ID: &str = "focus_session_id";
+
+const DEFAULT_NUDGE_REST_MIN: u32 = 45;
+const DEFAULT_NUDGE_FRAG_THRESHOLD: u32 = 8;
+const DEFAULT_NUDGE_FRAG_WINDOW: u32 = 5;
+const DEFAULT_NUDGE_DEEP_WORK_MIN: u32 = 25;
+const DEFAULT_DIGEST_TIME: &str = "18:00";
+
 const DEFAULT_AI_BASE_URL: &str = "https://api.openai.com/v1";
 const DEFAULT_AI_MODEL: &str = "gpt-4o-mini";
 
@@ -357,6 +374,161 @@ pub fn app_name_blacklisted(name: &str, blacklist: &[String]) -> bool {
     })
 }
 
+/// Phase 11: 智能提醒与专注守护配置。
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NudgeConfig {
+    pub enabled: bool,
+    pub rest_minutes: u32,
+    pub frag_threshold: u32,
+    pub frag_window_min: u32,
+    pub deep_work_minutes: u32,
+    pub deep_work_dnd: bool,
+}
+
+impl Default for NudgeConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            rest_minutes: DEFAULT_NUDGE_REST_MIN,
+            frag_threshold: DEFAULT_NUDGE_FRAG_THRESHOLD,
+            frag_window_min: DEFAULT_NUDGE_FRAG_WINDOW,
+            deep_work_minutes: DEFAULT_NUDGE_DEEP_WORK_MIN,
+            deep_work_dnd: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DigestConfig {
+    pub enabled: bool,
+    pub time: String,
+}
+
+impl Default for DigestConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            time: DEFAULT_DIGEST_TIME.to_string(),
+        }
+    }
+}
+
+fn parse_u32_or(conn: &Connection, key: &str, default: u32) -> u32 {
+    get_setting_str(conn, key, &default.to_string())
+        .parse::<u32>()
+        .unwrap_or(default)
+}
+
+pub fn get_nudge_config(conn: &Connection) -> NudgeConfig {
+    NudgeConfig {
+        enabled: get_bool(conn, K_NUDGE_ENABLED, true),
+        rest_minutes: parse_u32_or(conn, K_NUDGE_REST_MINUTES, DEFAULT_NUDGE_REST_MIN)
+            .clamp(15, 120),
+        frag_threshold: parse_u32_or(conn, K_NUDGE_FRAG_THRESHOLD, DEFAULT_NUDGE_FRAG_THRESHOLD)
+            .clamp(3, 20),
+        frag_window_min: parse_u32_or(conn, K_NUDGE_FRAG_WINDOW_MIN, DEFAULT_NUDGE_FRAG_WINDOW)
+            .clamp(3, 15),
+        deep_work_minutes: parse_u32_or(
+            conn,
+            K_NUDGE_DEEP_WORK_MINUTES,
+            DEFAULT_NUDGE_DEEP_WORK_MIN,
+        )
+        .clamp(10, 60),
+        deep_work_dnd: get_bool(conn, K_NUDGE_DEEP_WORK_DND, false),
+    }
+}
+
+pub fn set_nudge_config(conn: &mut Connection, c: &NudgeConfig) -> rusqlite::Result<()> {
+    set_flag(conn, K_NUDGE_ENABLED, c.enabled)?;
+    set_setting_str(
+        conn,
+        K_NUDGE_REST_MINUTES,
+        &c.rest_minutes.clamp(15, 120).to_string(),
+    )?;
+    set_setting_str(
+        conn,
+        K_NUDGE_FRAG_THRESHOLD,
+        &c.frag_threshold.clamp(3, 20).to_string(),
+    )?;
+    set_setting_str(
+        conn,
+        K_NUDGE_FRAG_WINDOW_MIN,
+        &c.frag_window_min.clamp(3, 15).to_string(),
+    )?;
+    set_setting_str(
+        conn,
+        K_NUDGE_DEEP_WORK_MINUTES,
+        &c.deep_work_minutes.clamp(10, 60).to_string(),
+    )?;
+    set_flag(conn, K_NUDGE_DEEP_WORK_DND, c.deep_work_dnd)?;
+    Ok(())
+}
+
+fn is_valid_hhmm(s: &str) -> bool {
+    let t = s.trim();
+    if t.len() != 5 {
+        return false;
+    }
+    let bytes = t.as_bytes();
+    if bytes[2] != b':' {
+        return false;
+    }
+    let h = t[0..2].parse::<u32>().ok();
+    let m = t[3..5].parse::<u32>().ok();
+    matches!((h, m), (Some(h), Some(m)) if h < 24 && m < 60)
+}
+
+pub fn get_digest_config(conn: &Connection) -> DigestConfig {
+    let raw = get_setting_str(conn, K_DIGEST_TIME, DEFAULT_DIGEST_TIME);
+    let time = if is_valid_hhmm(&raw) {
+        raw
+    } else {
+        DEFAULT_DIGEST_TIME.to_string()
+    };
+    DigestConfig {
+        enabled: get_bool(conn, K_DIGEST_ENABLED, true),
+        time,
+    }
+}
+
+pub fn set_digest_config(conn: &mut Connection, c: &DigestConfig) -> rusqlite::Result<()> {
+    set_flag(conn, K_DIGEST_ENABLED, c.enabled)?;
+    let time = if is_valid_hhmm(&c.time) {
+        c.time.clone()
+    } else {
+        DEFAULT_DIGEST_TIME.to_string()
+    };
+    set_setting_str(conn, K_DIGEST_TIME, &time)?;
+    Ok(())
+}
+
+pub fn get_focus_mode_active(conn: &Connection) -> (bool, Option<String>) {
+    let active = get_bool(conn, K_FOCUS_MODE_ACTIVE, false);
+    let sid = get_setting_str(conn, K_FOCUS_SESSION_ID, "");
+    let sid = if sid.trim().is_empty() {
+        None
+    } else {
+        Some(sid)
+    };
+    (active, sid)
+}
+
+pub fn set_focus_mode_active(
+    conn: &mut Connection,
+    active: bool,
+    session_id: Option<&str>,
+) -> rusqlite::Result<()> {
+    set_flag(conn, K_FOCUS_MODE_ACTIVE, active)?;
+    set_setting_str(conn, K_FOCUS_SESSION_ID, session_id.unwrap_or(""))?;
+    Ok(())
+}
+
+pub fn key_nudge_enabled() -> &'static str {
+    K_NUDGE_ENABLED
+}
+
 #[cfg(test)]
 mod tests {
     use super::app_name_blacklisted;
@@ -367,5 +539,18 @@ mod tests {
         assert!(app_name_blacklisted("WeChat", &b));
         assert!(!app_name_blacklisted("wechat", &b));
         assert!(app_name_blacklisted("Chrome", &b));
+    }
+
+    #[test]
+    fn hhmm_parser() {
+        use super::is_valid_hhmm;
+        assert!(is_valid_hhmm("00:00"));
+        assert!(is_valid_hhmm("23:59"));
+        assert!(is_valid_hhmm("18:00"));
+        assert!(!is_valid_hhmm("24:00"));
+        assert!(!is_valid_hhmm("18:60"));
+        assert!(!is_valid_hhmm("1:00"));
+        assert!(!is_valid_hhmm("18-00"));
+        assert!(!is_valid_hhmm(""));
     }
 }

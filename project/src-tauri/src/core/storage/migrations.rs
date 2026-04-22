@@ -286,6 +286,69 @@ VALUES ('autostart_enabled', '0', strftime('%s','now') * 1000)
 ON CONFLICT(key) DO NOTHING;
 "#,
     },
+    Migration {
+        version: 6,
+        description: "Weekly analysis and weekly reports tables",
+        sql: r#"
+CREATE TABLE IF NOT EXISTS weekly_analysis (
+    id TEXT PRIMARY KEY,
+    week_start TEXT NOT NULL UNIQUE,
+    week_end TEXT NOT NULL,
+    valid_days INTEGER NOT NULL DEFAULT 0,
+    total_tracked_seconds INTEGER NOT NULL DEFAULT 0,
+    avg_flow_score REAL,
+    daily_flow_scores TEXT,
+    hourly_heatmap TEXT,
+    top_apps_by_day TEXT,
+    weekly_top_apps TEXT,
+    avg_deep_work_minutes REAL,
+    avg_fragmentation_pct REAL,
+    peak_focus_day TEXT,
+    peak_focus_hour_range TEXT,
+    generated_at TEXT NOT NULL,
+    is_stale INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_weekly_analysis_week_start ON weekly_analysis(week_start);
+
+CREATE TABLE IF NOT EXISTS weekly_reports (
+    id TEXT PRIMARY KEY,
+    week_start TEXT NOT NULL,
+    report_type TEXT NOT NULL DEFAULT 'fact_only',
+    content_md TEXT NOT NULL,
+    lang TEXT NOT NULL DEFAULT 'zh-CN',
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_weekly_reports_week_start ON weekly_reports(week_start, report_type);
+"#,
+    },
+    Migration {
+        version: 7,
+        description: "Phase 11: focus sessions + nudge log",
+        sql: r#"
+CREATE TABLE IF NOT EXISTS focus_sessions (
+    id TEXT PRIMARY KEY,
+    start_ms INTEGER NOT NULL,
+    end_ms INTEGER,
+    planned_duration_min INTEGER NOT NULL,
+    actual_duration_ms INTEGER,
+    status TEXT NOT NULL DEFAULT 'active',
+    summary_json TEXT,
+    created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_focus_sessions_start ON focus_sessions(start_ms);
+CREATE INDEX IF NOT EXISTS idx_focus_sessions_status ON focus_sessions(status);
+
+CREATE TABLE IF NOT EXISTS nudge_log (
+    id TEXT PRIMARY KEY,
+    timestamp_ms INTEGER NOT NULL,
+    nudge_type TEXT NOT NULL,
+    payload_json TEXT,
+    dismissed INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_nudge_log_ts ON nudge_log(timestamp_ms);
+CREATE INDEX IF NOT EXISTS idx_nudge_log_type ON nudge_log(nudge_type);
+"#,
+    },
 ];
 
 fn current_version(conn: &Connection) -> rusqlite::Result<i32> {
@@ -341,7 +404,7 @@ mod tests {
                 |r| r.get(0),
             )
             .unwrap();
-        assert_eq!(v, 5);
+        assert_eq!(v, 7);
         let tables: i64 = c
             .query_row(
                 "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='daily_analysis'",
@@ -350,5 +413,21 @@ mod tests {
             )
             .unwrap();
         assert_eq!(tables, 1);
+        let focus_tables: i64 = c
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='focus_sessions'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(focus_tables, 1);
+        let nudge_tables: i64 = c
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='nudge_log'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(nudge_tables, 1);
     }
 }

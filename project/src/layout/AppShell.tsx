@@ -29,15 +29,14 @@ export default function AppShell() {
     { to: "/report", label: t("nav.dailyReport"), icon: "¶" },
     { to: "/weekly", label: t("nav.weeklyReport"), icon: "⊞" },
     { to: "/assistant", label: t("nav.assistant"), icon: "✦" },
+    { to: "/ocr", label: t("nav.ocrSearch"), icon: "◇" },
     { to: "/intents", label: t("nav.intents"), icon: "⌗" },
     { to: "/settings", label: t("nav.settings"), icon: "⚙" },
     { to: "/about", label: t("nav.about"), icon: "ℹ" },
   ] as const;
 
   const DEV_NAV = [
-    { to: "/recap", label: t("nav.recap") },
     { to: "/sessions", label: t("nav.sessions") },
-    { to: "/ocr", label: t("nav.ocrSearch") },
     { to: "/ocr-eval", label: t("nav.ocrEval") },
     { to: "/health", label: t("nav.health") },
   ] as const;
@@ -49,10 +48,9 @@ export default function AppShell() {
     if (pathname.startsWith("/weekly")) return { title: t("nav.weeklyReport"), sub: t("nav.weeklyReportDesc") };
     if (pathname.startsWith("/assistant")) return { title: t("nav.assistant"), sub: t("nav.assistantDesc") };
     if (pathname.startsWith("/settings")) return { title: t("nav.settings"), sub: t("nav.settingsDesc") };
-    if (pathname.startsWith("/recap")) return { title: t("nav.recap"), sub: t("nav.devTools") };
     if (pathname.startsWith("/sessions")) return { title: t("nav.sessions"), sub: t("nav.sessionsDesc") };
     if (pathname.startsWith("/ocr-eval")) return { title: t("nav.ocrEval"), sub: t("nav.devTools") };
-    if (pathname.startsWith("/ocr")) return { title: t("nav.ocrSearch"), sub: t("nav.devTools") };
+    if (pathname.startsWith("/ocr")) return { title: t("nav.ocrSearch"), sub: t("nav.ocrSearchDesc") };
     if (pathname.startsWith("/intents")) return { title: t("nav.intents"), sub: t("nav.intentsDesc") };
     if (pathname.startsWith("/health")) return { title: t("nav.health"), sub: t("nav.devTools") };
     if (pathname.startsWith("/about")) return { title: t("nav.about"), sub: t("nav.aboutDesc") };

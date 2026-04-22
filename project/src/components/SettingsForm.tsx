@@ -18,6 +18,7 @@ import {
 } from "../lib/platform";
 import * as api from "../services/tauri";
 import { useThemeStore } from "../stores/themeStore";
+import { useDevModeStore } from "../stores/devModeStore";
 import {
   setLanguage,
   type SupportedLanguage,
@@ -75,14 +76,21 @@ export function SettingsForm({ className }: SettingsFormProps) {
   );
   const [weekStartDay, setWeekStartDayState] = useState<number>(1);
   const [autostartEnabled, setAutostartEnabledState] = useState(false);
+  const [nudge, setNudge] = useState<api.NudgeConfig | null>(null);
+  const [digest, setDigest] = useState<api.DigestConfig | null>(null);
+  const [nudgeMsg, setNudgeMsg] = useState<string | null>(null);
+  const devEnabled = useDevModeStore((s) => s.enabled);
+  const toggleDev = useDevModeStore((s) => s.toggle);
 
   const refreshFlags = useCallback(async () => {
-    const [flags, aicfg, ocrcfg, wsd, autostart] = await Promise.all([
+    const [flags, aicfg, ocrcfg, wsd, autostart, nudgeCfg, digestCfg] = await Promise.all([
       api.getEngineFlags(),
       api.getAiSettings(),
       api.getOcrSettings(),
       api.getWeekStartDay(),
       api.getAutostartEnabled(),
+      api.getNudgeSettings(),
+      api.getDigestSettings(),
     ]);
     setF(flags);
     setAi(aicfg);
@@ -94,6 +102,8 @@ export function SettingsForm({ className }: SettingsFormProps) {
     setAiKeyInput("");
     setWeekStartDayState(wsd);
     setAutostartEnabledState(autostart.enabled);
+    setNudge(nudgeCfg);
+    setDigest(digestCfg);
   }, []);
 
   useEffect(() => {
@@ -392,6 +402,97 @@ export function SettingsForm({ className }: SettingsFormProps) {
         </label>
       </section>
 
+      {/* Phase 11: Smart Nudge & Focus */}
+      {nudge && digest && (
+        <section className="mb-6 space-y-3 rounded border border-[var(--tl-line)] bg-[var(--tl-surface)] p-4">
+          <h2 className="text-sm font-medium text-[var(--tl-muted)]">{t("settings.nudgeSection")}</h2>
+          <p className="text-xs text-[var(--tl-muted)]">{t("settings.nudgeSectionDesc")}</p>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={nudge.enabled} onChange={async (e) => {
+              const next = { ...nudge, enabled: e.target.checked };
+              setNudge(next);
+              try { await api.setNudgeSettings(next); setNudgeMsg(t("settings.nudgeSaved")); } catch (er) { setErr(String(er)); }
+            }} />
+            {t("settings.nudgeEnabled")}
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-[var(--tl-muted)]">{t("settings.nudgeRestMinutes")}</label>
+              <input type="number" min={15} max={120} value={nudge.restMinutes}
+                className="mt-1 w-full rounded border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-2 py-1 font-mono text-sm text-[var(--tl-ink)]"
+                onChange={(e) => setNudge({ ...nudge, restMinutes: Number(e.target.value) || 45 })}
+                onBlur={async () => { try { await api.setNudgeSettings(nudge); } catch {} }} />
+              <p className="mt-0.5 text-[0.65rem] text-[var(--tl-muted)]">{t("settings.nudgeRestMinutesDesc")}</p>
+            </div>
+            <div>
+              <label className="text-xs text-[var(--tl-muted)]">{t("settings.nudgeFragThreshold")}</label>
+              <input type="number" min={3} max={20} value={nudge.fragThreshold}
+                className="mt-1 w-full rounded border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-2 py-1 font-mono text-sm text-[var(--tl-ink)]"
+                onChange={(e) => setNudge({ ...nudge, fragThreshold: Number(e.target.value) || 8 })}
+                onBlur={async () => { try { await api.setNudgeSettings(nudge); } catch {} }} />
+              <p className="mt-0.5 text-[0.65rem] text-[var(--tl-muted)]">{t("settings.nudgeFragThresholdDesc")}</p>
+            </div>
+            <div>
+              <label className="text-xs text-[var(--tl-muted)]">{t("settings.nudgeDeepWorkMinutes")}</label>
+              <input type="number" min={10} max={60} value={nudge.deepWorkMinutes}
+                className="mt-1 w-full rounded border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-2 py-1 font-mono text-sm text-[var(--tl-ink)]"
+                onChange={(e) => setNudge({ ...nudge, deepWorkMinutes: Number(e.target.value) || 25 })}
+                onBlur={async () => { try { await api.setNudgeSettings(nudge); } catch {} }} />
+              <p className="mt-0.5 text-[0.65rem] text-[var(--tl-muted)]">{t("settings.nudgeDeepWorkMinutesDesc")}</p>
+            </div>
+            <div>
+              <label className="text-xs text-[var(--tl-muted)]">{t("settings.nudgeFragWindowMin")}</label>
+              <input type="number" min={3} max={15} value={nudge.fragWindowMin}
+                className="mt-1 w-full rounded border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-2 py-1 font-mono text-sm text-[var(--tl-ink)]"
+                onChange={(e) => setNudge({ ...nudge, fragWindowMin: Number(e.target.value) || 5 })}
+                onBlur={async () => { try { await api.setNudgeSettings(nudge); } catch {} }} />
+              <p className="mt-0.5 text-[0.65rem] text-[var(--tl-muted)]">{t("settings.nudgeFragWindowMinDesc")}</p>
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={nudge.deepWorkDnd} onChange={async (e) => {
+              const next = { ...nudge, deepWorkDnd: e.target.checked };
+              setNudge(next);
+              try { await api.setNudgeSettings(next); } catch {}
+            }} />
+            {t("settings.nudgeDeepWorkDnd")}
+          </label>
+          <hr className="border-[var(--tl-line)]" />
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={digest.enabled} onChange={async (e) => {
+              const next = { ...digest, enabled: e.target.checked };
+              setDigest(next);
+              try { await api.setDigestSettings(next); setNudgeMsg(t("settings.digestSaved")); } catch (er) { setErr(String(er)); }
+            }} />
+            {t("settings.digestEnabled")}
+          </label>
+          <div>
+            <label className="text-xs text-[var(--tl-muted)]">{t("settings.digestTime")}</label>
+            <input type="time" value={digest.time}
+              className="mt-1 w-40 rounded border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-2 py-1 font-mono text-sm text-[var(--tl-ink)]"
+              onChange={(e) => setDigest({ ...digest, time: e.target.value })}
+              onBlur={async () => { try { await api.setDigestSettings(digest); setNudgeMsg(t("settings.digestSaved")); } catch {} }} />
+            <p className="mt-0.5 text-[0.65rem] text-[var(--tl-muted)]">{t("settings.digestTimeDesc")}</p>
+          </div>
+          {nudgeMsg && <p className="text-xs text-green-400">{nudgeMsg}</p>}
+        </section>
+      )}
+
+      {/* Advanced Settings — gated by dev mode */}
+      <section className="mb-6 rounded border border-[var(--tl-line)] bg-[var(--tl-surface)] p-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-[var(--tl-muted)]">{t("settings.advancedSection")}</h2>
+          <label className="flex items-center gap-2 text-xs text-[var(--tl-muted)]">
+            <input type="checkbox" checked={devEnabled} onChange={() => toggleDev()} />
+            {t("settings.devMode")}
+          </label>
+        </div>
+        {!devEnabled && (
+          <p className="mt-2 text-xs text-[var(--tl-muted)]">{t("settings.advancedHint")}</p>
+        )}
+      </section>
+
+      {devEnabled && (<>
       <section className="mb-6 rounded border border-[var(--tl-line)] bg-[var(--tl-surface)] p-4">
         <p className="mt-1 text-xs text-[var(--tl-muted)]">
           {t("settings.permissionsDesc")}
@@ -686,6 +787,7 @@ export function SettingsForm({ className }: SettingsFormProps) {
         )}
         {ocrMsg && <p className="text-xs text-[var(--tl-status-ok)]">{ocrMsg}</p>}
       </section>
+      </>)}
 
       <section className="mb-6 space-y-2">
         <h2 className="text-sm font-medium text-[var(--tl-muted)]">{t("settings.blacklist")}</h2>

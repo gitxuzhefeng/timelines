@@ -2,6 +2,7 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import zh from "./locales/zh-CN.json";
 import en from "./locales/en.json";
+import { setLanguage as setBackendLanguage } from "../services/tauri";
 
 export const SUPPORTED_LANGUAGES = ["zh-CN", "en"] as const;
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
@@ -28,6 +29,8 @@ export function setLanguage(lang: SupportedLanguage): void {
     /* ignore */
   }
   void i18n.changeLanguage(lang);
+  // Phase 12: 同步到后端，让 AI 助手等使用对应语言
+  void setBackendLanguage(lang).catch(() => {});
 }
 
 i18n.use(initReactI18next).init({

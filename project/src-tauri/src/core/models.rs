@@ -302,6 +302,31 @@ pub struct AmbientContextRow {
     pub active_space_index: Option<i64>,
 }
 
+/// Phase 11: 专注会话表行。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FocusSessionRow {
+    pub id: String,
+    pub start_ms: i64,
+    pub end_ms: Option<i64>,
+    pub planned_duration_min: i64,
+    pub actual_duration_ms: Option<i64>,
+    pub status: String,
+    pub summary_json: Option<String>,
+    pub created_at: i64,
+}
+
+/// Phase 11: 提醒日志行。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NudgeLogRow {
+    pub id: String,
+    pub timestamp_ms: i64,
+    pub nudge_type: String,
+    pub payload_json: Option<String>,
+    pub dismissed: i64,
+}
+
 #[derive(Debug, Clone)]
 pub enum WriteEvent {
     RawEvent(RawEventRow),
@@ -313,6 +338,10 @@ pub enum WriteEvent {
     ClipboardFlow(ClipboardFlowRow),
     Notification(NotificationRow),
     AmbientContext(AmbientContextRow),
+    /// Phase 11: 专注会话写入/更新（id 已存在则 UPSERT）。
+    FocusSession(FocusSessionRow),
+    /// Phase 11: 提醒触发日志。
+    NudgeLog(NudgeLogRow),
     /// Delete old raw rows; clear snapshot file paths after deleting files on disk.
     Retention {
         raw_cutoff_ms: i64,

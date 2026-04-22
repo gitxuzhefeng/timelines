@@ -1742,7 +1742,7 @@ pub fn export_weekly_markdown(
     // 查询 weekly_reports 表（八期引入）
     let row: Option<(String, i64, f64)> = conn
         .query_row(
-            "SELECT content, valid_days, avg_flow_score FROM weekly_reports wr \
+            "SELECT content_md, valid_days, avg_flow_score FROM weekly_reports wr \
              JOIN weekly_analysis wa ON wr.week_start = wa.week_start \
              WHERE wr.week_start = ?1 ORDER BY wr.created_at DESC LIMIT 1",
             [&week_start],
@@ -2776,6 +2776,109 @@ fn windows_set_autostart(enabled: bool) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+// ── Phase 11: 智能提醒与专注守护 ──
+
+#[tauri::command]
+pub fn get_nudge_settings(state: State<'_, AppState>) -> Result<settings::NudgeConfig, String> {
+    let conn = state.0.read_conn.lock();
+    Ok(settings::get_nudge_config(&conn))
+}
+
+#[tauri::command]
+pub fn set_nudge_settings(
+    state: State<'_, AppState>,
+    config: settings::NudgeConfig,
+) -> Result<settings::NudgeConfig, String> {
+    let mut c = open_db_rw(&state.0.paths.db_path)?;
+    settings::set_nudge_config(&mut c, &config).map_err(|e| e.to_string())?;
+    state
+        .0
+        .nudge_enabled
+        .store(config.enabled, Ordering::Relaxed);
+    drop(c);
+    let conn = state.0.read_conn.lock();
+    Ok(settings::get_nudge_config(&conn))
+}
+
+#[tauri::command]
+pub fn get_digest_settings(state: State<'_, AppState>) -> Result<settings::DigestConfig, String> {
+    let conn = state.0.read_conn.lock();
+    Ok(settings::get_digest_config(&conn))
+}
+
+#[tauri::command]
+pub fn set_digest_settings(
+    state: State<'_, AppState>,
+    config: settings::DigestConfig,
+) -> Result<settings::DigestConfig, String> {
+    let mut c = open_db_rw(&state.0.paths.db_path)?;
+    settings::set_digest_config(&mut c, &config).map_err(|e| e.to_string())?;
+    drop(c);
+    let conn = state.0.read_conn.lock();
+    Ok(settings::get_digest_config(&conn))
+}
+
+#[tauri::command]
+pub fn start_focus_session(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    duration_min: u32,
+) -> Result<crate::core::models::FocusSessionRow, String> {
+    crate::core::nudge::create_focus_session(
+        &state.0.read_conn,
+        &state.0.writer,
+        duration_min,
+        &state.0.focus_active,
+        &app,
+    )
+}
+
+#[tauri::command]
+pub fn stop_focus_session(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    cancel: bool,
+) -> Result<Option<crate::core::models::FocusSessionRow>, String> {
+    crate::core::nudge::stop_focus_session(
+        &state.0.read_conn,
+        &state.0.writer,
+        &state.0.focus_active,
+        cancel,
+        &app,
+    )
+}
+
+#[tauri::command]
+pub fn get_active_focus_session(
+    state: State<'_, AppState>,
+) -> Result<Option<crate::core::models::FocusSessionRow>, String> {
+    let (active, sid) = {
+        let g = state.0.read_conn.lock();
+        settings::get_focus_mode_active(&g)
+    };
+    if !active {
+        return Ok(None);
+    }
+    let Some(session_id) = sid else {
+        return Ok(None);
+    };
+    Ok(crate::core::nudge::read_focus_session(
+        &state.0.read_conn,
+        &session_id,
+    ))
+}
+
+#[tauri::command]
+pub fn get_focus_history(
+    state: State<'_, AppState>,
+    date: String,
+) -> Result<Vec<crate::core::models::FocusSessionRow>, String> {
+    Ok(crate::core::nudge::list_focus_sessions_for_date(
+        &state.0.read_conn,
+        &date,
+    ))
 }
 
 #[cfg(test)]

@@ -6,7 +6,6 @@ import type { UpdateCheckResult } from "../services/tauri";
 const GITHUB_URL = "https://github.com/gitxuzhefeng/timelines";
 const HOMEPAGE_URL = "https://timelens-pi.vercel.app/";
 const ISSUES_URL = "https://github.com/gitxuzhefeng/timelines/issues/new";
-const BUY_ME_COFFEE_URL = "https://www.buymeacoffee.com/";
 
 function openUrl(url: string) {
   void api.openUrl(url);
@@ -126,26 +125,20 @@ export default function AboutPage() {
         <section className="rounded-lg border border-[var(--tl-line)] bg-[var(--tl-surface)] p-4">
           <h2 className="mb-1 text-sm font-medium text-[var(--tl-muted)]">{t("about.feedback")}</h2>
           <p className="mb-3 text-xs text-[var(--tl-muted)]">{t("about.feedbackDesc")}</p>
-          <button
-            type="button"
-            onClick={() => openUrl(ISSUES_URL)}
-            className="rounded border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-ink)] hover:bg-[var(--tl-surface-deep)]"
-          >
-            {t("about.openIssue")}
-          </button>
-        </section>
-
-        {/* Sponsor */}
-        <section className="rounded-lg border border-[var(--tl-line)] bg-[var(--tl-surface)] p-4">
-          <h2 className="mb-1 text-sm font-medium text-[var(--tl-muted)]">{t("about.sponsor")}</h2>
-          <p className="mb-3 text-xs text-[var(--tl-muted)]">{t("about.sponsorDesc")}</p>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => openUrl(BUY_ME_COFFEE_URL)}
+              onClick={() => openUrl(ISSUES_URL)}
               className="rounded border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-ink)] hover:bg-[var(--tl-surface-deep)]"
             >
-              ☕ {t("about.buyMeCoffee")}
+              {t("about.openIssue")}
+            </button>
+            <button
+              type="button"
+              onClick={() => openUrl("mailto:xuzhfeng222@gmail.com")}
+              className="rounded border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-ink)] hover:bg-[var(--tl-surface-deep)]"
+            >
+              {t("about.emailFeedback")}
             </button>
           </div>
         </section>

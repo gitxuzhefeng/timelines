@@ -70,18 +70,25 @@ export default function TodayLensPage() {
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [focusSession, setFocusSession] = useState<api.FocusSession | null>(null);
+  const [focusHistory, setFocusHistory] = useState<api.FocusSession[]>([]);
+  const [focusRemaining, setFocusRemaining] = useState(0);
 
   const load = useCallback(async () => {
     setErr(null);
     try {
-      const [a, h, rep] = await Promise.all([
+      const [a, h, rep, activeFocus, fHistory] = await Promise.all([
         api.getDailyAnalysis(date),
         api.getPipelineHealth(),
         api.getDailyReport(date, "fact_only").catch(() => null),
+        api.getActiveFocusSession().catch(() => null),
+        api.getFocusHistory(date).catch(() => []),
       ]);
       setAnalysis(a);
       setHealth(h);
       setSnippet(extractReportNarrativeSnippet(rep?.contentMd ?? ""));
+      setFocusSession(activeFocus ?? null);
+      setFocusHistory(fHistory);
     } catch (e) {
       setErr(String(e));
       setAnalysis(null);
@@ -90,6 +97,30 @@ export default function TodayLensPage() {
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  // Focus countdown timer
+  useEffect(() => {
+    if (!focusSession || focusSession.status !== "active") {
+      setFocusRemaining(0);
+      return;
+    }
+    const update = () => {
+      const endMs = focusSession.startMs + focusSession.plannedDurationMin * 60_000;
+      const rem = Math.max(0, Math.ceil((endMs - Date.now()) / 60_000));
+      setFocusRemaining(rem);
+    };
+    update();
+    const iv = setInterval(update, 1000);
+    return () => clearInterval(iv);
+  }, [focusSession]);
+
+  // Listen for focus events
+  useEffect(() => {
+    const unsubs: (() => void)[] = [];
+    api.listenEvent("focus_session_started", () => void load()).then((u) => unsubs.push(u));
+    api.listenEvent("focus_session_ended", () => void load()).then((u) => unsubs.push(u));
+    return () => unsubs.forEach((u) => u());
   }, [load]);
 
   const degraded = useMemo(
@@ -262,48 +293,48 @@ export default function TodayLensPage() {
         <p className="mb-4 whitespace-pre-line rounded-lg border border-[var(--tl-accent-20)] bg-[var(--tl-glass-25)] p-3 text-sm leading-relaxed text-[var(--tl-ink)]/90">
           {narrativeBody}
         </p>
-        {snippet ? (
-          <div className="mb-4 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-glass-15)] p-3">
-            <p className="mb-1 font-mono text-[0.5rem] font-semibold uppercase tracking-[0.12em] text-[var(--tl-muted)]">
+        {snippet && (
+          <details className="mb-4 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-glass-15)]">
+            <summary className="cursor-pointer px-3 py-2 font-mono text-[0.5rem] font-semibold uppercase tracking-[0.12em] text-[var(--tl-muted)]">
               {t("todayLens.factReportExcerpt")}
-            </p>
-            <p className="text-sm leading-relaxed text-[var(--tl-ink)]/80">{snippet}</p>
-          </div>
-        ) : (
-          <p className="mb-4 text-[0.65rem] text-[var(--tl-muted)]">
-            {t("todayLens.noFactReport")}
-          </p>
+            </summary>
+            <p className="px-3 pb-3 text-sm leading-relaxed text-[var(--tl-ink)]/80">{snippet}</p>
+          </details>
         )}
 
-        <p className="mb-2 font-mono text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-[var(--tl-cyan)]">
-          {t("todayLens.dataPipeline")}
-        </p>
-        <div className="mb-4 flex flex-wrap items-center gap-0.5">
-          {PIPE_KEYS_BASE.map((p, i) => {
-            const st = health?.[p.k]?.status ?? "stopped";
-            const label = p.labelKey ? t(p.labelKey) : "OCR";
-            const sub = t(p.subKey);
-            return (
-              <div key={p.k} className="contents">
-                <div className="min-w-[4.5rem] max-w-[5.5rem] flex-1 rounded-lg border border-[var(--tl-accent-22)] bg-[var(--tl-accent-06)] px-1.5 py-2 text-center">
-                  <span className={`block text-lg ${engineDot(st)}`}>{p.icon}</span>
-                  <span className="block font-mono text-[0.5rem] font-semibold uppercase tracking-wider text-[var(--tl-cyan-dim)]">
-                    {label}
-                  </span>
-                  <span className="mt-0.5 block text-[0.58rem] text-[var(--tl-ink)]/75">{sub}</span>
-                </div>
-                {i < PIPE_KEYS_BASE.length - 1 ? (
-                  <div className="tl-fp-link mx-px hidden min-[480px]:block">
-                    <span
-                      className="tl-fp-beam block"
-                      style={{ animationDelay: `${i * 0.35}s` }}
-                    />
+        {health && (
+          <details className="mb-4 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-glass-15)]">
+            <summary className="cursor-pointer px-3 py-2 font-mono text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-[var(--tl-cyan)]">
+              {t("todayLens.dataPipeline")}
+            </summary>
+            <div className="flex flex-wrap items-center gap-0.5 px-3 pb-3">
+              {PIPE_KEYS_BASE.map((p, i) => {
+                const st = health?.[p.k]?.status ?? "stopped";
+                const label = p.labelKey ? t(p.labelKey) : "OCR";
+                const sub = t(p.subKey);
+                return (
+                  <div key={p.k} className="contents">
+                    <div className="min-w-[4.5rem] max-w-[5.5rem] flex-1 rounded-lg border border-[var(--tl-accent-22)] bg-[var(--tl-accent-06)] px-1.5 py-2 text-center">
+                      <span className={`block text-lg ${engineDot(st)}`}>{p.icon}</span>
+                      <span className="block font-mono text-[0.5rem] font-semibold uppercase tracking-wider text-[var(--tl-cyan-dim)]">
+                        {label}
+                      </span>
+                      <span className="mt-0.5 block text-[0.58rem] text-[var(--tl-ink)]/75">{sub}</span>
+                    </div>
+                    {i < PIPE_KEYS_BASE.length - 1 ? (
+                      <div className="tl-fp-link mx-px hidden min-[480px]:block">
+                        <span
+                          className="tl-fp-beam block"
+                          style={{ animationDelay: `${i * 0.35}s` }}
+                        />
+                      </div>
+                    ) : null}
                   </div>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          </details>
+        )}
 
         {degraded.length > 0 && (
           <div className="mb-4 flex flex-wrap gap-1.5">
@@ -360,7 +391,7 @@ export default function TodayLensPage() {
         <p className="mb-2 font-mono text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-[var(--tl-cyan)]">
           {t("todayLens.interruptSources")}
         </p>
-        <div className="mb-4 flex min-h-[52px] items-end gap-1 border-b border-[var(--tl-accent-15b)] pb-2">
+        <div className="mb-1 flex min-h-[52px] items-end gap-1 border-b border-[var(--tl-accent-15b)] pb-2">
           {interrupters.length === 0 ? (
             <span className="text-sm text-[var(--tl-muted)]">{t("todayLens.noInterrupts")}</span>
           ) : (
@@ -369,18 +400,31 @@ export default function TodayLensPage() {
               return (
                 <div
                   key={it.app}
-                  title={`${it.app} · ${it.count} 条`}
-                  className="flex-1 rounded-t bg-gradient-to-t from-[var(--tl-cyan)]/25 to-[var(--tl-purple)]/35"
-                  style={{
-                    height: `${h}px`,
-                    maxWidth: "48px",
-                    animationDelay: `${idx * 0.08}s`,
-                  }}
-                />
+                  className="flex flex-1 flex-col items-center"
+                  style={{ maxWidth: "64px" }}
+                >
+                  <div
+                    className="w-full rounded-t bg-gradient-to-t from-[var(--tl-cyan)]/25 to-[var(--tl-purple)]/35"
+                    style={{
+                      height: `${h}px`,
+                      animationDelay: `${idx * 0.08}s`,
+                    }}
+                  />
+                </div>
               );
             })
           )}
         </div>
+        {interrupters.length > 0 && (
+          <div className="mb-4 flex gap-1">
+            {interrupters.map((it) => (
+              <div key={it.app} className="flex flex-1 flex-col items-center" style={{ maxWidth: "64px" }}>
+                <span className="truncate text-[0.55rem] text-[var(--tl-ink)]">{it.app}</span>
+                <span className="text-[0.5rem] text-[var(--tl-muted)]">{it.count}</span>
+              </div>
+            ))}
+          </div>
+        )}
         {analysis.notificationCount > 0 && (
           <p className="mb-3 font-mono text-xs text-[var(--tl-muted)]">
             {t("todayLens.notificationCount", { count: analysis.notificationCount, interrupts: analysis.interruptsInDeep })}
@@ -450,6 +494,63 @@ export default function TodayLensPage() {
             <li className="text-sm text-[var(--tl-muted)]">{t("common.none")}</li>
           )}
         </ul>
+        {/* Focus Mode Panel */}
+        <div className="mt-4 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-surface)] p-4">
+          <h3 className="font-mono text-xs font-semibold uppercase tracking-widest text-[var(--tl-cyan)]">
+            {t("todayLens.focusTitle")}
+          </h3>
+          {focusSession && focusSession.status === "active" ? (
+            <div className="mt-2 space-y-2">
+              <p className="text-sm text-[var(--tl-ink)]">
+                {t("todayLens.focusActive")} — {t("todayLens.focusRemaining", { min: focusRemaining })}
+              </p>
+              <div className="flex gap-2">
+                <button type="button"
+                  className="rounded border border-[var(--tl-line)] px-3 py-1 text-xs text-[var(--tl-cyan)] hover:bg-[var(--tl-accent-08)]"
+                  onClick={async () => { await api.stopFocusSession(false); void load(); }}>
+                  {t("todayLens.focusStop")}
+                </button>
+                <button type="button"
+                  className="rounded border border-[var(--tl-line)] px-3 py-1 text-xs text-[var(--tl-muted)] hover:bg-[var(--tl-accent-08)]"
+                  onClick={async () => { await api.stopFocusSession(true); void load(); }}>
+                  {t("todayLens.focusCancel")}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-2 flex gap-2">
+              {[25, 45, 60].map((m) => (
+                <button key={m} type="button"
+                  className="rounded border border-[var(--tl-line)] px-3 py-1.5 text-xs text-[var(--tl-cyan)] hover:bg-[var(--tl-accent-08)]"
+                  onClick={async () => {
+                    try { await api.startFocusSession(m); void load(); }
+                    catch { /* already active */ }
+                  }}>
+                  {t("todayLens.focusStart")} {m}min
+                </button>
+              ))}
+            </div>
+          )}
+          {focusHistory.length > 0 && (
+            <div className="mt-3 border-t border-[var(--tl-line)] pt-2">
+              <p className="text-xs font-medium text-[var(--tl-muted)]">{t("todayLens.focusHistory")}</p>
+              <ul className="mt-1 space-y-1">
+                {focusHistory.map((fs) => (
+                  <li key={fs.id} className="flex items-center gap-2 text-xs text-[var(--tl-ink)]">
+                    <span className={fs.status === "completed" ? "text-green-400" : "text-[var(--tl-muted)]"}>
+                      {fs.status === "completed" ? t("todayLens.focusCompleted") : t("todayLens.focusCancelled")}
+                    </span>
+                    <span>{t("todayLens.focusMin", { min: fs.plannedDurationMin })}</span>
+                    {fs.actualDurationMs != null && (
+                      <span className="text-[var(--tl-muted)]">({Math.round(fs.actualDurationMs / 60000)}min)</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
         <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--tl-line)] pt-4">
           <button
             type="button"

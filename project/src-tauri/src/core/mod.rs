@@ -4,6 +4,7 @@ pub mod intent_builtin_catalog;
 pub mod intent_mapping;
 pub mod ocr;
 pub mod models;
+pub mod nudge;
 pub mod privacy;
 pub mod settings;
 pub mod writer;

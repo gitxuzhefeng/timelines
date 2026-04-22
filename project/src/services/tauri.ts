@@ -439,6 +439,12 @@ export type EventPayloads = {
   afk_state_changed: { isAfk: boolean; idleSeconds: number };
   app_switch_recorded: unknown;
   writer_stats_updated: WriterStats;
+  nudge_rest: { elapsedMin: number; title: string; body: string };
+  nudge_fragmentation: { switchCount: number; windowMin: number };
+  nudge_deep_work: { app: string | null; elapsedMin: number; dnd: boolean };
+  nudge_daily_digest: { date: string; title: string; body: string; summary: unknown };
+  focus_session_started: { id: string; startMs: number; plannedDurationMin: number };
+  focus_session_ended: { id: string; status: string; actualDurationMs: number | null; summaryJson: string | unknown };
 };
 
 export function listenEvent<K extends keyof EventPayloads>(
@@ -493,4 +499,63 @@ export async function getAutostartEnabled(): Promise<AutostartDto> {
 
 export async function setAutostartEnabled(enabled: boolean): Promise<AutostartDto> {
   return invoke<AutostartDto>("set_autostart_enabled", { enabled });
+}
+
+// ── Phase 11: Smart Nudge & Focus ───────────────────────────────────────────
+
+export interface NudgeConfig {
+  enabled: boolean;
+  restMinutes: number;
+  fragThreshold: number;
+  fragWindowMin: number;
+  deepWorkMinutes: number;
+  deepWorkDnd: boolean;
+}
+
+export interface DigestConfig {
+  enabled: boolean;
+  time: string;
+}
+
+export interface FocusSession {
+  id: string;
+  startMs: number;
+  endMs: number | null;
+  plannedDurationMin: number;
+  actualDurationMs: number | null;
+  status: string;
+  summaryJson: string | null;
+  createdAt: number;
+}
+
+export async function getNudgeSettings(): Promise<NudgeConfig> {
+  return invoke<NudgeConfig>("get_nudge_settings");
+}
+
+export async function setNudgeSettings(config: NudgeConfig): Promise<NudgeConfig> {
+  return invoke<NudgeConfig>("set_nudge_settings", { config });
+}
+
+export async function getDigestSettings(): Promise<DigestConfig> {
+  return invoke<DigestConfig>("get_digest_settings");
+}
+
+export async function setDigestSettings(config: DigestConfig): Promise<DigestConfig> {
+  return invoke<DigestConfig>("set_digest_settings", { config });
+}
+
+export async function startFocusSession(durationMin: number): Promise<FocusSession> {
+  return invoke<FocusSession>("start_focus_session", { durationMin });
+}
+
+export async function stopFocusSession(cancel: boolean): Promise<FocusSession | null> {
+  return invoke<FocusSession | null>("stop_focus_session", { cancel });
+}
+
+export async function getActiveFocusSession(): Promise<FocusSession | null> {
+  return invoke<FocusSession | null>("get_active_focus_session");
+}
+
+export async function getFocusHistory(date: string): Promise<FocusSession[]> {
+  return invoke<FocusSession[]>("get_focus_history", { date });
 }

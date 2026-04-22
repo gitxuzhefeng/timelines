@@ -5,7 +5,6 @@ import type { DailyAnalysisDto, Snapshot, WindowSession } from "../types";
 import { snapshotTimelensUrl } from "../types";
 import { parseIntentBreakdown, parseTopApps } from "../lib/dailyAnalysisParsed";
 import {
-  DAYPART_ORDER,
   daypartFromStartMs,
   formatDurationMs,
   formatDurationShortMs,
@@ -102,6 +101,7 @@ export default function TimelinePage() {
   const [snaps, setSnaps] = useState<Snapshot[]>([]);
   const [snapPick, setSnapPick] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [groupedView, setGroupedView] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -133,6 +133,53 @@ export default function TimelinePage() {
     }
     return m;
   }, [sessions]);
+  void byPart;
+
+  // Phase 12: reversed sessions (newest first)
+  const reversedSessions = useMemo(() => [...sessions].sort((a, b) => b.startMs - a.startMs), [sessions]);
+
+  // Phase 12: smart grouping — merge adjacent same-app sessions
+  type SessionGroup = {
+    id: string;
+    appName: string;
+    intent: string | null;
+    startMs: number;
+    endMs: number;
+    totalDurationMs: number;
+    sessionCount: number;
+    sessions: WindowSession[];
+  };
+
+  const grouped = useMemo((): SessionGroup[] => {
+    if (reversedSessions.length === 0) return [];
+    // Group from chronological order, then reverse
+    const chrono = [...sessions].sort((a, b) => a.startMs - b.startMs);
+    const groups: SessionGroup[] = [];
+    let cur: SessionGroup | null = null;
+    for (const s of chrono) {
+      const gap = cur ? s.startMs - cur.endMs : Infinity;
+      if (cur && s.appName === cur.appName && gap <= 3 * 60_000 && cur.totalDurationMs < 90 * 60_000) {
+        cur.endMs = Math.max(cur.endMs, s.endMs);
+        cur.totalDurationMs += s.durationMs;
+        cur.sessionCount += 1;
+        cur.sessions.push(s);
+      } else {
+        if (cur) groups.push(cur);
+        cur = {
+          id: s.id,
+          appName: s.appName,
+          intent: s.intent,
+          startMs: s.startMs,
+          endMs: s.endMs,
+          totalDurationMs: s.durationMs,
+          sessionCount: 1,
+          sessions: [s],
+        };
+      }
+    }
+    if (cur) groups.push(cur);
+    return groups.reverse(); // newest first
+  }, [sessions, reversedSessions]);
 
   const sessionsTotalMs = useMemo(
     () => sessions.reduce((acc, s) => acc + s.durationMs, 0),
@@ -348,78 +395,115 @@ export default function TimelinePage() {
           </div>
         </div>
 
-        <p className="mb-4 text-[0.78rem] leading-relaxed text-[var(--tl-muted)]">
-          {t("timeline.sessionListDesc").split("前台会话段")[0]}<strong className="text-[var(--tl-ink)]">{t("timeline.sessionListDesc").includes("前台会话段") ? "前台会话段" : ""}</strong>{t("timeline.sessionListDesc").split("前台会话段")[1] ?? ""}
-        </p>
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-[0.78rem] leading-relaxed text-[var(--tl-muted)]">
+            {t("timeline.sessionListDesc").split("前台会话段")[0]}<strong className="text-[var(--tl-ink)]">{t("timeline.sessionListDesc").includes("前台会话段") ? "前台会话段" : ""}</strong>{t("timeline.sessionListDesc").split("前台会话段")[1] ?? ""}
+          </p>
+          <button
+            type="button"
+            className="shrink-0 rounded border border-[var(--tl-line)] px-2 py-1 text-[0.65rem] text-[var(--tl-muted)] hover:bg-[var(--tl-surface)]"
+            onClick={() => setGroupedView(!groupedView)}
+          >
+            {groupedView ? t("timeline.fullView") : t("timeline.groupedView")}
+          </button>
+        </div>
 
         {loading ? (
           <p className="text-sm text-[var(--tl-muted)]">{t("timeline.loading")}</p>
         ) : sessions.length === 0 ? (
           <p className="text-center text-sm text-[var(--tl-muted)]">{t("timeline.noSessions")}</p>
+        ) : groupedView ? (
+          <div className="tl-p3-tl" role="list">
+            {grouped.map((g) => {
+              const { bucket, label: intentLabel } = intentVisual(g.intent);
+              const intentCls =
+                bucket === "a" ? "tl-p3-intent-a" : bucket === "b" ? "tl-p3-intent-b" : bucket === "c" ? "tl-p3-intent-c" : "tl-p3-intent-d";
+              const dot = P3_COLORS[bucket];
+              return (
+                <article key={g.id} className="tl-p3-item" role="listitem">
+                  <div className="tl-p3-time">
+                    {fmtTime(g.startMs)}
+                    <span className="dur block text-[0.58rem] font-normal opacity-85">
+                      {formatDurationShortMs(g.totalDurationMs)}
+                    </span>
+                  </div>
+                  <div className="tl-p3-axis">
+                    <span className="tl-p3-dot" style={{ background: dot }} />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPick(g.sessions[0])}
+                    className={`tl-p3-card tl-interactive-row ${pick?.id === g.sessions[0].id ? "tl-p3-card-active" : ""}`}
+                  >
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-1.5 text-[0.82rem] font-semibold text-[var(--tl-ink)]">
+                        <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md bg-white/[0.06] text-[0.65rem] font-bold text-[var(--tl-muted)]">
+                          {appIconLabel(g.appName)}
+                        </span>
+                        {g.appName}
+                        {g.sessionCount > 1 && (
+                          <span className="text-[0.6rem] text-[var(--tl-muted)]">({g.sessionCount})</span>
+                        )}
+                      </span>
+                      <span className={`shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.06em] ${intentCls}`}>
+                        {intentLabel}
+                      </span>
+                    </div>
+                    <p className="text-[0.74rem] leading-snug text-[var(--tl-muted)]">
+                      {fmtTime(g.startMs)} — {fmtTime(g.endMs)}
+                    </p>
+                  </button>
+                </article>
+              );
+            })}
+          </div>
         ) : (
-          DAYPART_ORDER.map(({ key, label }) => {
-            const list = byPart[key];
-            if (list.length === 0) return null;
-            return (
-              <div key={key}>
-                <h2 className="tl-p3-section-title">{label}</h2>
-                <div className="tl-p3-tl" role="list">
-                  {list.map((s) => {
-                    const { bucket, label: intentLabel } = intentVisual(s.intent);
-                    const intentCls =
-                      bucket === "a"
-                        ? "tl-p3-intent-a"
-                        : bucket === "b"
-                          ? "tl-p3-intent-b"
-                          : bucket === "c"
-                            ? "tl-p3-intent-c"
-                            : "tl-p3-intent-d";
-                    const dot = P3_COLORS[bucket];
-                    const active = pick?.id === s.id;
-                    return (
-                      <article key={s.id} className="tl-p3-item" role="listitem">
-                        <div className="tl-p3-time">
-                          {fmtTime(s.startMs)}
-                          <span className="dur block text-[0.58rem] font-normal opacity-85">
-                            {formatDurationShortMs(s.durationMs)}
-                          </span>
-                        </div>
-                        <div className="tl-p3-axis">
-                          <span className="tl-p3-dot" style={{ background: dot }} />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setPick(s)}
-                          className={`tl-p3-card tl-interactive-row ${active ? "tl-p3-card-active" : ""}`}
-                        >
-                          <div className="mb-1 flex items-center justify-between gap-2">
-                            <span className="flex items-center gap-1.5 text-[0.82rem] font-semibold text-[var(--tl-ink)]">
-                              <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md bg-white/[0.06] text-[0.65rem] font-bold text-[var(--tl-muted)]">
-                                {appIconLabel(s.appName)}
-                              </span>
-                              {s.appName}
-                            </span>
-                            <span
-                              className={`shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.06em] ${intentCls}`}
-                            >
-                              {intentLabel}
-                            </span>
-                          </div>
-                          <p className="text-[0.74rem] leading-snug text-[var(--tl-muted)] [word-break:break-word]">
-                            {s.windowTitle || t("timeline.noWindowTitle")}
-                          </p>
-                          <p className="mt-2 font-mono text-[0.62rem] text-[var(--tl-muted)] opacity-90">
-                            {t("timeline.sessionEvents", { count: s.rawEventCount })}
-                            {s.bundleId ? ` · ${s.bundleId}` : ""}
-                          </p>
-                        </button>
-                      </article>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })
+          <div className="tl-p3-tl" role="list">
+            {reversedSessions.map((s) => {
+              const { bucket, label: intentLabel } = intentVisual(s.intent);
+              const intentCls =
+                bucket === "a" ? "tl-p3-intent-a" : bucket === "b" ? "tl-p3-intent-b" : bucket === "c" ? "tl-p3-intent-c" : "tl-p3-intent-d";
+              const dot = P3_COLORS[bucket];
+              const active = pick?.id === s.id;
+              return (
+                <article key={s.id} className="tl-p3-item" role="listitem">
+                  <div className="tl-p3-time">
+                    {fmtTime(s.startMs)}
+                    <span className="dur block text-[0.58rem] font-normal opacity-85">
+                      {formatDurationShortMs(s.durationMs)}
+                    </span>
+                  </div>
+                  <div className="tl-p3-axis">
+                    <span className="tl-p3-dot" style={{ background: dot }} />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPick(s)}
+                    className={`tl-p3-card tl-interactive-row ${active ? "tl-p3-card-active" : ""}`}
+                  >
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-1.5 text-[0.82rem] font-semibold text-[var(--tl-ink)]">
+                        <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md bg-white/[0.06] text-[0.65rem] font-bold text-[var(--tl-muted)]">
+                          {appIconLabel(s.appName)}
+                        </span>
+                        {s.appName}
+                      </span>
+                      <span className={`shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.06em] ${intentCls}`}>
+                        {intentLabel}
+                      </span>
+                    </div>
+                    <p className="text-[0.74rem] leading-snug text-[var(--tl-muted)] [word-break:break-word]">
+                      {s.windowTitle || t("timeline.noWindowTitle")}
+                    </p>
+                    <p className="mt-2 font-mono text-[0.62rem] text-[var(--tl-muted)] opacity-90">
+                      {t("timeline.sessionEvents", { count: s.rawEventCount })}
+                      {s.bundleId ? ` · ${s.bundleId}` : ""}
+                    </p>
+                  </button>
+                </article>
+              );
+            })}
+          </div>
         )}
 
         <nav
