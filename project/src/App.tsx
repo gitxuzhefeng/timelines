@@ -23,6 +23,8 @@ import SettingsShellPage from "./pages/SettingsShellPage";
 import AboutPage from "./pages/AboutPage";
 import WeeklyReportPage from "./pages/WeeklyReportPage";
 import AssistantPage from "./pages/AssistantPage";
+import FragmentationDetail from "./components/FragmentationDetail";
+import UpdateNotice from "./components/UpdateNotice";
 import { detectClientDesktopOs } from "./lib/platform";
 
 export default function App() {
@@ -35,8 +37,8 @@ export default function App() {
   const { i18n } = useTranslation();
 
   useLayoutEffect(() => {
-    if (theme === "white") document.documentElement.setAttribute("data-theme", "white");
-    else document.documentElement.removeAttribute("data-theme");
+    if (theme === "tech") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
   useEffect(() => {
@@ -59,12 +61,10 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 启动时静默检查更新，有新版本时在导航显示红点
+  // 启动时静默检查更新，有新版本时弹窗提醒
   useEffect(() => {
     api.checkForUpdate().then((r) => {
-      if (r.hasUpdate) {
-        useAppStore.setState({ updateAvailable: true, latestVersion: r.latestVersion });
-      }
+      useAppStore.getState().setUpdateCheckResult(r);
     }).catch(() => {/* 网络不可用时静默忽略 */});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -119,6 +119,17 @@ export default function App() {
           setWriterStats(w);
         }),
       );
+      unsubs.push(
+        await api.listenEvent("nudge_fragmentation", (p) => {
+          api.getRecentAppSwitches(p.windowMin).then((switches) => {
+            useAppStore.getState().setFragmentationAlert({
+              switchCount: p.switchCount,
+              windowMin: p.windowMin,
+              switches,
+            });
+          }).catch(() => {});
+        }),
+      );
     };
     void reg();
     return () => {
@@ -130,6 +141,8 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <FragmentationDetail />
+      <UpdateNotice />
       <Routes>
         <Route element={<AppShell />}>
           <Route path="/" element={<Navigate to="/lens" replace />} />

@@ -9,6 +9,7 @@ import type {
   WindowSession,
   WriterStats,
 } from "../types";
+import type { AppSwitch, UpdateCheckResult } from "../services/tauri";
 import * as api from "../services/tauri";
 
 function todayStr(): string {
@@ -43,6 +44,13 @@ interface AppState {
   error: string | null;
   updateAvailable: boolean;
   latestVersion: string | null;
+  updateCheckResult: UpdateCheckResult | null;
+  updateDismissed: boolean;
+  fragmentationAlert: {
+    switchCount: number;
+    windowMin: number;
+    switches: AppSwitch[];
+  } | null;
   formatBytes: (n: number) => string;
   setDate: (d: string) => void;
   refreshAll: () => Promise<void>;
@@ -53,6 +61,9 @@ interface AppState {
   setPermissions: (p: PermissionStatus) => void;
   setAfk: (isAfk: boolean) => void;
   setWriterStats: (w: WriterStats) => void;
+  setFragmentationAlert: (alert: AppState["fragmentationAlert"]) => void;
+  setUpdateCheckResult: (r: UpdateCheckResult) => void;
+  dismissUpdate: () => void;
   clearError: () => void;
 }
 
@@ -74,6 +85,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   error: null,
   updateAvailable: false,
   latestVersion: null,
+  updateCheckResult: null,
+  updateDismissed: false,
+  fragmentationAlert: null,
   formatBytes,
 
   setDate: (d) => {
@@ -158,5 +172,20 @@ export const useAppStore = create<AppState>((set, get) => ({
   setPermissions: (p) => set({ permissions: p }),
   setAfk: (isAfk) => set({ isAfk }),
   setWriterStats: (w) => set({ writer: w }),
+  setFragmentationAlert: (alert) => set({ fragmentationAlert: alert }),
+  setUpdateCheckResult: (r) => {
+    const dismissed = localStorage.getItem("timelens_dismissed_version") === r.latestVersion;
+    set({
+      updateCheckResult: r,
+      updateAvailable: r.hasUpdate,
+      latestVersion: r.latestVersion,
+      updateDismissed: dismissed,
+    });
+  },
+  dismissUpdate: () => {
+    const ver = get().updateCheckResult?.latestVersion;
+    if (ver) localStorage.setItem("timelens_dismissed_version", ver);
+    set({ updateDismissed: true });
+  },
   clearError: () => set({ error: null }),
 }));

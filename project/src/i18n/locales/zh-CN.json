@@ -175,7 +175,11 @@
     "screenshots": "截图",
     "noScreenshots": "无截图",
     "groupedView": "分组视图",
-    "fullView": "完整视图"
+    "fullView": "完整视图",
+    "summaryView": "概括",
+    "expandApps": "展开全部",
+    "collapseApps": "收起",
+    "alsoUsed": "也用了"
   },
   "ocrSearch": {
     "title": "OCR 检索",
@@ -285,7 +289,18 @@
     "filterAll": "全部",
     "filterNone": "未映射",
     "filterBuiltin": "内置",
-    "filterUser": "手动"
+    "filterUser": "手动",
+    "smartMatch": "智能匹配",
+    "matching": "匹配中…",
+    "manageGroups": "管理分组",
+    "customGroups": "自定义分组",
+    "groupName": "分组名称",
+    "groupNamePlaceholder": "输入分组名称",
+    "groupColor": "颜色",
+    "addGroup": "添加",
+    "confirmDeleteGroup": "确定删除分组「{{name}}」？已分配的应用将回退为未分组。",
+    "matchPreview": "匹配预览",
+    "applyAll": "全部应用"
   },
   "recap": {
     "title": "复盘",
@@ -324,9 +339,14 @@
     "title": "设置",
     "loading": "加载设置…",
     "theme": "界面主题",
-    "themeDesc": "科技风为默认深色霓虹风格；白色风为浅色背景，适合日间阅读。选项保存在本机。",
+    "themeDesc": "选择视觉主题。深色：科技风、Raycast、Spotify、Linear。浅色：白色风、Claude、Cursor。选项保存在本机。",
     "themeTech": "科技风",
     "themeWhite": "白色风",
+    "themeClaude": "Claude",
+    "themeRaycast": "Raycast",
+    "themeSpotify": "Spotify",
+    "themeLinear": "Linear",
+    "themeCursor": "Cursor",
     "systemPermissions": "系统权限",
     "permissionsDesc": "采集、截图与通知依赖系统授权；下方按钮会打开当前系统对应的设置页（macOS 与 Windows 文案不同属正常）。",
     "ocrConfirmTitle": "开启屏幕文字识别（OCR）前请确认",
@@ -476,7 +496,10 @@
         "4": "周四",
         "5": "周五",
         "6": "周六"
-      }
+      },
+      "less": "少",
+      "more": "多",
+      "goldenSlot": "黄金时段：{{day}} {{hour}}:00"
     },
     "trend": {
       "title": "生产力评分走势",
@@ -496,6 +519,39 @@
       "insufficientDays": "AI 叙事需要至少 3 天数据（当前 {{days}} 天）",
       "aiDisabled": "AI 功能未启用，可在设置中开启。",
       "generating": "AI 分析生成中…"
+    },
+    "chartView": "图表",
+    "markdownView": "Markdown"
+  },
+  "fragmentation": {
+    "title": "注意力分散预警",
+    "subtitle": "最近 {{minutes}} 分钟内切换了 {{count}} 次应用",
+    "appDistribution": "应用切换分布",
+    "switchTimeline": "切换时间线",
+    "dismiss": "我知道了"
+  },
+  "updateNotice": {
+    "title": "发现新版本",
+    "whatsNew": "更新内容",
+    "viewUpdate": "前往更新",
+    "later": "稍后提醒"
+  },
+  "daily": {
+    "chartView": "图表",
+    "textView": "文本",
+    "chart": {
+      "totalTime": "总活跃时长",
+      "deepWork": "深度工作",
+      "fragmentation": "碎片化率",
+      "flowScore": "Flow 评分",
+      "segments": "段",
+      "timeAllocation": "时间去向",
+      "attention": "注意力时间轴",
+      "interruptions": "打断来源",
+      "totalInterruptions": "总打断 {{count}} 次",
+      "clipboardFlow": "剪贴板流向",
+      "topApps": "应用使用排行",
+      "noData": "暂无数据"
     }
   }
 }

@@ -2,7 +2,9 @@
 
 #![cfg(target_os = "windows")]
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::sync::mpsc;
+use std::time::Duration;
 
 use windows::core::HSTRING;
 use windows::Graphics::Imaging::BitmapDecoder;
@@ -14,7 +16,20 @@ use windows::Win32::System::WinRT::{RoInitialize, RO_INIT_MULTITHREADED};
 /// WinRT 未提供词级置信度：每词给中性分，便于统一闸门（行级仍生效）。
 const NEUTRAL_WORD_CONF: f32 = 82.0;
 
+const OCR_TIMEOUT: Duration = Duration::from_secs(15);
+
 pub fn recognize_png_path(path: &Path) -> Result<Vec<Vec<(String, f32)>>, String> {
+    let path_buf = path.to_path_buf();
+    let (tx, rx) = mpsc::channel();
+    std::thread::spawn(move || {
+        let result = recognize_png_path_inner(&path_buf);
+        let _ = tx.send(result);
+    });
+    rx.recv_timeout(OCR_TIMEOUT)
+        .map_err(|_| "OCR 超时（15s），已跳过本次识别".to_string())?
+}
+
+fn recognize_png_path_inner(path: &PathBuf) -> Result<Vec<Vec<(String, f32)>>, String> {
     unsafe {
         let _ = RoInitialize(RO_INIT_MULTITHREADED);
     }

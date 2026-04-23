@@ -349,6 +349,19 @@ CREATE INDEX IF NOT EXISTS idx_nudge_log_ts ON nudge_log(timestamp_ms);
 CREATE INDEX IF NOT EXISTS idx_nudge_log_type ON nudge_log(nudge_type);
 "#,
     },
+    Migration {
+        version: 8,
+        description: "Phase 13: custom intent groups",
+        sql: r#"
+CREATE TABLE IF NOT EXISTS custom_intents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    color TEXT,
+    sort_order INTEGER DEFAULT 0,
+    created_at INTEGER NOT NULL
+);
+"#,
+    },
 ];
 
 fn current_version(conn: &Connection) -> rusqlite::Result<i32> {
@@ -404,7 +417,7 @@ mod tests {
                 |r| r.get(0),
             )
             .unwrap();
-        assert_eq!(v, 7);
+        assert_eq!(v, 8);
         let tables: i64 = c
             .query_row(
                 "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='daily_analysis'",

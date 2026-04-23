@@ -19,7 +19,7 @@ use log::{debug, warn};
 use parking_lot::Mutex;
 use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::json;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use uuid::Uuid;
 
 use crate::core::models::{NudgeLogRow, WriteEvent};
@@ -150,6 +150,10 @@ fn tick_nudges(
     {
         let (title, body) = frag_text(&lang, switch_count, cfg.frag_window_min);
         send_native_notification(&title, &body);
+        if let Some(w) = app.get_webview_window("main") {
+            let _ = w.show();
+            let _ = w.set_focus();
+        }
         let _ = app.emit(
             "nudge_fragmentation",
             json!({"switchCount": switch_count, "windowMin": cfg.frag_window_min}),
@@ -420,25 +424,44 @@ fn send_native_notification(title: &str, body: &str) {
 #[cfg(target_os = "windows")]
 fn send_native_notification(title: &str, body: &str) {
     use std::process::Command;
-    let escaped_title = title.replace('"', "''").replace('`', "");
-    let escaped_body = body.replace('"', "''").replace('`', "");
-    // 使用 Windows 内置 Toast XML（不依赖第三方模块）
+    let escaped_title = title.replace('"', "''").replace('`', "").replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
+    let escaped_body = body.replace('"', "''").replace('`', "").replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
     let ps = format!(
         r#"
-$ErrorActionPreference = 'SilentlyContinue'
-[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
-$xml = '<toast><visual><binding template="ToastGeneric"><text>{title}</text><text>{body}</text></binding></visual></toast>'
-$doc = New-Object Windows.Data.Xml.Dom.XmlDocument
-$doc.LoadXml($xml)
-$toast = [Windows.UI.Notifications.ToastNotification]::new($doc)
-[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('TimeLens').Show($toast)
+$ErrorActionPreference = 'Stop'
+try {{
+    [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
+    [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom, ContentType = WindowsRuntime] | Out-Null
+    $xml = '<toast><visual><binding template="ToastGeneric"><text>{title}</text><text>{body}</text></binding></visual></toast>'
+    $doc = New-Object Windows.Data.Xml.Dom.XmlDocument
+    $doc.LoadXml($xml)
+    $toast = [Windows.UI.Notifications.ToastNotification]::new($doc)
+    $notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('com.timelens.desktop')
+    $notifier.Show($toast)
+}} catch {{
+    try {{
+        $notifier2 = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}}\WindowsPowerShell\v1.0\powershell.exe')
+        $notifier2.Show($toast)
+    }} catch {{
+        Add-Type -AssemblyName System.Windows.Forms
+        [System.Windows.Forms.MessageBox]::Show('{body}', '{title}', 'OK', 'Information') | Out-Null
+    }}
+}}
 "#,
         title = escaped_title,
         body = escaped_body
     );
-    let _ = Command::new("powershell")
+    let status = Command::new("powershell")
         .args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", &ps])
-        .status();
+        .output();
+    match status {
+        Ok(out) if !out.status.success() => {
+            let stderr = String::from_utf8_lossy(&out.stderr);
+            warn!("nudge: win notification failed: {stderr}");
+        }
+        Err(e) => warn!("nudge: powershell launch failed: {e}"),
+        _ => {}
+    }
     debug!("nudge: notify '{title}' / '{body}'");
 }
 

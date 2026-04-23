@@ -18,7 +18,7 @@ import {
 } from "../lib/platform";
 import * as api from "../services/tauri";
 import { useAiTaskStore } from "../stores/aiTaskStore";
-import { useThemeStore } from "../stores/themeStore";
+import { useThemeStore, type UiTheme } from "../stores/themeStore";
 import { useDevModeStore } from "../stores/devModeStore";
 import {
   setLanguage,
@@ -317,20 +317,26 @@ export function SettingsForm({ className }: SettingsFormProps) {
         <div className="mt-3 flex flex-wrap gap-2">
           {(
             [
-              ["tech", t("settings.themeTech")],
-              ["white", t("settings.themeWhite")],
-            ] as const
-          ).map(([id, label]) => (
+              ["tech", t("settings.themeTech"), "#00f5d4"],
+              ["white", t("settings.themeWhite"), "#0d9488"],
+              ["claude", t("settings.themeClaude"), "#c96442"],
+              ["raycast", t("settings.themeRaycast"), "#FF6363"],
+              ["spotify", t("settings.themeSpotify"), "#1ed760"],
+              ["linear", t("settings.themeLinear"), "#5e6ad2"],
+              ["cursor", t("settings.themeCursor"), "#f54e00"],
+            ] as [UiTheme, string, string][]
+          ).map(([id, label, color]) => (
             <button
               key={id}
               type="button"
               onClick={() => setTheme(id)}
-              className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+              className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-colors ${
                 theme === id
                   ? "border-[var(--tl-accent-45)] bg-[var(--tl-accent-12)] text-[var(--tl-ink)]"
                   : "border-[var(--tl-line)] bg-[var(--tl-glass-20)] text-[var(--tl-muted)] hover:border-[var(--tl-accent-25)]"
               }`}
             >
+              <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: color }} />
               {label}
             </button>
           ))}

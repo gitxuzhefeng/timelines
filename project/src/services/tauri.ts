@@ -530,3 +530,63 @@ export async function getDigestSettings(): Promise<DigestConfig> {
 export async function setDigestSettings(config: DigestConfig): Promise<DigestConfig> {
   return invoke<DigestConfig>("set_digest_settings", { config });
 }
+
+// ── Phase 11+: Fragmentation detail ───────────────────────────────────────
+
+export interface AppSwitch {
+  id: string;
+  timestampMs: number;
+  fromApp: string;
+  fromBundleId: string | null;
+  fromWindowTitle: string | null;
+  toApp: string;
+  toBundleId: string | null;
+  toWindowTitle: string | null;
+  fromSessionDurationMs: number;
+  switchType: string;
+}
+
+export async function getRecentAppSwitches(minutes: number): Promise<AppSwitch[]> {
+  return invoke<AppSwitch[]>("get_recent_app_switches", { minutes });
+}
+
+// ── Phase 13: Custom Intent Groups + Smart Match ──────────────────────────
+
+export interface CustomIntent {
+  id: number;
+  name: string;
+  color: string | null;
+  sortOrder: number;
+  createdAt: number;
+}
+
+export async function listCustomIntents(): Promise<CustomIntent[]> {
+  return invoke<CustomIntent[]>("list_custom_intents");
+}
+
+export async function createCustomIntent(name: string, color?: string): Promise<CustomIntent> {
+  return invoke<CustomIntent>("create_custom_intent", { name, color: color ?? null });
+}
+
+export async function updateCustomIntent(id: number, name?: string, color?: string): Promise<CustomIntent> {
+  return invoke<CustomIntent>("update_custom_intent", { id, name: name ?? null, color: color ?? null });
+}
+
+export async function deleteCustomIntent(id: number): Promise<void> {
+  return invoke<void>("delete_custom_intent", { id });
+}
+
+export interface AutoMatchResult {
+  appName: string;
+  bundleId: string | null;
+  suggestedIntent: string | null;
+  confidence: string;
+}
+
+export async function autoMatchIntents(): Promise<AutoMatchResult[]> {
+  return invoke<AutoMatchResult[]>("auto_match_intents");
+}
+
+export async function applyAutoMatch(matches: { appName: string; bundleId: string | null; intent: string }[]): Promise<number> {
+  return invoke<number>("apply_auto_match", { matches });
+}

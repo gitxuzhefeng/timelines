@@ -115,11 +115,18 @@ fn clipboard_loop(
     app_blacklist: Arc<RwLock<Vec<String>>>,
 ) {
     use arboard::Clipboard;
-    let mut clip = match Clipboard::new() {
-        Ok(c) => c,
-        Err(e) => {
-            warn!("clipboard: init failed: {e}");
-            return;
+    let mut clip = loop {
+        match Clipboard::new() {
+            Ok(c) => break c,
+            Err(e) => {
+                warn!("clipboard: init failed ({e}), retrying in 5s…");
+                for _ in 0..50 {
+                    thread::sleep(Duration::from_millis(100));
+                    if !running.load(Ordering::Relaxed) {
+                        return;
+                    }
+                }
+            }
         }
     };
     let mut last_sig: Option<(usize, u64)> = None;
@@ -142,7 +149,10 @@ fn clipboard_loop(
             .unwrap_or_else(|_| ("unknown".into(), None));
         let on_blacklist = app_name_blacklisted(&app_name, &list);
 
-        let text = clip.get_text().unwrap_or_default();
+        let text = match clip.get_text() {
+            Ok(t) => t,
+            Err(_) => continue,
+        };
         let len = text.len();
         let mut h = CrcHasher::new();
         h.update(text.as_bytes());

@@ -37,14 +37,13 @@ function FocusHeatmap({
   const { t } = useTranslation();
   const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
-  function heatColor(score: number): string {
-    if (score <= 0) return "bg-[var(--tl-line)] opacity-40";
-    if (score < 0.2) return "bg-teal-200/60 dark:bg-teal-900/50";
-    if (score < 0.4) return "bg-teal-300/70 dark:bg-teal-700/60";
-    if (score < 0.6) return "bg-teal-400/80 dark:bg-teal-600/70";
-    if (score < 0.8) return "bg-teal-500/90";
-    return "bg-teal-600";
-  }
+  const HEAT_LEVELS = [
+    "bg-[var(--tl-line)] opacity-40",
+    "bg-teal-300/60 dark:bg-teal-800/50",
+    "bg-teal-400/70 dark:bg-teal-700/60",
+    "bg-teal-500/80 dark:bg-teal-600/70",
+    "bg-teal-600/90 dark:bg-teal-500/80",
+  ];
 
   const maxScore = useMemo(() => {
     let m = 0;
@@ -57,47 +56,73 @@ function FocusHeatmap({
     return m || 1;
   }, [data, weekDates]);
 
+  function heatLevel(score: number): string {
+    if (score <= 0) return HEAT_LEVELS[0];
+    const norm = score / maxScore;
+    if (norm < 0.25) return HEAT_LEVELS[1];
+    if (norm < 0.5) return HEAT_LEVELS[2];
+    if (norm < 0.75) return HEAT_LEVELS[3];
+    return HEAT_LEVELS[4];
+  }
+
   function getDow(isoDate: string): number {
     return new Date(`${isoDate}T00:00:00`).getDay();
   }
 
+  const goldenSlot = useMemo(() => {
+    let best = { date: "", hour: 0, score: 0 };
+    for (const d of weekDates) {
+      for (const h of HOURS) {
+        const v = data[d]?.[String(h)] ?? 0;
+        if (v > best.score) best = { date: d, hour: h, score: v };
+      }
+    }
+    if (best.score <= 0) return null;
+    const dow = getDow(best.date);
+    return { dow, hour: best.hour };
+  }, [data, weekDates]);
+
   return (
     <div>
-      <p className="mb-2 text-xs text-[var(--tl-muted)]">{t("weekly.heatmap.desc")}</p>
-      <div className="overflow-x-auto">
-        <div className="flex gap-1 min-w-[400px]">
-          {/* hour labels */}
-          <div className="flex flex-col gap-[2px] pt-5">
-            {HOURS.map((h) => (
-              <div key={h} className="h-3 w-6 text-right text-[9px] leading-3 text-[var(--tl-muted)]">
-                {h % 4 === 0 ? `${h}` : ""}
-              </div>
-            ))}
-          </div>
-          {/* day columns */}
-          {weekDates.map((date) => {
-            const dow = getDow(date);
-            const hasData = !!data[date];
-            return (
-              <div key={date} className="flex flex-1 flex-col gap-[2px]">
-                <div className="mb-1 text-center text-[10px] text-[var(--tl-muted)]">
-                  {t(`weekly.heatmap.day.${dow}`)}
-                </div>
-                {HOURS.map((h) => {
-                  const raw = data[date]?.[String(h)] ?? 0;
-                  const norm = raw / maxScore;
-                  return (
-                    <div
-                      key={h}
-                      title={`${date} ${t("weekly.heatmap.hour", { hour: h })}: ${raw.toFixed(2)}`}
-                      className={`h-3 w-full rounded-[2px] transition-opacity ${hasData ? heatColor(norm) : "bg-[var(--tl-line)] opacity-20"} ${!hasData ? "bg-stripes" : ""}`}
-                    />
-                  );
-                })}
-              </div>
-            );
-          })}
+      <div className="flex gap-[3px]" style={{ maxHeight: 200 }}>
+        <div className="flex flex-col gap-[3px] pt-4">
+          {HOURS.map((h) => (
+            <div key={h} className="flex h-[10px] w-5 items-center justify-end text-[8px] leading-none text-[var(--tl-muted)]">
+              {h % 3 === 0 ? `${h}` : ""}
+            </div>
+          ))}
         </div>
+        {weekDates.map((date) => (
+          <div key={date} className="flex flex-1 flex-col gap-[3px]">
+            <div className="mb-0.5 text-center text-[9px] text-[var(--tl-muted)]">
+              {t(`weekly.heatmap.day.${getDow(date)}`)}
+            </div>
+            {HOURS.map((h) => {
+              const raw = data[date]?.[String(h)] ?? 0;
+              return (
+                <div
+                  key={h}
+                  title={`${date} ${h}:00 — ${raw.toFixed(2)}`}
+                  className={`h-[10px] w-full rounded-[2px] ${heatLevel(raw)}`}
+                />
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 flex items-center gap-3">
+        <div className="flex items-center gap-1 text-[9px] text-[var(--tl-muted)]">
+          <span>{t("weekly.heatmap.less")}</span>
+          {HEAT_LEVELS.map((cls, i) => (
+            <span key={i} className={`inline-block h-[10px] w-[10px] rounded-[2px] ${cls}`} />
+          ))}
+          <span>{t("weekly.heatmap.more")}</span>
+        </div>
+        {goldenSlot && (
+          <span className="text-[0.65rem] text-[var(--tl-cyan)]">
+            {t("weekly.heatmap.goldenSlot", { day: t(`weekly.heatmap.day.${goldenSlot.dow}`), hour: goldenSlot.hour })}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -339,6 +364,10 @@ export default function WeeklyReportPage() {
   const startAiTask = useAiTaskStore((s) => s.start);
   const finishAiTask = useAiTaskStore((s) => s.finish);
   const [err, setErr] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"chart" | "markdown">(() => {
+    try { const v = localStorage.getItem("timelens_view_weekly"); if (v === "chart" || v === "markdown") return v; } catch {}
+    return "chart";
+  });
 
   const mountedRef = useRef(true);
   useEffect(() => {
@@ -486,6 +515,22 @@ export default function WeeklyReportPage() {
           >
             {generating ? t("weekly.generating") : t("weekly.refresh")}
           </button>
+          <div className="ml-2 flex rounded-lg border border-[var(--tl-line)] bg-[var(--tl-input-fill)] p-0.5">
+            <button
+              type="button"
+              className={`rounded px-2 py-1 text-[0.65rem] transition-colors ${viewMode === "chart" ? "bg-[var(--tl-accent-12)] text-[var(--tl-ink)]" : "text-[var(--tl-muted)] hover:text-[var(--tl-ink)]"}`}
+              onClick={() => { setViewMode("chart"); localStorage.setItem("timelens_view_weekly", "chart"); }}
+            >
+              {t("weekly.chartView")}
+            </button>
+            <button
+              type="button"
+              className={`rounded px-2 py-1 text-[0.65rem] transition-colors ${viewMode === "markdown" ? "bg-[var(--tl-accent-12)] text-[var(--tl-ink)]" : "text-[var(--tl-muted)] hover:text-[var(--tl-ink)]"}`}
+              onClick={() => { setViewMode("markdown"); localStorage.setItem("timelens_view_weekly", "markdown"); }}
+            >
+              Markdown
+            </button>
+          </div>
         </div>
       </div>
 
@@ -512,7 +557,13 @@ export default function WeeklyReportPage() {
       )}
 
       {/* content */}
-      {!loading && validDays > 0 && (
+      {!loading && validDays > 0 && viewMode === "markdown" && report?.contentMd ? (
+        <div className="rounded border border-[var(--tl-line)] bg-[var(--tl-surface)] p-4">
+          <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-[var(--tl-ink)]">
+            {report.contentMd}
+          </pre>
+        </div>
+      ) : !loading && validDays > 0 ? (
         <div className="space-y-4">
           {/* stat summary */}
           <div className="grid grid-cols-3 gap-3">
@@ -531,53 +582,37 @@ export default function WeeklyReportPage() {
             ))}
           </div>
 
-          {/* insufficient data notice */}
           {validDays < 3 && (
             <div className="rounded border border-amber-400/40 bg-amber-50/20 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
               {t("weekly.insufficientDataDesc", { days: validDays })}
             </div>
           )}
 
-          {/* heatmap */}
           <section className="rounded border border-[var(--tl-line)] bg-[var(--tl-surface)] p-4">
             <h2 className="mb-3 text-sm font-medium text-[var(--tl-muted)]">{t("weekly.heatmap.title")}</h2>
-            <FocusHeatmap
-              data={heatmapData}
-              weekDates={weekDates}
-            />
+            <FocusHeatmap data={heatmapData} weekDates={weekDates} />
           </section>
 
-          {/* flow trend */}
           <section className="rounded border border-[var(--tl-line)] bg-[var(--tl-surface)] p-4">
             <h2 className="mb-3 text-sm font-medium text-[var(--tl-muted)]">{t("weekly.trend.title")}</h2>
             <FlowScoreTrend scores={dailyFlowScores} weekDates={weekDates} />
           </section>
 
-          {/* app trend */}
           <section className="rounded border border-[var(--tl-line)] bg-[var(--tl-surface)] p-4">
             <h2 className="mb-3 text-sm font-medium text-[var(--tl-muted)]">{t("weekly.apps.title")}</h2>
             <AppTrendChart topAppsByDay={topAppsByDay} weekDates={weekDates} />
           </section>
 
-          {/* AI narrative */}
-          <section className="rounded border border-[var(--tl-line)] bg-[var(--tl-surface)] p-4">
-            <h2 className="mb-3 text-sm font-medium text-[var(--tl-muted)]">{t("weekly.ai.title")}</h2>
-            {generating ? (
-              <p className="animate-pulse text-sm text-[var(--tl-muted)]">{t("weekly.ai.generating")}</p>
-            ) : validDays < 3 ? (
-              <p className="text-sm text-[var(--tl-muted)]">
-                {t("weekly.ai.insufficientDays", { days: validDays })}
-              </p>
-            ) : report?.contentMd ? (
-              <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-[var(--tl-ink)]">
+          {report?.contentMd && (
+            <section className="rounded border border-[var(--tl-line)] bg-[var(--tl-surface)] p-4">
+              <h2 className="mb-3 text-sm font-medium text-[var(--tl-muted)]">{t("weekly.ai.title")}</h2>
+              <pre className="whitespace-pre-wrap font-sans text-[0.8rem] leading-relaxed text-[var(--tl-ink)]">
                 {report.contentMd}
               </pre>
-            ) : (
-              <p className="text-sm text-[var(--tl-muted)]">{t("weekly.ai.noData")}</p>
-            )}
-          </section>
+            </section>
+          )}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

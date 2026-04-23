@@ -1,12 +1,15 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../stores/appStore";
 import { useDevModeStore } from "../stores/devModeStore";
-import { useThemeStore } from "../stores/themeStore";
+import { useThemeStore, type UiTheme } from "../stores/themeStore";
 import { setLanguage, type SupportedLanguage } from "../i18n";
 import * as api from "../services/tauri";
 import { AiTaskBanner } from "../components/AiTaskBanner";
+
+const AUTO_REFRESH_PATHS = ["/lens", "/timeline"];
+const REFRESH_DEBOUNCE_MS = 30_000;
 function navCls(active: boolean): string {
   return [
     "tl-nav-item tl-interactive-row flex w-full items-center gap-2 rounded-lg border-0 px-2.5 py-2 text-left text-sm font-medium transition-colors",
@@ -30,6 +33,33 @@ export default function AppShell() {
   const [currentLang, setCurrentLang] = useState<SupportedLanguage>(
     () => (i18n.language === "zh-CN" ? "zh-CN" : "en"),
   );
+  const [refreshing, setRefreshing] = useState(false);
+  const lastRefreshRef = useRef(0);
+
+  useEffect(() => {
+    const shouldRefresh = AUTO_REFRESH_PATHS.some((p) => location.pathname.startsWith(p));
+    if (!shouldRefresh) return;
+    const now = Date.now();
+    if (now - lastRefreshRef.current < REFRESH_DEBOUNCE_MS) return;
+    lastRefreshRef.current = now;
+    setRefreshing(true);
+    useAppStore.getState().refreshSessions().finally(() => setRefreshing(false));
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const onFocus = () => {
+      const path = window.location.pathname;
+      const shouldRefresh = AUTO_REFRESH_PATHS.some((p) => path.startsWith(p));
+      if (!shouldRefresh) return;
+      const now = Date.now();
+      if (now - lastRefreshRef.current < REFRESH_DEBOUNCE_MS) return;
+      lastRefreshRef.current = now;
+      setRefreshing(true);
+      useAppStore.getState().refreshSessions().finally(() => setRefreshing(false));
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
 
   const MAIN_NAV = [
     { to: "/lens", label: t("nav.todayLens"), icon: "◉" },
@@ -37,7 +67,6 @@ export default function AppShell() {
     { to: "/report", label: t("nav.dailyReport"), icon: "¶" },
     { to: "/weekly", label: t("nav.weeklyReport"), icon: "⊞" },
     { to: "/assistant", label: t("nav.assistant"), icon: "✦" },
-    { to: "/ocr", label: t("nav.ocrSearch"), icon: "◇" },
     { to: "/intents", label: t("nav.intents"), icon: "⌗" },
     { to: "/settings", label: t("nav.settings"), icon: "⚙" },
     { to: "/about", label: t("nav.about"), icon: "ℹ" },
@@ -45,6 +74,7 @@ export default function AppShell() {
 
   const DEV_NAV = [
     { to: "/sessions", label: t("nav.sessions") },
+    { to: "/ocr", label: t("nav.ocrSearch") },
     { to: "/ocr-eval", label: t("nav.ocrEval") },
     { to: "/health", label: t("nav.health") },
   ] as const;
@@ -133,6 +163,11 @@ export default function AppShell() {
         </aside>
 
         <div className="flex min-w-0 min-h-0 flex-1 flex-col bg-gradient-to-b from-[var(--tl-shell-gradient-from)] to-[var(--tl-bg)]">
+          {refreshing && (
+            <div className="h-0.5 w-full overflow-hidden bg-[var(--tl-line)]">
+              <div className="h-full w-1/3 animate-pulse rounded bg-[var(--tl-cyan)]" style={{ animation: "tl-slide 1s ease-in-out infinite" }} />
+            </div>
+          )}
           <header className="tl-shell-blur-surface flex flex-wrap items-center justify-between gap-3 border-b border-[var(--tl-line)] bg-[var(--tl-header-bg)] px-5 py-3 backdrop-blur-md">
             <div className="min-w-0 flex-1">
               <h1 className="text-[1.05rem] font-bold tracking-wide">{title}</h1>
@@ -166,23 +201,26 @@ export default function AppShell() {
                   {captureBusy ? "…" : isTracking ? t("nav.capturing") : t("nav.stopCapture")}
                 </span>
               </button>
-              <div className="flex items-center gap-1 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-1 py-1">
-                <button
-                  type="button"
-                  onClick={() => setTheme("tech")}
-                  className={`rounded px-2 py-1 text-[0.65rem] transition-colors ${theme === "tech" ? "bg-[var(--tl-accent-12)] text-[var(--tl-ink)]" : "text-[var(--tl-muted)] hover:text-[var(--tl-ink)]"}`}
-                  title={t("settings.themeTech")}
-                >
-                  {t("settings.themeTech")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTheme("white")}
-                  className={`rounded px-2 py-1 text-[0.65rem] transition-colors ${theme === "white" ? "bg-[var(--tl-accent-12)] text-[var(--tl-ink)]" : "text-[var(--tl-muted)] hover:text-[var(--tl-ink)]"}`}
-                  title={t("settings.themeWhite")}
-                >
-                  {t("settings.themeWhite")}
-                </button>
+              <div className="flex items-center gap-1 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-1.5 py-1">
+                {([
+                  ["tech", "#00f5d4"],
+                  ["white", "#0d9488"],
+                  ["claude", "#c96442"],
+                  ["raycast", "#FF6363"],
+                  ["spotify", "#1ed760"],
+                  ["linear", "#5e6ad2"],
+                  ["cursor", "#f54e00"],
+                ] as [UiTheme, string][]).map(([id, color]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setTheme(id)}
+                    className={`rounded-full p-0.5 transition-opacity ${theme === id ? "ring-1 ring-[var(--tl-ink)] ring-offset-1 ring-offset-[var(--tl-bg)]" : "opacity-50 hover:opacity-100"}`}
+                    title={t(`settings.theme${id.charAt(0).toUpperCase() + id.slice(1)}` as any)}
+                  >
+                    <span className="block h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+                  </button>
+                ))}
               </div>
               <div className="flex items-center gap-1 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-1 py-1">
                 {(["zh-CN", "en"] as SupportedLanguage[]).map((lang) => (

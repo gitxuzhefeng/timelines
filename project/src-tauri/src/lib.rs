@@ -401,6 +401,7 @@ pub fn run() {
             api::get_activity_stats,
             api::get_all_app_meta,
             api::get_app_switches,
+            api::get_recent_app_switches,
             api::get_storage_stats,
             api::open_data_dir,
             api::get_raw_events_recent,
@@ -462,6 +463,12 @@ pub fn run() {
             api::set_nudge_settings,
             api::get_digest_settings,
             api::set_digest_settings,
+            api::list_custom_intents,
+            api::create_custom_intent,
+            api::update_custom_intent,
+            api::delete_custom_intent,
+            api::auto_match_intents,
+            api::apply_auto_match,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

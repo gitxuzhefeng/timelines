@@ -101,7 +101,11 @@ export default function TimelinePage() {
   const [snaps, setSnaps] = useState<Snapshot[]>([]);
   const [snapPick, setSnapPick] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
-  const [groupedView, setGroupedView] = useState(true);
+  const [viewMode, setViewMode] = useState<"summary" | "full">(() => {
+    try { const v = localStorage.getItem("timelens_view_timeline"); if (v === "summary" || v === "full") return v; } catch {}
+    return "summary";
+  });
+  const [appsExpanded, setAppsExpanded] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -117,9 +121,15 @@ export default function TimelinePage() {
     }
   }, [date]);
 
+  const isTracking = useAppStore((s) => s.isTracking);
+
   useEffect(() => {
     void load();
-  }, [load]);
+    const isToday = date === new Date().toISOString().slice(0, 10);
+    if (!isToday || !isTracking) return;
+    const timer = setInterval(() => void load(), 10_000);
+    return () => clearInterval(timer);
+  }, [load, date, isTracking]);
 
   const byPart = useMemo(() => {
     const m: Record<Daypart, WindowSession[]> = {
@@ -138,48 +148,78 @@ export default function TimelinePage() {
   // Phase 12: reversed sessions (newest first)
   const reversedSessions = useMemo(() => [...sessions].sort((a, b) => b.startMs - a.startMs), [sessions]);
 
-  // Phase 12: smart grouping — merge adjacent same-app sessions
-  type SessionGroup = {
+  type SummaryBlock = {
     id: string;
-    appName: string;
-    intent: string | null;
     startMs: number;
     endMs: number;
+    primaryApp: string;
+    primaryPct: number;
+    secondaryApps: string[];
     totalDurationMs: number;
-    sessionCount: number;
-    sessions: WindowSession[];
+    intent: string | null;
   };
 
-  const grouped = useMemo((): SessionGroup[] => {
-    if (reversedSessions.length === 0) return [];
-    // Group from chronological order, then reverse
+  const summaryBlocks = useMemo((): SummaryBlock[] => {
+    if (sessions.length === 0) return [];
     const chrono = [...sessions].sort((a, b) => a.startMs - b.startMs);
-    const groups: SessionGroup[] = [];
-    let cur: SessionGroup | null = null;
-    for (const s of chrono) {
-      const gap = cur ? s.startMs - cur.endMs : Infinity;
-      if (cur && s.appName === cur.appName && gap <= 3 * 60_000 && cur.totalDurationMs < 90 * 60_000) {
-        cur.endMs = Math.max(cur.endMs, s.endMs);
-        cur.totalDurationMs += s.durationMs;
-        cur.sessionCount += 1;
-        cur.sessions.push(s);
+    const WINDOW_MS = 30 * 60_000;
+    const MAX_MERGE_MS = 2 * 60 * 60_000;
+
+    const winStart = chrono[0].startMs;
+    const winEnd = chrono[chrono.length - 1].endMs;
+    const windows: { start: number; end: number }[] = [];
+    let ws = winStart;
+    while (ws < winEnd) {
+      windows.push({ start: ws, end: ws + WINDOW_MS });
+      ws += WINDOW_MS;
+    }
+
+    function buildBlock(w: { start: number; end: number }): SummaryBlock {
+      const inWindow = chrono.filter((s) => s.startMs < w.end && s.endMs > w.start);
+      const appMs = new Map<string, number>();
+      let totalMs = 0;
+      for (const s of inWindow) {
+        const overlap = Math.min(s.endMs, w.end) - Math.max(s.startMs, w.start);
+        if (overlap > 0) {
+          appMs.set(s.appName, (appMs.get(s.appName) || 0) + overlap);
+          totalMs += overlap;
+        }
+      }
+      const sorted = [...appMs.entries()].sort((a, b) => b[1] - a[1]);
+      const denom = totalMs || 1;
+      const topPct = sorted.length > 0 ? sorted[0][1] / denom : 0;
+      const primaryApp = sorted.length > 0 ? (topPct >= 0.6 ? sorted[0][0] : `${sorted[0][0]} + ${sorted[1]?.[0] || ""}`) : "—";
+      const primaryPctRound = Math.round(topPct * 100);
+      const secondary = sorted.slice(topPct >= 0.6 ? 1 : 2, topPct >= 0.6 ? 3 : 4).map(([a]) => a);
+      const topSession = inWindow.find((s) => s.appName === sorted[0]?.[0]);
+      return {
+        id: `sw-${w.start}`,
+        startMs: w.start,
+        endMs: w.end,
+        primaryApp,
+        primaryPct: primaryPctRound,
+        secondaryApps: secondary,
+        totalDurationMs: totalMs,
+        intent: topSession?.intent ?? null,
+      };
+    }
+
+    const raw = windows.map(buildBlock).filter((b) => b.totalDurationMs > 0);
+
+    const merged: SummaryBlock[] = [];
+    for (const b of raw) {
+      const prev = merged[merged.length - 1];
+      if (prev && prev.primaryApp === b.primaryApp && (b.endMs - prev.startMs) <= MAX_MERGE_MS) {
+        prev.endMs = b.endMs;
+        prev.totalDurationMs += b.totalDurationMs;
+        const allSec = new Set([...prev.secondaryApps, ...b.secondaryApps]);
+        prev.secondaryApps = [...allSec].slice(0, 2);
       } else {
-        if (cur) groups.push(cur);
-        cur = {
-          id: s.id,
-          appName: s.appName,
-          intent: s.intent,
-          startMs: s.startMs,
-          endMs: s.endMs,
-          totalDurationMs: s.durationMs,
-          sessionCount: 1,
-          sessions: [s],
-        };
+        merged.push({ ...b });
       }
     }
-    if (cur) groups.push(cur);
-    return groups.reverse(); // newest first
-  }, [sessions, reversedSessions]);
+    return merged.reverse();
+  }, [sessions]);
 
   const sessionsTotalMs = useMemo(
     () => sessions.reduce((acc, s) => acc + s.durationMs, 0),
@@ -218,15 +258,17 @@ export default function TimelinePage() {
     }));
   }, [analysis, sessions]);
 
-  const bridgeChips = useMemo(() => {
+  const allApps = useMemo(() => {
     const total = bridgeTotalMs || 1;
     const rows = analysis ? parseTopApps(analysis) : aggregateAppsFromSessions(sessions);
-    return rows.slice(0, 3).map((r) => ({
+    return rows.map((r) => ({
       app: r.app,
       dur: r.duration_ms,
       pct: Math.round((r.duration_ms / total) * 100),
     }));
   }, [analysis, sessions, bridgeTotalMs]);
+
+  const bridgeChips = useMemo(() => allApps.slice(0, 3), [allApps]);
 
   const rulerWin = useMemo(() => dayActivityWindowMs(date), [date]);
 
@@ -364,8 +406,36 @@ export default function TimelinePage() {
                   </span>
                 ))
               )}
+              {allApps.length > 3 && (
+                <button
+                  type="button"
+                  className="rounded-md border border-[var(--tl-line)] bg-[var(--tl-chip-bg)] px-2 py-1 text-[0.65rem] text-[var(--tl-cyan)] hover:bg-[var(--tl-surface)]"
+                  onClick={() => setAppsExpanded(!appsExpanded)}
+                >
+                  {appsExpanded ? t("timeline.collapseApps") : t("timeline.expandApps")}
+                </button>
+              )}
             </div>
           </div>
+          {appsExpanded && allApps.length > 3 && (
+            <div className="mt-3 space-y-1.5 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-surface)] p-3">
+              {allApps.map((a) => (
+                <div key={a.app} className="flex items-center gap-2 text-[0.7rem]">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-white/[0.06] text-[0.55rem] font-bold text-[var(--tl-muted)]">
+                    {appIconLabel(a.app)}
+                  </span>
+                  <span className="w-24 truncate font-medium text-[var(--tl-ink)]">{a.app}</span>
+                  <div className="flex-1">
+                    <div className="h-1.5 overflow-hidden rounded-full bg-[var(--tl-line)]">
+                      <div className="h-full rounded-full bg-[var(--tl-cyan)]" style={{ width: `${Math.max(a.pct, 1)}%` }} />
+                    </div>
+                  </div>
+                  <span className="w-16 text-right font-mono text-[var(--tl-muted)]">{formatDurationShortMs(a.dur)}</span>
+                  <span className="w-8 text-right font-mono text-[var(--tl-muted)]">{a.pct}%</span>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         <div className="mb-5">
@@ -399,65 +469,71 @@ export default function TimelinePage() {
           <p className="text-[0.78rem] leading-relaxed text-[var(--tl-muted)]">
             {t("timeline.sessionListDesc").split("前台会话段")[0]}<strong className="text-[var(--tl-ink)]">{t("timeline.sessionListDesc").includes("前台会话段") ? "前台会话段" : ""}</strong>{t("timeline.sessionListDesc").split("前台会话段")[1] ?? ""}
           </p>
-          <button
-            type="button"
-            className="shrink-0 rounded border border-[var(--tl-line)] px-2 py-1 text-[0.65rem] text-[var(--tl-muted)] hover:bg-[var(--tl-surface)]"
-            onClick={() => setGroupedView(!groupedView)}
-          >
-            {groupedView ? t("timeline.fullView") : t("timeline.groupedView")}
-          </button>
+          <div className="flex shrink-0 gap-1 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-input-fill)] p-0.5">
+            <button
+              type="button"
+              className={`rounded px-2 py-1 text-[0.65rem] transition-colors ${viewMode === "summary" ? "bg-[var(--tl-accent-12)] text-[var(--tl-ink)]" : "text-[var(--tl-muted)] hover:text-[var(--tl-ink)]"}`}
+              onClick={() => { setViewMode("summary"); localStorage.setItem("timelens_view_timeline", "summary"); }}
+            >
+              {t("timeline.summaryView")}
+            </button>
+            <button
+              type="button"
+              className={`rounded px-2 py-1 text-[0.65rem] transition-colors ${viewMode === "full" ? "bg-[var(--tl-accent-12)] text-[var(--tl-ink)]" : "text-[var(--tl-muted)] hover:text-[var(--tl-ink)]"}`}
+              onClick={() => { setViewMode("full"); localStorage.setItem("timelens_view_timeline", "full"); }}
+            >
+              {t("timeline.fullView")}
+            </button>
+          </div>
         </div>
 
         {loading ? (
           <p className="text-sm text-[var(--tl-muted)]">{t("timeline.loading")}</p>
         ) : sessions.length === 0 ? (
           <p className="text-center text-sm text-[var(--tl-muted)]">{t("timeline.noSessions")}</p>
-        ) : groupedView ? (
+        ) : viewMode === "summary" ? (
           <div className="tl-p3-tl" role="list">
-            {grouped.map((g) => {
-              const { bucket, label: intentLabel } = intentVisual(g.intent);
+            {summaryBlocks.map((b) => {
+              const { bucket, label: intentLabel } = intentVisual(b.intent);
               const intentCls =
                 bucket === "a" ? "tl-p3-intent-a" : bucket === "b" ? "tl-p3-intent-b" : bucket === "c" ? "tl-p3-intent-c" : "tl-p3-intent-d";
               const dot = P3_COLORS[bucket];
               return (
-                <article key={g.id} className="tl-p3-item" role="listitem">
+                <article key={b.id} className="tl-p3-item" role="listitem">
                   <div className="tl-p3-time">
-                    {fmtTime(g.startMs)}
+                    {fmtTime(b.startMs)}
                     <span className="dur block text-[0.58rem] font-normal opacity-85">
-                      {formatDurationShortMs(g.totalDurationMs)}
+                      {formatDurationShortMs(b.totalDurationMs)}
                     </span>
                   </div>
                   <div className="tl-p3-axis">
                     <span className="tl-p3-dot" style={{ background: dot }} />
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setPick(g.sessions[0])}
-                    className={`tl-p3-card tl-interactive-row ${pick?.id === g.sessions[0].id ? "tl-p3-card-active" : ""}`}
-                  >
+                  <div className="tl-p3-card">
                     <div className="mb-1 flex items-center justify-between gap-2">
                       <span className="flex items-center gap-1.5 text-[0.82rem] font-semibold text-[var(--tl-ink)]">
                         <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md bg-white/[0.06] text-[0.65rem] font-bold text-[var(--tl-muted)]">
-                          {appIconLabel(g.appName)}
+                          {appIconLabel(b.primaryApp.split(" + ")[0])}
                         </span>
-                        {g.appName}
-                        {g.sessionCount > 1 && (
-                          <span className="text-[0.6rem] text-[var(--tl-muted)]">({g.sessionCount})</span>
-                        )}
+                        {b.primaryApp}
+                        <span className="text-[0.6rem] text-[var(--tl-muted)]">({b.primaryPct}%)</span>
                       </span>
                       <span className={`shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.06em] ${intentCls}`}>
                         {intentLabel}
                       </span>
                     </div>
                     <p className="text-[0.74rem] leading-snug text-[var(--tl-muted)]">
-                      {fmtTime(g.startMs)} — {fmtTime(g.endMs)}
+                      {fmtTime(b.startMs)} — {fmtTime(b.endMs)}
+                      {b.secondaryApps.length > 0 && (
+                        <span className="ml-2 text-[0.65rem]">· {t("timeline.alsoUsed")} {b.secondaryApps.join("、")}</span>
+                      )}
                     </p>
-                  </button>
+                  </div>
                 </article>
               );
             })}
           </div>
-        ) : (
+        ) : viewMode === "full" ? (
           <div className="tl-p3-tl" role="list">
             {reversedSessions.map((s) => {
               const { bucket, label: intentLabel } = intentVisual(s.intent);
@@ -504,7 +580,7 @@ export default function TimelinePage() {
               );
             })}
           </div>
-        )}
+        ) : null}
 
         <nav
           className="mt-7 flex flex-wrap gap-x-4 gap-y-2 border-t border-[var(--tl-line)] pt-5"

@@ -8,6 +8,7 @@ import {
   type IntentSourceFilter,
 } from "../lib/intentPresets";
 import * as api from "../services/tauri";
+import type { CustomIntent } from "../services/tauri";
 import type { AppIntentAggregate } from "../types";
 import { useAppStore } from "../stores/appStore";
 
@@ -27,11 +28,13 @@ function IntentRow({
   selected,
   onToggleSelect,
   onSaved,
+  intentOptions,
 }: {
   row: AppIntentAggregate;
   selected: boolean;
   onToggleSelect: () => void;
   onSaved: () => void;
+  intentOptions: { value: string; label: string }[];
 }) {
   const { t } = useTranslation();
   const [selectV, setSelectV] = useState("");
@@ -40,7 +43,7 @@ function IntentRow({
 
   useEffect(() => {
     const r = row.resolvedIntent ?? "";
-    if (INTENT_PRESET_OPTIONS.some((o) => o.value === r && o.value !== "")) {
+    if (intentOptions.some((o) => o.value === r && o.value !== "" && o.value !== "__sep__")) {
       setSelectV(r);
       setCustom("");
     } else if (r) {
@@ -117,7 +120,7 @@ function IntentRow({
             }}
             disabled={busy}
           >
-            {INTENT_PRESET_OPTIONS.map((o) => (
+            {intentOptions.filter(o => o.value !== "__sep__").map((o) => (
               <option key={o.value || "empty"} value={o.value}>
                 {o.label}
               </option>
@@ -167,12 +170,18 @@ export default function IntentManagePage() {
   const [rows, setRows] = useState<AppIntentAggregate[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
-  const [sourceFilter, setSourceFilter] = useState<IntentSourceFilter>("all");
+  const [sourceFilter, setSourceFilter] = useState<IntentSourceFilter>("none");
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [bulkSelectV, setBulkSelectV] = useState("编码开发");
   const [bulkCustom, setBulkCustom] = useState("");
   const [batchBusy, setBatchBusy] = useState(false);
   const [backfillBusy, setBackfillBusy] = useState(false);
+  const [customIntents, setCustomIntents] = useState<CustomIntent[]>([]);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupColor, setNewGroupColor] = useState("#3B82F6");
+  const [showGroupForm, setShowGroupForm] = useState(false);
+  const [matchResults, setMatchResults] = useState<api.AutoMatchResult[] | null>(null);
+  const [matchBusy, setMatchBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -188,7 +197,19 @@ export default function IntentManagePage() {
 
   useEffect(() => {
     void load();
+    void api.listCustomIntents().then(setCustomIntents).catch(() => {});
   }, [load]);
+
+  const allIntentOptions = useMemo(() => {
+    const base = [...INTENT_PRESET_OPTIONS];
+    if (customIntents.length > 0) {
+      base.push({ value: "__sep__", label: "──────────" });
+      for (const ci of customIntents) {
+        base.push({ value: ci.name, label: ci.name });
+      }
+    }
+    return base;
+  }, [customIntents]);
 
   const onSaved = useCallback(async () => {
     await load();
@@ -327,6 +348,31 @@ export default function IntentManagePage() {
             </button>
             <button
               type="button"
+              disabled={matchBusy}
+              className="rounded-lg border border-[var(--tl-cyan)]/40 bg-[var(--tl-accent-06)] px-3 py-2 text-sm text-[var(--tl-cyan)] hover:bg-[var(--tl-accent-12)] disabled:opacity-40"
+              onClick={async () => {
+                setMatchBusy(true);
+                try {
+                  const results = await api.autoMatchIntents();
+                  setMatchResults(results.filter(r => r.suggestedIntent));
+                } catch (e) {
+                  useAppStore.setState({ error: String(e) });
+                } finally {
+                  setMatchBusy(false);
+                }
+              }}
+            >
+              {matchBusy ? t("intents.matching") : t("intents.smartMatch")}
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-[var(--tl-line)] bg-[var(--tl-capture-idle-bg)] px-3 py-2 text-sm hover:bg-[var(--tl-capture-idle-hover)]"
+              onClick={() => setShowGroupForm(!showGroupForm)}
+            >
+              {t("intents.manageGroups")}
+            </button>
+            <button
+              type="button"
               disabled={backfillBusy}
               className="rounded-lg border border-[var(--tl-btn-violet-border)] bg-[var(--tl-btn-violet-bg)] px-3 py-2 text-sm text-[var(--tl-btn-violet-text)] hover:bg-[var(--tl-btn-violet-bg-hover)] disabled:opacity-40"
               onClick={() => void runBackfill()}
@@ -441,6 +487,110 @@ export default function IntentManagePage() {
         </div>
       </header>
 
+      {showGroupForm && (
+        <div className="border-b border-[var(--tl-line)] bg-[var(--tl-surface)] px-4 py-3">
+          <h3 className="mb-2 text-sm font-medium">{t("intents.customGroups")}</h3>
+          <div className="mb-3 flex flex-wrap gap-2">
+            {customIntents.map((ci) => (
+              <div key={ci.id} className="flex items-center gap-1.5 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-bg)] px-2 py-1 text-[0.72rem]">
+                {ci.color && <span className="h-3 w-3 rounded-sm" style={{ background: ci.color }} />}
+                <span className="text-[var(--tl-ink)]">{ci.name}</span>
+                <button
+                  type="button"
+                  className="ml-1 text-[var(--tl-muted)] hover:text-[var(--tl-error-text)]"
+                  onClick={async () => {
+                    if (!window.confirm(t("intents.confirmDeleteGroup", { name: ci.name }))) return;
+                    await api.deleteCustomIntent(ci.id);
+                    const list = await api.listCustomIntents();
+                    setCustomIntents(list);
+                    void load();
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-end gap-2">
+            <label className="flex flex-col text-[0.62rem] text-[var(--tl-muted)]">
+              {t("intents.groupName")}
+              <input
+                type="text"
+                className="mt-0.5 rounded border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-2 py-1 text-sm text-[var(--tl-ink)]"
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                placeholder={t("intents.groupNamePlaceholder")}
+              />
+            </label>
+            <label className="flex flex-col text-[0.62rem] text-[var(--tl-muted)]">
+              {t("intents.groupColor")}
+              <input
+                type="color"
+                className="mt-0.5 h-8 w-10 cursor-pointer rounded border border-[var(--tl-line)]"
+                value={newGroupColor}
+                onChange={(e) => setNewGroupColor(e.target.value)}
+              />
+            </label>
+            <button
+              type="button"
+              disabled={!newGroupName.trim()}
+              className="rounded bg-[var(--tl-btn-primary-bg)] px-3 py-1.5 text-sm text-[var(--tl-btn-primary-text)] hover:bg-[var(--tl-btn-primary-bg-hover)] disabled:opacity-40"
+              onClick={async () => {
+                if (!newGroupName.trim()) return;
+                await api.createCustomIntent(newGroupName.trim(), newGroupColor);
+                setNewGroupName("");
+                const list = await api.listCustomIntents();
+                setCustomIntents(list);
+              }}
+            >
+              {t("intents.addGroup")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {matchResults && matchResults.length > 0 && (
+        <div className="border-b border-[var(--tl-cyan)]/30 bg-[var(--tl-accent-06)] px-4 py-3">
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-sm font-medium text-[var(--tl-cyan)]">{t("intents.matchPreview")} ({matchResults.length})</h3>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className="rounded bg-[var(--tl-btn-primary-bg)] px-3 py-1 text-sm text-[var(--tl-btn-primary-text)] hover:bg-[var(--tl-btn-primary-bg-hover)]"
+                onClick={async () => {
+                  const items = matchResults
+                    .filter(r => r.suggestedIntent)
+                    .map(r => ({ appName: r.appName, bundleId: r.bundleId, intent: r.suggestedIntent! }));
+                  await api.applyAutoMatch(items);
+                  setMatchResults(null);
+                  void load();
+                  void refreshSessions();
+                }}
+              >
+                {t("intents.applyAll")}
+              </button>
+              <button
+                type="button"
+                className="rounded border border-[var(--tl-line)] px-3 py-1 text-sm text-[var(--tl-muted)] hover:bg-[var(--tl-surface)]"
+                onClick={() => setMatchResults(null)}
+              >
+                {t("common.close")}
+              </button>
+            </div>
+          </div>
+          <div className="max-h-40 space-y-1 overflow-auto">
+            {matchResults.map((r, i) => (
+              <div key={i} className="flex items-center gap-3 text-[0.72rem]">
+                <span className="w-32 truncate font-medium text-[var(--tl-ink)]">{r.appName}</span>
+                <span className="text-[var(--tl-muted)]">→</span>
+                <span className="text-[var(--tl-cyan)]">{r.suggestedIntent}</span>
+                <span className="text-[0.6rem] text-[var(--tl-muted)]">({r.confidence})</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {error ? (
         <div className="flex items-center justify-between border-b border-[var(--tl-error-border)] bg-[var(--tl-error-bg)] px-4 py-2 text-sm text-[var(--tl-error-text)]">
           {error}
@@ -467,6 +617,7 @@ export default function IntentManagePage() {
                 selected={selected.has(rowKey(r))}
                 onToggleSelect={() => toggleSelect(rowKey(r))}
                 onSaved={onSaved}
+                intentOptions={allIntentOptions}
               />
             )}
             computeItemKey={(_, r) => rowKey(r)}

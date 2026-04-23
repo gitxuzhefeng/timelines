@@ -173,7 +173,11 @@
     "screenshots": "Screenshots",
     "noScreenshots": "No screenshots",
     "groupedView": "Grouped view",
-    "fullView": "Full view"
+    "fullView": "Full view",
+    "summaryView": "Summary",
+    "expandApps": "Show All",
+    "collapseApps": "Collapse",
+    "alsoUsed": "also used"
   },
   "ocrSearch": {
     "title": "OCR Search",
@@ -283,7 +287,18 @@
     "filterAll": "All",
     "filterNone": "Unmapped",
     "filterBuiltin": "Built-in",
-    "filterUser": "Manual"
+    "filterUser": "Manual",
+    "smartMatch": "Smart Match",
+    "matching": "Matching…",
+    "manageGroups": "Manage Groups",
+    "customGroups": "Custom Groups",
+    "groupName": "Group Name",
+    "groupNamePlaceholder": "Enter group name",
+    "groupColor": "Color",
+    "addGroup": "Add",
+    "confirmDeleteGroup": "Delete group \"{{name}}\"? Assigned apps will become ungrouped.",
+    "matchPreview": "Match Preview",
+    "applyAll": "Apply All"
   },
   "recap": {
     "title": "Recap",
@@ -322,9 +337,14 @@
     "title": "Settings",
     "loading": "Loading settings…",
     "theme": "UI Theme",
-    "themeDesc": "Tech style is the default dark neon look; White style is light background, suitable for daytime reading. Saved locally.",
+    "themeDesc": "Choose a visual theme. Dark themes: Tech, Raycast, Spotify, Linear. Light themes: Light, Claude, Cursor. Saved locally.",
     "themeTech": "Tech",
     "themeWhite": "Light",
+    "themeClaude": "Claude",
+    "themeRaycast": "Raycast",
+    "themeSpotify": "Spotify",
+    "themeLinear": "Linear",
+    "themeCursor": "Cursor",
     "systemPermissions": "System permissions",
     "permissionsDesc": "Capture, screenshots, and notifications require system authorization; buttons below open the relevant system settings page.",
     "ocrConfirmTitle": "Before enabling Screen Text Recognition (OCR)",
@@ -474,7 +494,10 @@
         "4": "Thu",
         "5": "Fri",
         "6": "Sat"
-      }
+      },
+      "less": "Less",
+      "more": "More",
+      "goldenSlot": "Golden slot: {{day}} {{hour}}:00"
     },
     "trend": {
       "title": "Productivity Score Trend",
@@ -494,7 +517,9 @@
       "insufficientDays": "AI narrative requires at least 3 days of data (current: {{days}})",
       "aiDisabled": "AI is not enabled. Enable it in Settings.",
       "generating": "Generating AI analysis…"
-    }
+    },
+    "chartView": "Charts",
+    "markdownView": "Markdown"
   },
   "assistant": {
     "insightTitle": "Today's Insight",
@@ -517,6 +542,37 @@
       "timeline": "View timeline {{param}}",
       "report": "View daily report {{param}}",
       "lens": "View today's lens {{param}}"
+    }
+  },
+  "fragmentation": {
+    "title": "Fragmentation Alert",
+    "subtitle": "Switched apps {{count}} times in the last {{minutes}} minutes",
+    "appDistribution": "App switch distribution",
+    "switchTimeline": "Switch timeline",
+    "dismiss": "Got it"
+  },
+  "updateNotice": {
+    "title": "Update Available",
+    "whatsNew": "What's new",
+    "viewUpdate": "View Update",
+    "later": "Remind me later"
+  },
+  "daily": {
+    "chartView": "Charts",
+    "textView": "Text",
+    "chart": {
+      "totalTime": "Total Active",
+      "deepWork": "Deep Work",
+      "fragmentation": "Fragmentation",
+      "flowScore": "Flow Score",
+      "segments": "segments",
+      "timeAllocation": "Time Allocation",
+      "attention": "Attention Timeline",
+      "interruptions": "Interruption Sources",
+      "totalInterruptions": "{{count}} total interruptions",
+      "clipboardFlow": "Clipboard Flow",
+      "topApps": "Top Apps",
+      "noData": "No data available"
     }
   }
 }

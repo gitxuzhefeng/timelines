@@ -379,6 +379,41 @@ pub fn get_app_switches(
 }
 
 #[tauri::command]
+pub fn get_recent_app_switches(
+    state: State<'_, AppState>,
+    minutes: i64,
+) -> Result<Vec<AppSwitch>, String> {
+    let now = chrono::Utc::now().timestamp_millis();
+    let since = now - minutes.max(1) * 60_000;
+    let conn = state.0.read_conn.lock();
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, timestamp_ms, from_app, from_bundle_id, from_window_title, \
+             to_app, to_bundle_id, to_window_title, from_session_duration_ms, switch_type \
+             FROM app_switches WHERE timestamp_ms >= ?1 \
+             ORDER BY timestamp_ms DESC LIMIT 200",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(params![since], |r| {
+            Ok(AppSwitch {
+                id: r.get(0)?,
+                timestamp_ms: r.get(1)?,
+                from_app: r.get(2)?,
+                from_bundle_id: r.get(3)?,
+                from_window_title: r.get(4)?,
+                to_app: r.get(5)?,
+                to_bundle_id: r.get(6)?,
+                to_window_title: r.get(7)?,
+                from_session_duration_ms: r.get(8)?,
+                switch_type: r.get(9)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub fn get_storage_stats(state: State<'_, AppState>) -> Result<StorageStats, String> {
     let paths = &state.0.paths;
     let db_size_bytes = fs::metadata(&paths.db_path).map(|m| m.len()).unwrap_or(0);
@@ -2861,6 +2896,205 @@ pub fn set_digest_settings(
     drop(c);
     let conn = state.0.read_conn.lock();
     Ok(settings::get_digest_config(&conn))
+}
+
+// ── Phase 13: Custom Intent Groups ──────────────────────────────────────────
+
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomIntentDto {
+    pub id: i64,
+    pub name: String,
+    pub color: Option<String>,
+    pub sort_order: i64,
+    pub created_at: i64,
+}
+
+#[tauri::command]
+pub fn list_custom_intents(state: State<'_, AppState>) -> Result<Vec<CustomIntentDto>, String> {
+    let conn = state.0.read_conn.lock();
+    let mut stmt = conn
+        .prepare("SELECT id, name, color, sort_order, created_at FROM custom_intents ORDER BY sort_order, id")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(CustomIntentDto {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                color: row.get(2)?,
+                sort_order: row.get(3)?,
+                created_at: row.get(4)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    let mut result = Vec::new();
+    for r in rows {
+        result.push(r.map_err(|e| e.to_string())?);
+    }
+    Ok(result)
+}
+
+#[tauri::command]
+pub fn create_custom_intent(
+    state: State<'_, AppState>,
+    name: String,
+    color: Option<String>,
+) -> Result<CustomIntentDto, String> {
+    let mut conn = open_db_rw(&state.0.paths.db_path)?;
+    let now = chrono::Utc::now().timestamp_millis();
+    conn.execute(
+        "INSERT INTO custom_intents (name, color, created_at) VALUES (?1, ?2, ?3)",
+        rusqlite::params![name, color, now],
+    )
+    .map_err(|e| e.to_string())?;
+    let id = conn.last_insert_rowid();
+    Ok(CustomIntentDto { id, name, color, sort_order: 0, created_at: now })
+}
+
+#[tauri::command]
+pub fn update_custom_intent(
+    state: State<'_, AppState>,
+    id: i64,
+    name: Option<String>,
+    color: Option<String>,
+) -> Result<CustomIntentDto, String> {
+    let mut conn = open_db_rw(&state.0.paths.db_path)?;
+    if let Some(ref n) = name {
+        conn.execute("UPDATE custom_intents SET name = ?1 WHERE id = ?2", rusqlite::params![n, id])
+            .map_err(|e| e.to_string())?;
+    }
+    // color can be set to null or a value
+    conn.execute("UPDATE custom_intents SET color = ?1 WHERE id = ?2", rusqlite::params![color, id])
+        .map_err(|e| e.to_string())?;
+    drop(conn);
+    let rconn = state.0.read_conn.lock();
+    rconn
+        .query_row(
+            "SELECT id, name, color, sort_order, created_at FROM custom_intents WHERE id = ?1",
+            [id],
+            |row| {
+                Ok(CustomIntentDto {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    color: row.get(2)?,
+                    sort_order: row.get(3)?,
+                    created_at: row.get(4)?,
+                })
+            },
+        )
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn delete_custom_intent(state: State<'_, AppState>, id: i64) -> Result<(), String> {
+    let mut conn = open_db_rw(&state.0.paths.db_path)?;
+    let name: String = conn
+        .query_row("SELECT name FROM custom_intents WHERE id = ?1", [id], |r| r.get(0))
+        .map_err(|e| e.to_string())?;
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    tx.execute(
+        "UPDATE intent_mapping SET intent = '' WHERE intent = ?1",
+        [&name],
+    )
+    .map_err(|e| e.to_string())?;
+    tx.execute("DELETE FROM custom_intents WHERE id = ?1", [id])
+        .map_err(|e| e.to_string())?;
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AutoMatchResult {
+    pub app_name: String,
+    pub bundle_id: Option<String>,
+    pub suggested_intent: Option<String>,
+    pub confidence: String,
+}
+
+#[tauri::command]
+pub fn auto_match_intents(state: State<'_, AppState>) -> Result<Vec<AutoMatchResult>, String> {
+    let conn = state.0.read_conn.lock();
+
+    let keyword_map: Vec<(&str, Vec<&str>)> = vec![
+        ("编码开发", vec!["code", "vs code", "vscode", "xcode", "intellij", "terminal", "iterm", "warp", "cursor", "sublime", "vim", "neovim", "emacs", "android studio", "webstorm", "pycharm", "goland"]),
+        ("研究检索", vec!["chrome", "safari", "firefox", "edge", "arc", "brave", "opera", "notion", "obsidian", "logseq", "roam", "reader", "pdf", "preview", "books"]),
+        ("通讯沟通", vec!["slack", "discord", "teams", "zoom", "wechat", "微信", "telegram", "whatsapp", "mail", "outlook", "thunderbird", "messages", "feishu", "飞书", "钉钉", "dingtalk", "lark"]),
+    ];
+
+    let unmapped: Vec<(String, Option<String>)> = {
+        let mut stmt = conn
+            .prepare(
+                "SELECT DISTINCT app_name, bundle_id FROM window_sessions ws
+                 WHERE NOT EXISTS (
+                     SELECT 1 FROM intent_mapping im
+                     WHERE im.match_field = 'app_name' AND im.match_pattern = ws.app_name AND im.intent != ''
+                 )"
+            )
+            .map_err(|e| e.to_string())?;
+        let rows: Vec<(String, Option<String>)> = stmt
+            .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, Option<String>>(1)?)))
+            .map_err(|e| e.to_string())?
+            .filter_map(|r| r.ok())
+            .collect();
+        rows
+    };
+
+    let mut results = Vec::new();
+    for (app, bid) in unmapped {
+        let app_lower = app.to_lowercase();
+        let bid_lower = bid.as_deref().unwrap_or("").to_lowercase();
+        let mut matched = None;
+        let mut conf = "low";
+
+        for (intent, keywords) in &keyword_map {
+            for kw in keywords {
+                if app_lower.contains(kw) || bid_lower.contains(kw) {
+                    matched = Some(intent.to_string());
+                    conf = "high";
+                    break;
+                }
+            }
+            if matched.is_some() { break; }
+        }
+
+        results.push(AutoMatchResult {
+            app_name: app,
+            bundle_id: bid,
+            suggested_intent: matched,
+            confidence: conf.to_string(),
+        });
+    }
+    Ok(results)
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApplyMatchItem {
+    pub app_name: String,
+    pub bundle_id: Option<String>,
+    pub intent: String,
+}
+
+#[tauri::command]
+pub fn apply_auto_match(
+    state: State<'_, AppState>,
+    matches: Vec<ApplyMatchItem>,
+) -> Result<u32, String> {
+    let mut conn = open_db_rw(&state.0.paths.db_path)?;
+    let mut total = 0u32;
+    for m in &matches {
+        let bid = m.bundle_id.as_ref();
+        let intent_str = m.intent.clone();
+        let cnt = apply_intent_for_app_aggregate_conn(
+            &mut conn,
+            &m.app_name,
+            bid,
+            Some(&intent_str),
+        )?;
+        total += cnt as u32;
+    }
+    Ok(total)
 }
 
 #[cfg(test)]
