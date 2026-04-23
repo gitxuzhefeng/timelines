@@ -443,8 +443,6 @@ export type EventPayloads = {
   nudge_fragmentation: { switchCount: number; windowMin: number };
   nudge_deep_work: { app: string | null; elapsedMin: number; dnd: boolean };
   nudge_daily_digest: { date: string; title: string; body: string; summary: unknown };
-  focus_session_started: { id: string; startMs: number; plannedDurationMin: number };
-  focus_session_ended: { id: string; status: string; actualDurationMs: number | null; summaryJson: string | unknown };
 };
 
 export function listenEvent<K extends keyof EventPayloads>(
@@ -501,7 +499,7 @@ export async function setAutostartEnabled(enabled: boolean): Promise<AutostartDt
   return invoke<AutostartDto>("set_autostart_enabled", { enabled });
 }
 
-// ── Phase 11: Smart Nudge & Focus ───────────────────────────────────────────
+// ── Phase 11: Smart Nudge ───────────────────────────────────────────────────
 
 export interface NudgeConfig {
   enabled: boolean;
@@ -515,17 +513,6 @@ export interface NudgeConfig {
 export interface DigestConfig {
   enabled: boolean;
   time: string;
-}
-
-export interface FocusSession {
-  id: string;
-  startMs: number;
-  endMs: number | null;
-  plannedDurationMin: number;
-  actualDurationMs: number | null;
-  status: string;
-  summaryJson: string | null;
-  createdAt: number;
 }
 
 export async function getNudgeSettings(): Promise<NudgeConfig> {
@@ -542,20 +529,4 @@ export async function getDigestSettings(): Promise<DigestConfig> {
 
 export async function setDigestSettings(config: DigestConfig): Promise<DigestConfig> {
   return invoke<DigestConfig>("set_digest_settings", { config });
-}
-
-export async function startFocusSession(durationMin: number): Promise<FocusSession> {
-  return invoke<FocusSession>("start_focus_session", { durationMin });
-}
-
-export async function stopFocusSession(cancel: boolean): Promise<FocusSession | null> {
-  return invoke<FocusSession | null>("stop_focus_session", { cancel });
-}
-
-export async function getActiveFocusSession(): Promise<FocusSession | null> {
-  return invoke<FocusSession | null>("get_active_focus_session");
-}
-
-export async function getFocusHistory(date: string): Promise<FocusSession[]> {
-  return invoke<FocusSession[]>("get_focus_history", { date });
 }

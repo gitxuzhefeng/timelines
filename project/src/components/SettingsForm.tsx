@@ -17,6 +17,7 @@ import {
   ocrPsmFieldHint,
 } from "../lib/platform";
 import * as api from "../services/tauri";
+import { useAiTaskStore } from "../stores/aiTaskStore";
 import { useThemeStore } from "../stores/themeStore";
 import { useDevModeStore } from "../stores/devModeStore";
 import {
@@ -64,6 +65,8 @@ export function SettingsForm({ className }: SettingsFormProps) {
   const [activeProvider, setActiveProvider] = useState<AiProvider>("custom");
   const [testResult, setTestResult] = useState<{ ok: boolean; ms?: number; error?: string } | null>(null);
   const [testing, setTesting] = useState(false);
+  const startAiTask = useAiTaskStore((s) => s.start);
+  const finishAiTask = useAiTaskStore((s) => s.finish);
   const [ocr, setOcr] = useState<OcrSettingsDto | null>(null);
   const [ocrPrivacyOpen, setOcrPrivacyOpen] = useState(false);
   const [ocrMsg, setOcrMsg] = useState<string | null>(null);
@@ -89,8 +92,8 @@ export function SettingsForm({ className }: SettingsFormProps) {
       api.getOcrSettings(),
       api.getWeekStartDay(),
       api.getAutostartEnabled(),
-      api.getNudgeSettings(),
-      api.getDigestSettings(),
+      api.getNudgeSettings().catch(() => ({ enabled: true, restMinutes: 45, fragThreshold: 8, fragWindowMin: 5, deepWorkMinutes: 25, deepWorkDnd: false }) as api.NudgeConfig),
+      api.getDigestSettings().catch(() => ({ enabled: true, time: "18:00" }) as api.DigestConfig),
     ]);
     setF(flags);
     setAi(aicfg);
@@ -129,6 +132,12 @@ export function SettingsForm({ className }: SettingsFormProps) {
       .catch(() => {});
     void api.getWeekStartDay().then(setWeekStartDayState).catch(() => {});
     void api.getAutostartEnabled().then((r) => setAutostartEnabledState(r.enabled)).catch(() => {});
+    void api.getNudgeSettings()
+      .then(setNudge)
+      .catch(() => setNudge({ enabled: true, restMinutes: 45, fragThreshold: 8, fragWindowMin: 5, deepWorkMinutes: 25, deepWorkDnd: false }));
+    void api.getDigestSettings()
+      .then(setDigest)
+      .catch(() => setDigest({ enabled: true, time: "18:00" }));
   }, []);
 
   useEffect(() => {
@@ -226,14 +235,17 @@ export function SettingsForm({ className }: SettingsFormProps) {
   }
 
   async function handleTestConnection() {
+    const taskId = `ai-test:${Date.now()}`;
     setTesting(true);
     setTestResult(null);
+    startAiTask(taskId, "common.aiTaskTestConnection");
     try {
       const res = await api.testAiConnection(aiBaseUrl, aiModel, aiKeyInput);
       setTestResult({ ok: res.ok, ms: res.latencyMs, error: res.error ?? undefined });
     } catch (e) {
       setTestResult({ ok: false, error: String(e) });
     } finally {
+      finishAiTask(taskId);
       setTesting(false);
     }
   }

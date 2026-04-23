@@ -135,7 +135,7 @@ export default function AboutPage() {
             </button>
             <button
               type="button"
-              onClick={() => openUrl("mailto:xuzhfeng222@gmail.com")}
+              onClick={() => openUrl("mailto:xuzhefeng222@gmail.com")}
               className="rounded border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-ink)] hover:bg-[var(--tl-surface-deep)]"
             >
               {t("about.emailFeedback")}

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAppStore } from "../stores/appStore";
 import * as api from "../services/tauri";
 import { ExportPanel } from "./ExportPanel";
+import { useAiTaskStore } from "../stores/aiTaskStore";
 
 type ReportView = "fact_only" | "ai_enhanced";
 
@@ -20,13 +21,15 @@ export function RecapContent({
   const date = useAppStore((s) => s.date);
   const setDate = useAppStore((s) => s.setDate);
   const [md, setMd] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busyTask, setBusyTask] = useState<"fact" | "ai" | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [view, setView] = useState<ReportView>("fact_only");
   const [aiOn, setAiOn] = useState(false);
   const [hasKey, setHasKey] = useState(false);
   const [hasAiReport, setHasAiReport] = useState(false);
   const [showExport, setShowExport] = useState(false);
+  const startAiTask = useAiTaskStore((s) => s.start);
+  const finishAiTask = useAiTaskStore((s) => s.finish);
   const [meta, setMeta] = useState<{ model: string | null; hash: string | null }>(
     { model: null, hash: null },
   );
@@ -111,29 +114,34 @@ export function RecapContent({
         )}
         <button
           type="button"
-          disabled={busy}
+          disabled={busyTask !== null}
           className="rounded bg-[var(--tl-btn-muted)] px-3 py-1.5 text-sm text-[var(--tl-ink)] hover:opacity-90 disabled:opacity-40"
-          onClick={async () => {
-            setBusy(true);
-            setMsg(null);
-            try {
-              await api.generateDailyAnalysis(date);
-              await api.generateDailyReport(date, false);
-              setView("fact_only");
-              await load();
-              setMsg(t("recap.reportGenerated"));
-            } catch (e) {
-              setMsg(String(e));
-            } finally {
-              setBusy(false);
-            }
+          onClick={() => {
+            const taskId = `daily-report:${date}:fact`;
+            setBusyTask("fact");
+            setMsg(t("common.aiRunning"));
+            startAiTask(taskId, "common.aiTaskDailyReport");
+            void (async () => {
+              try {
+                await api.generateDailyAnalysis(date);
+                await api.generateDailyReport(date, false);
+                setView("fact_only");
+                await load();
+                setMsg(t("recap.reportGenerated"));
+              } catch (e) {
+                setMsg(String(e));
+              } finally {
+                finishAiTask(taskId);
+                setBusyTask((current) => (current === "fact" ? null : current));
+              }
+            })();
           }}
         >
-          {busy ? t("recap.processing") : t("recap.generateReport")}
+          {busyTask === "fact" ? t("recap.processing") : t("recap.generateReport")}
         </button>
         <button
           type="button"
-          disabled={busy || !aiOn || !hasKey}
+          disabled={busyTask !== null || !aiOn || !hasKey}
           title={
             !aiOn
               ? t("recap.enableAiFirst")
@@ -142,27 +150,32 @@ export function RecapContent({
                 : undefined
           }
           className="rounded bg-[var(--tl-btn-primary-bg)] px-3 py-1.5 text-sm text-[var(--tl-btn-primary-text)] hover:bg-[var(--tl-btn-primary-bg-hover)] disabled:opacity-40"
-          onClick={async () => {
-            setBusy(true);
-            setMsg(null);
-            try {
-              await api.generateDailyAnalysis(date);
-              await api.generateDailyReport(date, true);
-              setView("ai_enhanced");
-              await load();
-              setMsg(t("recap.aiReportGenerated"));
-            } catch (e) {
-              setMsg(t("recap.errorFallback", { error: String(e) }));
-            } finally {
-              setBusy(false);
-            }
+          onClick={() => {
+            const taskId = `daily-report:${date}:ai`;
+            setBusyTask("ai");
+            setMsg(t("common.aiRunning"));
+            startAiTask(taskId, "common.aiTaskAiReport");
+            void (async () => {
+              try {
+                await api.generateDailyAnalysis(date);
+                await api.generateDailyReport(date, true);
+                setView("ai_enhanced");
+                await load();
+                setMsg(t("recap.aiReportGenerated"));
+              } catch (e) {
+                setMsg(t("recap.errorFallback", { error: String(e) }));
+              } finally {
+                finishAiTask(taskId);
+                setBusyTask((current) => (current === "ai" ? null : current));
+              }
+            })();
           }}
         >
           {t("recap.generateAiReport")}
         </button>
         <button
           type="button"
-          disabled={busy || !md}
+          disabled={!md}
           className="rounded border border-[var(--tl-line)] px-3 py-1.5 text-sm text-[var(--tl-ink)] hover:bg-[var(--tl-surface-deep)] disabled:opacity-40"
           onClick={() => setShowExport(true)}
         >

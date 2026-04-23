@@ -8,7 +8,7 @@ use rusqlite::params;
 use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{async_runtime, AppHandle, Emitter, State};
 use uuid::Uuid;
 
 use crate::analysis::ai_client;
@@ -814,32 +814,38 @@ pub struct TestAiConnectionResponse {
 }
 
 #[tauri::command]
-pub fn test_ai_connection(
+pub async fn test_ai_connection(
     state: State<'_, AppState>,
     base_url: String,
     model: String,
     api_key: String,
-) -> TestAiConnectionResponse {
-    let key = if api_key.trim().is_empty() {
-        let conn = state.0.read_conn.lock();
-        match settings::get_ai_api_key(&conn) {
-            Some(k) => k,
-            None => {
-                return TestAiConnectionResponse {
-                    ok: false,
-                    latency_ms: 0,
-                    error: Some("未配置 API Key".into()),
+) -> Result<TestAiConnectionResponse, String> {
+    let state = state.inner().clone();
+    let response = async_runtime::spawn_blocking(move || {
+        let key = if api_key.trim().is_empty() {
+            let conn = state.0.read_conn.lock();
+            match settings::get_ai_api_key(&conn) {
+                Some(k) => k,
+                None => {
+                    return TestAiConnectionResponse {
+                        ok: false,
+                        latency_ms: 0,
+                        error: Some("未配置 API Key".into()),
+                    }
                 }
             }
-        }
-    } else {
-        api_key.trim().to_string()
-    };
+        } else {
+            api_key.trim().to_string()
+        };
 
-    match ai_client::test_connection(&base_url, &key, &model) {
-        Ok(ms) => TestAiConnectionResponse { ok: true, latency_ms: ms, error: None },
-        Err(e) => TestAiConnectionResponse { ok: false, latency_ms: 0, error: Some(e) },
-    }
+        match ai_client::test_connection(&base_url, &key, &model) {
+            Ok(ms) => TestAiConnectionResponse { ok: true, latency_ms: ms, error: None },
+            Err(e) => TestAiConnectionResponse { ok: false, latency_ms: 0, error: Some(e) },
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?;
+    Ok(response)
 }
 
 #[derive(Debug, Serialize)]
@@ -1134,9 +1140,14 @@ pub fn set_app_blacklist(state: State<'_, AppState>, apps: Vec<String>) -> Resul
 }
 
 #[tauri::command]
-pub fn generate_daily_analysis(state: State<'_, AppState>, date: String) -> Result<String, String> {
-    let mut c = open_db_rw(&state.0.paths.db_path)?;
-    generate_daily_analysis_into(&mut c, &date)
+pub async fn generate_daily_analysis(state: State<'_, AppState>, date: String) -> Result<String, String> {
+    let state = state.inner().clone();
+    async_runtime::spawn_blocking(move || {
+        let mut c = open_db_rw(&state.0.paths.db_path)?;
+        generate_daily_analysis_into(&mut c, &date)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[derive(Debug, Serialize)]
@@ -1232,8 +1243,21 @@ pub struct DailyReportDto {
 }
 
 #[tauri::command]
-pub fn generate_daily_report(
+pub async fn generate_daily_report(
     state: State<'_, AppState>,
+    date: String,
+    with_ai: bool,
+) -> Result<DailyReportDto, String> {
+    let state = state.inner().clone();
+    async_runtime::spawn_blocking(move || {
+        generate_daily_report_sync(&state, date, with_ai)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+fn generate_daily_report_sync(
+    state: &AppState,
     date: String,
     with_ai: bool,
 ) -> Result<DailyReportDto, String> {
@@ -2284,13 +2308,18 @@ pub fn get_week_start_day(state: State<'_, AppState>) -> Result<u8, String> {
 }
 
 #[tauri::command]
-pub fn generate_weekly_analysis(
+pub async fn generate_weekly_analysis(
     state: State<'_, AppState>,
     week_start: String,
 ) -> Result<String, String> {
-    let mut c = open_db_rw(&state.0.paths.db_path)?;
-    let wsd = crate::core::settings::get_week_start_day(&c);
-    crate::analysis::weekly::generate_weekly_analysis_into(&mut c, &week_start, wsd)
+    let state = state.inner().clone();
+    async_runtime::spawn_blocking(move || {
+        let mut c = open_db_rw(&state.0.paths.db_path)?;
+        let wsd = crate::core::settings::get_week_start_day(&c);
+        crate::analysis::weekly::generate_weekly_analysis_into(&mut c, &week_start, wsd)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -2334,19 +2363,22 @@ pub fn get_weekly_analysis(
 }
 
 #[tauri::command]
-pub fn generate_weekly_report(
+pub async fn generate_weekly_report(
     state: State<'_, AppState>,
     week_start: String,
     with_ai: bool,
     lang: String,
 ) -> Result<crate::analysis::weekly_report::WeeklyReportDto, String> {
-    if with_ai {
-        if !state.0.ai_enabled.load(Ordering::Relaxed) {
+    let state = state.inner().clone();
+    async_runtime::spawn_blocking(move || {
+        if with_ai && !state.0.ai_enabled.load(Ordering::Relaxed) {
             return Err("AI 未开启：请先在设置中开启并配置".into());
         }
-    }
-    let mut c = open_db_rw(&state.0.paths.db_path)?;
-    crate::analysis::weekly_report::generate_weekly_report_into(&mut c, &week_start, with_ai, &lang)
+        let mut c = open_db_rw(&state.0.paths.db_path)?;
+        crate::analysis::weekly_report::generate_weekly_report_into(&mut c, &week_start, with_ai, &lang)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -2504,8 +2536,19 @@ pub fn get_assistant_context(
 }
 
 #[tauri::command]
-pub fn query_assistant(
+pub async fn query_assistant(
     state: State<'_, AppState>,
+    question: String,
+    context_date: Option<String>,
+) -> Result<AssistantMessageDto, String> {
+    let state = state.inner().clone();
+    async_runtime::spawn_blocking(move || query_assistant_sync(&state, question, context_date))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn query_assistant_sync(
+    state: &AppState,
     question: String,
     context_date: Option<String>,
 ) -> Result<AssistantMessageDto, String> {
@@ -2818,67 +2861,6 @@ pub fn set_digest_settings(
     drop(c);
     let conn = state.0.read_conn.lock();
     Ok(settings::get_digest_config(&conn))
-}
-
-#[tauri::command]
-pub fn start_focus_session(
-    state: State<'_, AppState>,
-    app: AppHandle,
-    duration_min: u32,
-) -> Result<crate::core::models::FocusSessionRow, String> {
-    crate::core::nudge::create_focus_session(
-        &state.0.read_conn,
-        &state.0.writer,
-        duration_min,
-        &state.0.focus_active,
-        &app,
-    )
-}
-
-#[tauri::command]
-pub fn stop_focus_session(
-    state: State<'_, AppState>,
-    app: AppHandle,
-    cancel: bool,
-) -> Result<Option<crate::core::models::FocusSessionRow>, String> {
-    crate::core::nudge::stop_focus_session(
-        &state.0.read_conn,
-        &state.0.writer,
-        &state.0.focus_active,
-        cancel,
-        &app,
-    )
-}
-
-#[tauri::command]
-pub fn get_active_focus_session(
-    state: State<'_, AppState>,
-) -> Result<Option<crate::core::models::FocusSessionRow>, String> {
-    let (active, sid) = {
-        let g = state.0.read_conn.lock();
-        settings::get_focus_mode_active(&g)
-    };
-    if !active {
-        return Ok(None);
-    }
-    let Some(session_id) = sid else {
-        return Ok(None);
-    };
-    Ok(crate::core::nudge::read_focus_session(
-        &state.0.read_conn,
-        &session_id,
-    ))
-}
-
-#[tauri::command]
-pub fn get_focus_history(
-    state: State<'_, AppState>,
-    date: String,
-) -> Result<Vec<crate::core::models::FocusSessionRow>, String> {
-    Ok(crate::core::nudge::list_focus_sessions_for_date(
-        &state.0.read_conn,
-        &date,
-    ))
 }
 
 #[cfg(test)]

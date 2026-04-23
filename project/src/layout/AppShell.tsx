@@ -3,7 +3,10 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../stores/appStore";
 import { useDevModeStore } from "../stores/devModeStore";
+import { useThemeStore } from "../stores/themeStore";
+import { setLanguage, type SupportedLanguage } from "../i18n";
 import * as api from "../services/tauri";
+import { AiTaskBanner } from "../components/AiTaskBanner";
 function navCls(active: boolean): string {
   return [
     "tl-nav-item tl-interactive-row flex w-full items-center gap-2 rounded-lg border-0 px-2.5 py-2 text-left text-sm font-medium transition-colors",
@@ -14,7 +17,7 @@ function navCls(active: boolean): string {
 }
 
 export default function AppShell() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const location = useLocation();
   const date = useAppStore((s) => s.date);
   const setDate = useAppStore((s) => s.setDate);
@@ -22,6 +25,11 @@ export default function AppShell() {
   const devEnabled = useDevModeStore((s) => s.enabled);
   const updateAvailable = useAppStore((s) => s.updateAvailable);
   const [captureBusy, setCaptureBusy] = useState(false);
+  const theme = useThemeStore((s) => s.theme);
+  const setTheme = useThemeStore((s) => s.setTheme);
+  const [currentLang, setCurrentLang] = useState<SupportedLanguage>(
+    () => (i18n.language === "zh-CN" ? "zh-CN" : "en"),
+  );
 
   const MAIN_NAV = [
     { to: "/lens", label: t("nav.todayLens"), icon: "◉" },
@@ -158,6 +166,36 @@ export default function AppShell() {
                   {captureBusy ? "…" : isTracking ? t("nav.capturing") : t("nav.stopCapture")}
                 </span>
               </button>
+              <div className="flex items-center gap-1 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-1 py-1">
+                <button
+                  type="button"
+                  onClick={() => setTheme("tech")}
+                  className={`rounded px-2 py-1 text-[0.65rem] transition-colors ${theme === "tech" ? "bg-[var(--tl-accent-12)] text-[var(--tl-ink)]" : "text-[var(--tl-muted)] hover:text-[var(--tl-ink)]"}`}
+                  title={t("settings.themeTech")}
+                >
+                  {t("settings.themeTech")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTheme("white")}
+                  className={`rounded px-2 py-1 text-[0.65rem] transition-colors ${theme === "white" ? "bg-[var(--tl-accent-12)] text-[var(--tl-ink)]" : "text-[var(--tl-muted)] hover:text-[var(--tl-ink)]"}`}
+                  title={t("settings.themeWhite")}
+                >
+                  {t("settings.themeWhite")}
+                </button>
+              </div>
+              <div className="flex items-center gap-1 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-1 py-1">
+                {(["zh-CN", "en"] as SupportedLanguage[]).map((lang) => (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => { setLanguage(lang); setCurrentLang(lang); }}
+                    className={`rounded px-2 py-1 text-[0.65rem] transition-colors ${currentLang === lang ? "bg-[var(--tl-accent-12)] text-[var(--tl-ink)]" : "text-[var(--tl-muted)] hover:text-[var(--tl-ink)]"}`}
+                  >
+                    {lang === "zh-CN" ? "中文" : "EN"}
+                  </button>
+                ))}
+              </div>
               <label className="flex items-center gap-2 font-mono text-xs text-[var(--tl-muted)]">
                 {t("common.date")}
                 <input
@@ -172,6 +210,7 @@ export default function AppShell() {
           <main className="min-h-0 flex-1 overflow-hidden">
             <Outlet />
           </main>
+          <AiTaskBanner />
         </div>
       </div>
     </div>

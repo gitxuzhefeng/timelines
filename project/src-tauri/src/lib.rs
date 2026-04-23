@@ -83,7 +83,6 @@ pub struct AppStateInner {
     pub ocr_last_error: Arc<Mutex<Option<String>>>,
     pub ocr_pending: Arc<AtomicUsize>,
     pub nudge_enabled: Arc<AtomicBool>,
-    pub focus_active: Arc<AtomicBool>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -135,10 +134,6 @@ pub fn run() {
             let nudge_enabled = Arc::new(AtomicBool::new({
                 let g = read_conn.lock();
                 core::settings::get_nudge_config(&g).enabled
-            }));
-            let focus_active = Arc::new(AtomicBool::new({
-                let g = read_conn.lock();
-                core::settings::get_focus_mode_active(&g).0
             }));
             // 桌面端启动后默认开启采集（与产品预期一致）；无采集能力的平台保持 false。
             let tracking = Arc::new(AtomicBool::new(cfg!(any(
@@ -248,7 +243,6 @@ pub fn run() {
                 is_afk.clone(),
                 current_session.clone(),
                 nudge_enabled.clone(),
-                focus_active.clone(),
             );
             let screen_ok_on_focus = screen_ok.clone();
             let wm_emit = metrics.clone();
@@ -274,7 +268,6 @@ pub fn run() {
                 ocr_last_error,
                 ocr_pending,
                 nudge_enabled: nudge_enabled.clone(),
-                focus_active: focus_active.clone(),
             }));
             app.manage(state);
             if let Some(s) = handle.try_state::<AppState>() {
@@ -346,15 +339,8 @@ pub fn run() {
                 let show = MenuItem::with_id(h, "show", "打开主窗口", true, None::<&str>)?;
                 let start = MenuItem::with_id(h, "start", "开始采集", true, None::<&str>)?;
                 let stop = MenuItem::with_id(h, "stop", "停止采集", true, None::<&str>)?;
-                let focus_25 =
-                    MenuItem::with_id(h, "focus_25", "专注 25 分钟", true, None::<&str>)?;
-                let focus_stop =
-                    MenuItem::with_id(h, "focus_stop", "结束专注", true, None::<&str>)?;
                 let quit = MenuItem::with_id(h, "quit", "退出", true, None::<&str>)?;
-                let menu = Menu::with_items(
-                    h,
-                    &[&show, &start, &stop, &focus_25, &focus_stop, &quit],
-                )?;
+                let menu = Menu::with_items(h, &[&show, &start, &stop, &quit])?;
                 let mut tray = TrayIconBuilder::with_id("timelens_tray")
                     .menu(&menu)
                     .show_menu_on_left_click(true)
@@ -387,28 +373,6 @@ pub fn run() {
                                     let _ = app.emit(
                                         "tracking_state_changed",
                                         serde_json::json!({ "isRunning": false }),
-                                    );
-                                }
-                            }
-                            "focus_25" => {
-                                if let Some(s) = app.try_state::<AppState>() {
-                                    let _ = core::nudge::create_focus_session(
-                                        &s.0.read_conn,
-                                        &s.0.writer,
-                                        25,
-                                        &s.0.focus_active,
-                                        app,
-                                    );
-                                }
-                            }
-                            "focus_stop" => {
-                                if let Some(s) = app.try_state::<AppState>() {
-                                    let _ = core::nudge::stop_focus_session(
-                                        &s.0.read_conn,
-                                        &s.0.writer,
-                                        &s.0.focus_active,
-                                        false,
-                                        app,
                                     );
                                 }
                             }
@@ -498,10 +462,6 @@ pub fn run() {
             api::set_nudge_settings,
             api::get_digest_settings,
             api::set_digest_settings,
-            api::start_focus_session,
-            api::stop_focus_session,
-            api::get_active_focus_session,
-            api::get_focus_history,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

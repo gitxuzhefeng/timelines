@@ -39,8 +39,6 @@ const K_NUDGE_DEEP_WORK_MINUTES: &str = "nudge_deep_work_minutes";
 const K_NUDGE_DEEP_WORK_DND: &str = "nudge_deep_work_dnd";
 const K_DIGEST_ENABLED: &str = "digest_enabled";
 const K_DIGEST_TIME: &str = "digest_time";
-const K_FOCUS_MODE_ACTIVE: &str = "focus_mode_active";
-const K_FOCUS_SESSION_ID: &str = "focus_session_id";
 
 const DEFAULT_NUDGE_REST_MIN: u32 = 45;
 const DEFAULT_NUDGE_FRAG_THRESHOLD: u32 = 8;
@@ -502,31 +500,6 @@ pub fn set_digest_config(conn: &mut Connection, c: &DigestConfig) -> rusqlite::R
     };
     set_setting_str(conn, K_DIGEST_TIME, &time)?;
     Ok(())
-}
-
-pub fn get_focus_mode_active(conn: &Connection) -> (bool, Option<String>) {
-    let active = get_bool(conn, K_FOCUS_MODE_ACTIVE, false);
-    let sid = get_setting_str(conn, K_FOCUS_SESSION_ID, "");
-    let sid = if sid.trim().is_empty() {
-        None
-    } else {
-        Some(sid)
-    };
-    (active, sid)
-}
-
-pub fn set_focus_mode_active(
-    conn: &mut Connection,
-    active: bool,
-    session_id: Option<&str>,
-) -> rusqlite::Result<()> {
-    set_flag(conn, K_FOCUS_MODE_ACTIVE, active)?;
-    set_setting_str(conn, K_FOCUS_SESSION_ID, session_id.unwrap_or(""))?;
-    Ok(())
-}
-
-pub fn key_nudge_enabled() -> &'static str {
-    K_NUDGE_ENABLED
 }
 
 #[cfg(test)]

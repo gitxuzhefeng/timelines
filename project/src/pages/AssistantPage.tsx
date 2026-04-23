@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import * as api from "../services/tauri";
+import { useAiTaskStore } from "../stores/aiTaskStore";
 import { useAppStore } from "../stores/appStore";
 
 interface MessageDto {
@@ -122,6 +123,8 @@ export default function AssistantPage() {
   const [loading, setLoading] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [clearConfirm, setClearConfirm] = useState(false);
+  const startAiTask = useAiTaskStore((s) => s.start);
+  const finishAiTask = useAiTaskStore((s) => s.finish);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -151,8 +154,10 @@ export default function AssistantPage() {
       content: q,
       createdAt: Date.now(),
     };
+    const taskId = `assistant:${optimisticUser.id}`;
     setMessages((prev) => [...prev, optimisticUser]);
     setLoading(true);
+    startAiTask(taskId, "common.aiTaskAssistant");
 
     try {
       const reply = await api.queryAssistant(q, date);
@@ -176,9 +181,10 @@ export default function AssistantPage() {
         },
       ]);
     } finally {
+      finishAiTask(taskId);
       setLoading(false);
     }
-  }, [input, loading, date, t]);
+  }, [input, loading, date, t, finishAiTask, startAiTask]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {

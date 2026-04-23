@@ -1,13 +1,12 @@
-//! Phase 11: 智能提醒与专注守护引擎。
+//! Phase 11: 智能提醒与每日摘要引擎。
 //!
 //! 单一后台线程，10 秒轮询：
 //! - 久坐提醒（连续工作 > 阈值）
 //! - 碎片化预警（窗口内 app_switches 超阈值）
 //! - 深度工作标记（同一 session 持续 > 阈值）
 //! - 每日摘要推送（到点触发）
-//! - 专注模式计时（到期完成）
 //!
-//! 通知通过原生 shell 命令发出（macOS osascript / Windows PowerShell BurntToast），
+//! 通知通过原生 shell 命令发出（macOS osascript / Windows PowerShell），
 //! 同时 Tauri 事件通道 emit 给前端。
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -23,7 +22,7 @@ use serde_json::json;
 use tauri::{AppHandle, Emitter};
 use uuid::Uuid;
 
-use crate::core::models::{FocusSessionRow, NudgeLogRow, WriteEvent};
+use crate::core::models::{NudgeLogRow, WriteEvent};
 use crate::core::settings;
 use crate::core::writer::WriterHandle;
 
@@ -33,7 +32,7 @@ const FRAG_COOLDOWN_MS: i64 = 5 * 60 * 1000;
 const DEEP_WORK_COOLDOWN_MS: i64 = 30 * 60 * 1000;
 const DIGEST_WINDOW_SECS: i64 = 90; // ±90s 内 HH:MM 匹配视为命中
 
-/// 启动提醒/专注后台线程。
+/// 启动智能提醒后台线程。
 #[allow(clippy::too_many_arguments)]
 pub fn spawn_nudge_thread(
     app: AppHandle,
@@ -44,26 +43,13 @@ pub fn spawn_nudge_thread(
     is_afk: Arc<AtomicBool>,
     _current_session: Arc<std::sync::RwLock<Option<String>>>,
     nudge_enabled: Arc<AtomicBool>,
-    focus_active: Arc<AtomicBool>,
 ) {
-    // 启动时若有 active focus session，做恢复或补完成。
-    if let Err(e) = recover_focus_on_startup(&read_conn, &writer, &focus_active, &app) {
-        warn!("nudge: focus recovery failed: {e}");
-    }
-
     thread::spawn(move || {
         let mut state = NudgeState::default();
         while running.load(Ordering::Relaxed) {
             thread::sleep(Duration::from_secs(POLL_SECS));
             if !running.load(Ordering::Relaxed) {
                 break;
-            }
-
-            // Focus 计时单独跑（不受 nudge_enabled 控制，符合 PRD：总开关不影响专注）。
-            if focus_active.load(Ordering::Relaxed) {
-                if let Err(e) = tick_focus_timer(&app, &read_conn, &writer, &focus_active) {
-                    warn!("nudge: focus tick failed: {e}");
-                }
             }
 
             // 总开关 + tracking + 非 AFK 才发提醒。
@@ -307,335 +293,6 @@ fn build_digest_summary(read_conn: &Mutex<Connection>, date: &str, _lang: &str) 
     }
 }
 
-// === Focus mode ===
-
-fn recover_focus_on_startup(
-    read_conn: &Mutex<Connection>,
-    writer: &WriterHandle,
-    focus_active: &Arc<AtomicBool>,
-    app: &AppHandle,
-) -> Result<(), String> {
-    let (active, sid) = {
-        let g = read_conn.lock();
-        settings::get_focus_mode_active(&g)
-    };
-    if !active {
-        focus_active.store(false, Ordering::Relaxed);
-        return Ok(());
-    }
-    let Some(session_id) = sid else {
-        focus_active.store(false, Ordering::Relaxed);
-        return Ok(());
-    };
-    let row = read_focus_session(read_conn, &session_id);
-    let Some(row) = row else {
-        focus_active.store(false, Ordering::Relaxed);
-        return Ok(());
-    };
-    if row.status != "active" {
-        focus_active.store(false, Ordering::Relaxed);
-        return Ok(());
-    }
-    let now = now_ms();
-    let planned_end = row.start_ms + row.planned_duration_min * 60_000;
-    if now >= planned_end {
-        // 已超时 → 补完成
-        complete_focus_session(read_conn, writer, &row, planned_end, app)?;
-        focus_active.store(false, Ordering::Relaxed);
-        let lang = current_lang(read_conn);
-        let (title, body) =
-            focus_complete_text(&lang, row.planned_duration_min, planned_end - row.start_ms);
-        send_native_notification(&title, &body);
-    } else {
-        // 仍在期内 → 保持活跃
-        focus_active.store(true, Ordering::Relaxed);
-        let _ = app.emit(
-            "focus_session_started",
-            json!({"id": row.id, "startMs": row.start_ms, "plannedDurationMin": row.planned_duration_min}),
-        );
-    }
-    Ok(())
-}
-
-fn tick_focus_timer(
-    app: &AppHandle,
-    read_conn: &Mutex<Connection>,
-    writer: &WriterHandle,
-    focus_active: &Arc<AtomicBool>,
-) -> Result<(), String> {
-    let (active, sid) = {
-        let g = read_conn.lock();
-        settings::get_focus_mode_active(&g)
-    };
-    if !active || sid.is_none() {
-        focus_active.store(false, Ordering::Relaxed);
-        return Ok(());
-    }
-    let session_id = sid.unwrap();
-    let Some(row) = read_focus_session(read_conn, &session_id) else {
-        focus_active.store(false, Ordering::Relaxed);
-        return Ok(());
-    };
-    if row.status != "active" {
-        focus_active.store(false, Ordering::Relaxed);
-        return Ok(());
-    }
-    let now = now_ms();
-    let planned_end = row.start_ms + row.planned_duration_min * 60_000;
-    if now >= planned_end {
-        complete_focus_session(read_conn, writer, &row, planned_end, app)?;
-        focus_active.store(false, Ordering::Relaxed);
-        let lang = current_lang(read_conn);
-        let (title, body) =
-            focus_complete_text(&lang, row.planned_duration_min, planned_end - row.start_ms);
-        send_native_notification(&title, &body);
-    }
-    Ok(())
-}
-
-pub fn read_focus_session(read_conn: &Mutex<Connection>, id: &str) -> Option<FocusSessionRow> {
-    let g = read_conn.lock();
-    g.query_row(
-        "SELECT id, start_ms, end_ms, planned_duration_min, actual_duration_ms, status, summary_json, created_at
-         FROM focus_sessions WHERE id = ?1",
-        [id],
-        |r| {
-            Ok(FocusSessionRow {
-                id: r.get(0)?,
-                start_ms: r.get(1)?,
-                end_ms: r.get(2)?,
-                planned_duration_min: r.get(3)?,
-                actual_duration_ms: r.get(4)?,
-                status: r.get(5)?,
-                summary_json: r.get(6)?,
-                created_at: r.get(7)?,
-            })
-        },
-    )
-    .optional()
-    .ok()
-    .flatten()
-}
-
-pub fn list_focus_sessions_for_date(
-    read_conn: &Mutex<Connection>,
-    date: &str,
-) -> Vec<FocusSessionRow> {
-    let g = read_conn.lock();
-    let bounds = day_bounds_ms(date);
-    let Some((s, e)) = bounds else {
-        return Vec::new();
-    };
-    let mut stmt = match g.prepare(
-        "SELECT id, start_ms, end_ms, planned_duration_min, actual_duration_ms, status, summary_json, created_at
-         FROM focus_sessions WHERE start_ms >= ?1 AND start_ms < ?2 ORDER BY start_ms ASC",
-    ) {
-        Ok(s) => s,
-        Err(_) => return Vec::new(),
-    };
-    let rows = stmt
-        .query_map(params![s, e], |r| {
-            Ok(FocusSessionRow {
-                id: r.get(0)?,
-                start_ms: r.get(1)?,
-                end_ms: r.get(2)?,
-                planned_duration_min: r.get(3)?,
-                actual_duration_ms: r.get(4)?,
-                status: r.get(5)?,
-                summary_json: r.get(6)?,
-                created_at: r.get(7)?,
-            })
-        })
-        .ok();
-    rows.map(|it| it.flatten().collect()).unwrap_or_default()
-}
-
-fn day_bounds_ms(date: &str) -> Option<(i64, i64)> {
-    let nd = NaiveDate::parse_from_str(date, "%Y-%m-%d").ok()?;
-    let s = Local
-        .from_local_datetime(&nd.and_hms_opt(0, 0, 0)?)
-        .single()?
-        .timestamp_millis();
-    let e = Local
-        .from_local_datetime(&nd.succ_opt()?.and_hms_opt(0, 0, 0)?)
-        .single()?
-        .timestamp_millis();
-    Some((s, e))
-}
-
-pub fn create_focus_session(
-    read_conn: &Mutex<Connection>,
-    writer: &WriterHandle,
-    duration_min: u32,
-    focus_active: &Arc<AtomicBool>,
-    app: &AppHandle,
-) -> Result<FocusSessionRow, String> {
-    if focus_active.load(Ordering::Relaxed) {
-        return Err("focus_already_active".to_string());
-    }
-    let now = now_ms();
-    let row = FocusSessionRow {
-        id: Uuid::new_v4().to_string(),
-        start_ms: now,
-        end_ms: None,
-        planned_duration_min: duration_min as i64,
-        actual_duration_ms: None,
-        status: "active".to_string(),
-        summary_json: None,
-        created_at: now,
-    };
-    writer
-        .try_send(WriteEvent::FocusSession(row.clone()))
-        .map_err(|_| "writer_full".to_string())?;
-    {
-        // 设置写入需要可写连接，这里直接通过 read_conn 内 connection 即可（settings 用 INSERT OR UPDATE，使用同一 db）。
-        let mut g = read_conn.lock();
-        settings::set_focus_mode_active(&mut g, true, Some(&row.id))
-            .map_err(|e| format!("set_focus_active failed: {e}"))?;
-    }
-    focus_active.store(true, Ordering::Relaxed);
-    let _ = app.emit(
-        "focus_session_started",
-        json!({
-            "id": row.id,
-            "startMs": row.start_ms,
-            "plannedDurationMin": row.planned_duration_min
-        }),
-    );
-    Ok(row)
-}
-
-pub fn stop_focus_session(
-    read_conn: &Mutex<Connection>,
-    writer: &WriterHandle,
-    focus_active: &Arc<AtomicBool>,
-    cancel: bool,
-    app: &AppHandle,
-) -> Result<Option<FocusSessionRow>, String> {
-    let (_active, sid) = {
-        let g = read_conn.lock();
-        settings::get_focus_mode_active(&g)
-    };
-    let Some(session_id) = sid else {
-        focus_active.store(false, Ordering::Relaxed);
-        return Ok(None);
-    };
-    let Some(row) = read_focus_session(read_conn, &session_id) else {
-        focus_active.store(false, Ordering::Relaxed);
-        return Ok(None);
-    };
-    if row.status != "active" {
-        focus_active.store(false, Ordering::Relaxed);
-        return Ok(Some(row));
-    }
-    let now = now_ms();
-    let updated = if cancel {
-        let mut r = row.clone();
-        r.end_ms = Some(now);
-        r.actual_duration_ms = Some(now - row.start_ms);
-        r.status = "cancelled".to_string();
-        r.summary_json = Some(json!({"cancelled": true}).to_string());
-        r
-    } else {
-        let summary = compute_focus_summary(read_conn, row.start_ms, now);
-        FocusSessionRow {
-            end_ms: Some(now),
-            actual_duration_ms: Some(now - row.start_ms),
-            status: "completed".to_string(),
-            summary_json: Some(summary),
-            ..row.clone()
-        }
-    };
-    writer
-        .try_send(WriteEvent::FocusSession(updated.clone()))
-        .map_err(|_| "writer_full".to_string())?;
-    {
-        let mut g = read_conn.lock();
-        settings::set_focus_mode_active(&mut g, false, None)
-            .map_err(|e| format!("clear_focus_active failed: {e}"))?;
-    }
-    focus_active.store(false, Ordering::Relaxed);
-    let _ = app.emit(
-        "focus_session_ended",
-        json!({
-            "id": updated.id,
-            "status": updated.status,
-            "actualDurationMs": updated.actual_duration_ms,
-            "summaryJson": updated.summary_json,
-        }),
-    );
-    Ok(Some(updated))
-}
-
-fn complete_focus_session(
-    read_conn: &Mutex<Connection>,
-    writer: &WriterHandle,
-    row: &FocusSessionRow,
-    end_ms: i64,
-    app: &AppHandle,
-) -> Result<(), String> {
-    let summary = compute_focus_summary(read_conn, row.start_ms, end_ms);
-    let updated = FocusSessionRow {
-        end_ms: Some(end_ms),
-        actual_duration_ms: Some(end_ms - row.start_ms),
-        status: "completed".to_string(),
-        summary_json: Some(summary.clone()),
-        ..row.clone()
-    };
-    writer
-        .try_send(WriteEvent::FocusSession(updated.clone()))
-        .map_err(|_| "writer_full".to_string())?;
-    {
-        let mut g = read_conn.lock();
-        settings::set_focus_mode_active(&mut g, false, None)
-            .map_err(|e| format!("clear_focus_active failed: {e}"))?;
-    }
-    let _ = app.emit(
-        "focus_session_ended",
-        json!({
-            "id": updated.id,
-            "status": updated.status,
-            "actualDurationMs": updated.actual_duration_ms,
-            "summaryJson": summary,
-        }),
-    );
-    Ok(())
-}
-
-fn compute_focus_summary(read_conn: &Mutex<Connection>, start_ms: i64, end_ms: i64) -> String {
-    let g = read_conn.lock();
-    let mut stmt = match g.prepare(
-        "SELECT app_name, SUM(MIN(end_ms, ?2) - MAX(start_ms, ?1)) AS dur
-         FROM window_sessions
-         WHERE start_ms < ?2 AND (end_ms IS NULL OR end_ms > ?1)
-         GROUP BY app_name ORDER BY dur DESC LIMIT 5",
-    ) {
-        Ok(s) => s,
-        Err(_) => return json!({"top_apps": [], "switches": 0}).to_string(),
-    };
-    let apps: Vec<(String, i64)> = stmt
-        .query_map(params![start_ms, end_ms], |r| {
-            Ok((
-                r.get::<_, String>(0).unwrap_or_default(),
-                r.get::<_, i64>(1).unwrap_or(0),
-            ))
-        })
-        .map(|it| it.flatten().collect())
-        .unwrap_or_default();
-    let switches: i64 = g
-        .query_row(
-            "SELECT COUNT(*) FROM app_switches WHERE timestamp_ms >= ?1 AND timestamp_ms < ?2",
-            params![start_ms, end_ms],
-            |r| r.get(0),
-        )
-        .unwrap_or(0);
-    json!({
-        "top_apps": apps.iter().map(|(a, ms)| json!({"app": a, "ms": ms})).collect::<Vec<_>>(),
-        "switches": switches,
-    })
-    .to_string()
-}
-
 // === 文案（中英） ===
 
 fn rest_text(lang: &str, mins: i64) -> (String, String) {
@@ -715,21 +372,6 @@ fn digest_text(lang: &str, s: &DigestSummary) -> (String, String) {
                 flow,
                 top
             ),
-        )
-    }
-}
-
-fn focus_complete_text(lang: &str, planned_min: i64, actual_ms: i64) -> (String, String) {
-    let actual_min = actual_ms / 60_000;
-    if lang == "zh-CN" {
-        (
-            "TimeLens · 专注完成".to_string(),
-            format!("计划 {planned_min} 分钟，实际 {actual_min} 分钟，做得好！"),
-        )
-    } else {
-        (
-            "TimeLens · Focus complete".to_string(),
-            format!("Planned {planned_min} min, actual {actual_min} min — well done!"),
         )
     }
 }
@@ -824,50 +466,6 @@ mod tests {
         assert!(parse_hhmm("24:00").is_none());
         assert!(parse_hhmm("18:60").is_none());
         assert!(parse_hhmm("garbage").is_none());
-    }
-
-    #[test]
-    fn day_bounds_basic() {
-        let b = day_bounds_ms("2026-04-22");
-        assert!(b.is_some());
-        let (s, e) = b.unwrap();
-        assert!(e > s);
-        assert_eq!(e - s, 24 * 3600 * 1000);
-    }
-
-    #[test]
-    fn focus_summary_empty_period() {
-        let c = setup_db();
-        let lock = Arc::new(Mutex::new(c));
-        let now = Utc::now().timestamp_millis();
-        let s = compute_focus_summary(&lock, now, now + 60_000);
-        let v: serde_json::Value = serde_json::from_str(&s).unwrap();
-        assert_eq!(v["top_apps"].as_array().unwrap().len(), 0);
-        assert_eq!(v["switches"], 0);
-    }
-
-    #[test]
-    fn focus_session_lifecycle_db() {
-        // 在内存 DB 上手工模拟 INSERT/UPDATE focus_sessions
-        let c = setup_db();
-        c.execute(
-            "INSERT INTO focus_sessions (id, start_ms, end_ms, planned_duration_min, actual_duration_ms, status, summary_json, created_at)
-             VALUES ('fs1', 1000, NULL, 25, NULL, 'active', NULL, 1000)",
-            [],
-        ).unwrap();
-        c.execute(
-            "UPDATE focus_sessions SET end_ms = 2500000, actual_duration_ms = 1500000, status = 'completed', summary_json = '{}' WHERE id = 'fs1'",
-            [],
-        ).unwrap();
-        let (status, dur): (String, i64) = c
-            .query_row(
-                "SELECT status, actual_duration_ms FROM focus_sessions WHERE id = 'fs1'",
-                [],
-                |r| Ok((r.get(0)?, r.get(1)?)),
-            )
-            .unwrap();
-        assert_eq!(status, "completed");
-        assert_eq!(dur, 1500000);
     }
 
     #[test]

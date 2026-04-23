@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAiTaskStore } from "../stores/aiTaskStore";
 import { useTranslation } from "react-i18next";
 import * as api from "../services/tauri";
 import type { WeeklyAnalysisDto, WeeklyReportDto } from "../services/tauri";
@@ -223,7 +224,19 @@ function FlowScoreTrend({
 
 // ── AppTrendChart ─────────────────────────────────────────────────────────────
 
+type TopAppsByDayRaw = Record<string, Array<{ app?: string; seconds?: number; name?: string; ms?: number }>>;
 type TopAppsByDay = Record<string, Array<{ name: string; ms: number }>>;
+
+function normalizeTopAppsByDay(raw: TopAppsByDayRaw): TopAppsByDay {
+  const result: TopAppsByDay = {};
+  for (const [date, apps] of Object.entries(raw)) {
+    result[date] = (apps ?? []).map((a) => ({
+      name: a.app ?? a.name ?? "",
+      ms: ((a.seconds ?? 0) * 1000) || (a.ms ?? 0),
+    }));
+  }
+  return result;
+}
 
 const BAR_COLORS = [
   "bg-teal-500/80",
@@ -323,6 +336,8 @@ export default function WeeklyReportPage() {
   const [report, setReport] = useState<WeeklyReportDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const startAiTask = useAiTaskStore((s) => s.start);
+  const finishAiTask = useAiTaskStore((s) => s.finish);
   const [err, setErr] = useState<string | null>(null);
 
   const mountedRef = useRef(true);
@@ -380,7 +395,10 @@ export default function WeeklyReportPage() {
   }, [weekStart, load]);
 
   const generateFull = useCallback(async (ws: string, currentValidDays: number) => {
+    const taskId = `weekly-report:${ws}`;
     setGenerating(true);
+    setErr(null);
+    startAiTask(taskId, "common.aiTaskWeeklyReport");
     try {
       await api.generateWeeklyAnalysis(ws);
       const a2 = await api.getWeeklyAnalysis(ws);
@@ -396,9 +414,10 @@ export default function WeeklyReportPage() {
     } catch (e) {
       if (mountedRef.current) setErr(String(e));
     } finally {
+      finishAiTask(taskId);
       if (mountedRef.current) setGenerating(false);
     }
-  }, [i18n.language]);
+  }, [finishAiTask, i18n.language, startAiTask]);
 
   function prevWeek() {
     setWeekStart((ws) => addDays(ws, -7));
@@ -426,7 +445,7 @@ export default function WeeklyReportPage() {
     [analysis],
   );
   const topAppsByDay = useMemo<TopAppsByDay>(
-    () => parseJsonSafe(analysis?.topAppsByDay, {}),
+    () => normalizeTopAppsByDay(parseJsonSafe(analysis?.topAppsByDay, {})),
     [analysis],
   );
 
