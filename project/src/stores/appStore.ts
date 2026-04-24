@@ -51,6 +51,7 @@ interface AppState {
     windowMin: number;
     switches: AppSwitch[];
   } | null;
+  fragmentationProtectUntilMs: number | null;
   formatBytes: (n: number) => string;
   setDate: (d: string) => void;
   refreshAll: () => Promise<void>;
@@ -62,6 +63,7 @@ interface AppState {
   setAfk: (isAfk: boolean) => void;
   setWriterStats: (w: WriterStats) => void;
   setFragmentationAlert: (alert: AppState["fragmentationAlert"]) => void;
+  setFragmentationProtectUntilMs: (ms: number | null) => void;
   setUpdateCheckResult: (r: UpdateCheckResult) => void;
   dismissUpdate: () => void;
   clearError: () => void;
@@ -88,6 +90,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   updateCheckResult: null,
   updateDismissed: false,
   fragmentationAlert: null,
+  fragmentationProtectUntilMs: null,
   formatBytes,
 
   setDate: (d) => {
@@ -173,6 +176,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setAfk: (isAfk) => set({ isAfk }),
   setWriterStats: (w) => set({ writer: w }),
   setFragmentationAlert: (alert) => set({ fragmentationAlert: alert }),
+  setFragmentationProtectUntilMs: (ms) => set({ fragmentationProtectUntilMs: ms }),
   setUpdateCheckResult: (r) => {
     const dismissed = localStorage.getItem("timelens_dismissed_version") === r.latestVersion;
     set({
