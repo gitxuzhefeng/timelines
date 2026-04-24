@@ -201,26 +201,52 @@ export default function AppShell() {
                   {captureBusy ? "…" : isTracking ? t("nav.capturing") : t("nav.stopCapture")}
                 </span>
               </button>
-              <div className="flex items-center gap-1 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-1.5 py-1">
-                {([
-                  ["tech", "#00f5d4"],
-                  ["white", "#0d9488"],
-                  ["claude", "#c96442"],
-                  ["raycast", "#FF6363"],
-                  ["spotify", "#1ed760"],
-                  ["linear", "#5e6ad2"],
-                  ["cursor", "#f54e00"],
-                ] as [UiTheme, string][]).map(([id, color]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setTheme(id)}
-                    className={`rounded-full p-0.5 transition-opacity ${theme === id ? "ring-1 ring-[var(--tl-ink)] ring-offset-1 ring-offset-[var(--tl-bg)]" : "opacity-50 hover:opacity-100"}`}
-                    title={t(`settings.theme${id.charAt(0).toUpperCase() + id.slice(1)}` as any)}
-                  >
-                    <span className="block h-2.5 w-2.5 rounded-full" style={{ background: color }} />
-                  </button>
-                ))}
+              <div className="flex flex-col gap-0.5 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-1.5 py-1">
+                <div className="flex items-center gap-1">
+                  <span className="text-[0.55rem] text-[var(--tl-muted)]">☀</span>
+                  {([
+                    ["white", "#0d9488"],
+                    ["claude", "#c96442"],
+                    ["cursor", "#f54e00"],
+                    ["catppuccin", "#1e66f5"],
+                    ["rosepine", "#286983"],
+                    ["gruvbox-light", "#076678"],
+                  ] as [UiTheme, string][]).map(([id, color]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setTheme(id)}
+                      className={`rounded-full p-0.5 transition-opacity ${theme === id ? "ring-1 ring-[var(--tl-ink)] ring-offset-1 ring-offset-[var(--tl-bg)]" : "opacity-50 hover:opacity-100"}`}
+                      title={t(`settings.theme${id.replace(/-./g, c => c[1].toUpperCase()).replace(/^./, c => c.toUpperCase())}` as any)}
+                    >
+                      <span className="block h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-[0.55rem] text-[var(--tl-muted)]">☾</span>
+                  {([
+                    ["tech", "#00f5d4"],
+                    ["raycast", "#FF6363"],
+                    ["spotify", "#1ed760"],
+                    ["linear", "#5e6ad2"],
+                    ["dracula", "#bd93f9"],
+                    ["nord", "#88c0d0"],
+                    ["tokyo-night", "#7aa2f7"],
+                    ["gruvbox-dark", "#83a598"],
+                    ["one-dark", "#61afef"],
+                  ] as [UiTheme, string][]).map(([id, color]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setTheme(id)}
+                      className={`rounded-full p-0.5 transition-opacity ${theme === id ? "ring-1 ring-[var(--tl-ink)] ring-offset-1 ring-offset-[var(--tl-bg)]" : "opacity-50 hover:opacity-100"}`}
+                      title={t(`settings.theme${id.replace(/-./g, c => c[1].toUpperCase()).replace(/^./, c => c.toUpperCase())}` as any)}
+                    >
+                      <span className="block h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="flex items-center gap-1 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-1 py-1">
                 {(["zh-CN", "en"] as SupportedLanguage[]).map((lang) => (

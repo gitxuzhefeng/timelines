@@ -148,12 +148,6 @@ fn tick_nudges(
     if switch_count >= cfg.frag_threshold as i64
         && now - state.last_frag_at_ms > FRAG_COOLDOWN_MS
     {
-        let (title, body) = frag_text(&lang, switch_count, cfg.frag_window_min);
-        send_native_notification(&title, &body);
-        if let Some(w) = app.get_webview_window("main") {
-            let _ = w.show();
-            let _ = w.set_focus();
-        }
         let _ = app.emit(
             "nudge_fragmentation",
             json!({"switchCount": switch_count, "windowMin": cfg.frag_window_min}),

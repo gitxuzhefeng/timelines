@@ -1,8 +1,15 @@
 import { create } from "zustand";
 
-export type UiTheme = "tech" | "white" | "claude" | "raycast" | "spotify" | "linear" | "cursor";
+export type UiTheme =
+  | "tech" | "white" | "claude" | "raycast" | "spotify" | "linear" | "cursor"
+  | "catppuccin" | "rosepine" | "gruvbox-light"
+  | "dracula" | "nord" | "tokyo-night" | "gruvbox-dark" | "one-dark";
 
-const ALL_THEMES: UiTheme[] = ["tech", "white", "claude", "raycast", "spotify", "linear", "cursor"];
+const ALL_THEMES: UiTheme[] = [
+  "tech", "white", "claude", "raycast", "spotify", "linear", "cursor",
+  "catppuccin", "rosepine", "gruvbox-light",
+  "dracula", "nord", "tokyo-night", "gruvbox-dark", "one-dark",
+];
 
 const STORAGE_KEY = "timelens_ui_theme";
 

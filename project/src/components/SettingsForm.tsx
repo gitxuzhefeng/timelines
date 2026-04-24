@@ -314,32 +314,66 @@ export function SettingsForm({ className }: SettingsFormProps) {
         <p className="mt-1 text-xs text-[var(--tl-muted)]">
           {t("settings.themeDesc")}
         </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {(
-            [
-              ["tech", t("settings.themeTech"), "#00f5d4"],
+        <div className="mt-3">
+          <div className="mb-1 flex items-center gap-1.5 text-xs text-[var(--tl-muted)]">
+            <span>☀</span>
+            <span>{t("settings.themeGroupLight" as any)}</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {([
               ["white", t("settings.themeWhite"), "#0d9488"],
               ["claude", t("settings.themeClaude"), "#c96442"],
+              ["cursor", t("settings.themeCursor"), "#f54e00"],
+              ["catppuccin", t("settings.themeCatppuccin" as any), "#1e66f5"],
+              ["rosepine", t("settings.themeRosepine" as any), "#286983"],
+              ["gruvbox-light", t("settings.themeGruvboxLight" as any), "#076678"],
+            ] as [UiTheme, string, string][]).map(([id, label, color]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setTheme(id)}
+                className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                  theme === id
+                    ? "border-[var(--tl-accent-45)] bg-[var(--tl-accent-12)] text-[var(--tl-ink)]"
+                    : "border-[var(--tl-line)] bg-[var(--tl-glass-20)] text-[var(--tl-muted)] hover:border-[var(--tl-accent-25)]"
+                }`}
+              >
+                <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="mb-1 mt-3 flex items-center gap-1.5 text-xs text-[var(--tl-muted)]">
+            <span>☾</span>
+            <span>{t("settings.themeGroupDark" as any)}</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {([
+              ["tech", t("settings.themeTech"), "#00f5d4"],
               ["raycast", t("settings.themeRaycast"), "#FF6363"],
               ["spotify", t("settings.themeSpotify"), "#1ed760"],
               ["linear", t("settings.themeLinear"), "#5e6ad2"],
-              ["cursor", t("settings.themeCursor"), "#f54e00"],
-            ] as [UiTheme, string, string][]
-          ).map(([id, label, color]) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setTheme(id)}
-              className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-colors ${
-                theme === id
-                  ? "border-[var(--tl-accent-45)] bg-[var(--tl-accent-12)] text-[var(--tl-ink)]"
-                  : "border-[var(--tl-line)] bg-[var(--tl-glass-20)] text-[var(--tl-muted)] hover:border-[var(--tl-accent-25)]"
-              }`}
-            >
-              <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: color }} />
-              {label}
-            </button>
-          ))}
+              ["dracula", t("settings.themeDracula" as any), "#bd93f9"],
+              ["nord", t("settings.themeNord" as any), "#88c0d0"],
+              ["tokyo-night", t("settings.themeTokyoNight" as any), "#7aa2f7"],
+              ["gruvbox-dark", t("settings.themeGruvboxDark" as any), "#83a598"],
+              ["one-dark", t("settings.themeOneDark" as any), "#61afef"],
+            ] as [UiTheme, string, string][]).map(([id, label, color]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setTheme(id)}
+                className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                  theme === id
+                    ? "border-[var(--tl-accent-45)] bg-[var(--tl-accent-12)] text-[var(--tl-ink)]"
+                    : "border-[var(--tl-line)] bg-[var(--tl-glass-20)] text-[var(--tl-muted)] hover:border-[var(--tl-accent-25)]"
+                }`}
+              >
+                <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </section>
 

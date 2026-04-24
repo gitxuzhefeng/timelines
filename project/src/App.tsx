@@ -1,10 +1,11 @@
-import { useEffect, useLayoutEffect } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import {
   BrowserRouter,
   Navigate,
   Route,
   Routes,
 } from "react-router-dom";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTranslation } from "react-i18next";
 import AppShell from "./layout/AppShell";
 import { useAppStore } from "./stores/appStore";
@@ -35,6 +36,7 @@ export default function App() {
   const setAfk = useAppStore((s) => s.setAfk);
   const setWriterStats = useAppStore((s) => s.setWriterStats);
   const { i18n } = useTranslation();
+  const fragmentationNotificationRef = useRef<Notification | null>(null);
 
   useLayoutEffect(() => {
     if (theme === "tech") document.documentElement.removeAttribute("data-theme");
@@ -121,12 +123,59 @@ export default function App() {
       );
       unsubs.push(
         await api.listenEvent("nudge_fragmentation", (p) => {
-          api.getRecentAppSwitches(p.windowMin).then((switches) => {
-            useAppStore.getState().setFragmentationAlert({
+          api.getRecentAppSwitches(p.windowMin).then(async (switches) => {
+            const alert = {
               switchCount: p.switchCount,
               windowMin: p.windowMin,
               switches,
+            };
+
+            if (typeof window === "undefined" || !("Notification" in window)) {
+              return;
+            }
+
+            let permission = Notification.permission;
+            if (permission === "default") {
+              try {
+                permission = await Notification.requestPermission();
+              } catch {
+                permission = "denied";
+              }
+            }
+            if (permission !== "granted") {
+              return;
+            }
+
+            fragmentationNotificationRef.current?.close();
+            const title = i18n.language === "zh-CN"
+              ? "TimeLens · 注意力分散"
+              : "TimeLens · Fragmentation alert";
+            const body = i18n.language === "zh-CN"
+              ? `最近 ${p.windowMin} 分钟内切换了 ${p.switchCount} 次应用，点击查看详情。`
+              : `Switched apps ${p.switchCount} times in the last ${p.windowMin} min. Click to view details.`;
+            const notification = new Notification(title, {
+              body,
+              tag: "timelens-fragmentation-alert",
+              requireInteraction: true,
             });
+            fragmentationNotificationRef.current = notification;
+            notification.onclick = async () => {
+              try {
+                const currentWindow = getCurrentWindow();
+                await currentWindow.show();
+                await currentWindow.unminimize();
+                await currentWindow.setFocus();
+              } catch {
+                window.focus();
+              }
+              useAppStore.getState().setFragmentationAlert(alert);
+              notification.close();
+            };
+            notification.onclose = () => {
+              if (fragmentationNotificationRef.current === notification) {
+                fragmentationNotificationRef.current = null;
+              }
+            };
           }).catch(() => {});
         }),
       );

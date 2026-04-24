@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import type { DailyAnalysisDto, Snapshot, WindowSession } from "../types";
+import type { Snapshot, WindowSession } from "../types";
 import { snapshotTimelensUrl } from "../types";
-import { parseIntentBreakdown, parseTopApps } from "../lib/dailyAnalysisParsed";
 import {
   daypartFromStartMs,
   formatDurationMs,
@@ -80,42 +79,30 @@ function sessionRulerSeg(
   return { leftPct, widthPct };
 }
 
-function aggregateAppsFromSessions(sessions: WindowSession[]): { app: string; duration_ms: number }[] {
-  const m = new Map<string, number>();
-  for (const s of sessions) {
-    m.set(s.appName, (m.get(s.appName) || 0) + s.durationMs);
-  }
-  return [...m.entries()]
-    .map(([app, duration_ms]) => ({ app, duration_ms }))
-    .sort((a, b) => b.duration_ms - a.duration_ms);
-}
 
 export default function TimelinePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const date = useAppStore((s) => s.date);
   const [sessions, setSessions] = useState<WindowSession[]>([]);
-  const [analysis, setAnalysis] = useState<DailyAnalysisDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [pick, setPick] = useState<WindowSession | null>(null);
   const [snaps, setSnaps] = useState<Snapshot[]>([]);
   const [snapPick, setSnapPick] = useState<string | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [expandedBlocks, setExpandedBlocks] = useState<Set<string>>(() => new Set());
   const [viewMode, setViewMode] = useState<"summary" | "full">(() => {
     try { const v = localStorage.getItem("timelens_view_timeline"); if (v === "summary" || v === "full") return v; } catch {}
     return "summary";
   });
-  const [appsExpanded, setAppsExpanded] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [list, a] = await Promise.all([api.getSessions(date), api.getDailyAnalysis(date)]);
+      const list = await api.getSessions(date);
       setSessions(list);
-      setAnalysis(a);
     } catch {
       setSessions([]);
-      setAnalysis(null);
     } finally {
       setLoading(false);
     }
@@ -157,6 +144,7 @@ export default function TimelinePage() {
     secondaryApps: string[];
     totalDurationMs: number;
     intent: string | null;
+    switchCount: number;
   };
 
   const summaryBlocks = useMemo((): SummaryBlock[] => {
@@ -201,6 +189,7 @@ export default function TimelinePage() {
         secondaryApps: secondary,
         totalDurationMs: totalMs,
         intent: topSession?.intent ?? null,
+        switchCount: Math.max(0, inWindow.length - 1),
       };
     }
 
@@ -226,49 +215,26 @@ export default function TimelinePage() {
     [sessions],
   );
 
-  const bridgeTotalMs = analysis?.totalActiveMs && analysis.totalActiveMs > 0 ? analysis.totalActiveMs : sessionsTotalMs;
+  function statusLabel(b: SummaryBlock): string {
+    if (b.switchCount <= 1) return t("timeline.statusFocused");
+    if (b.switchCount <= 5) return t("timeline.statusModerate");
+    return t("timeline.statusFragmented");
+  }
 
-  const bridgeBar = useMemo(() => {
-    const intents = analysis ? parseIntentBreakdown(analysis) : {};
-    const entries = Object.entries(intents)
-      .filter(([, v]) => v > 0)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 4);
-    if (entries.length === 0) {
-      if (sessions.length === 0) return [] as { key: string; flex: number; color: string }[];
-      const byBucket: Record<IntentBucket, number> = { a: 0, b: 0, c: 0, d: 0 };
-      for (const s of sessions) {
-        byBucket[intentVisual(s.intent).bucket] += s.durationMs;
-      }
-      const order: IntentBucket[] = ["a", "b", "c", "d"];
-      const raw = order.map((k) => ({ key: k, ms: byBucket[k] })).filter((x) => x.ms > 0);
-      const sum = raw.reduce((a, x) => a + x.ms, 0) || 1;
-      return raw.map((x) => ({
-        key: x.key,
-        flex: Math.max(3, Math.round((x.ms / sum) * 100)),
-        color: P3_COLORS[x.key],
-      }));
-    }
-    const sum = entries.reduce((a, [, v]) => a + v, 0) || 1;
-    const colors = ["var(--tl-p3-c-a)", "var(--tl-p3-c-b)", "var(--tl-p3-c-c)", "var(--tl-p3-c-d)"];
-    return entries.map(([k, v], i) => ({
-      key: k,
-      flex: Math.max(3, Math.round((v / sum) * 100)),
-      color: colors[i % colors.length],
-    }));
-  }, [analysis, sessions]);
+  function toggleBlock(blockId: string) {
+    setExpandedBlocks((prev) => {
+      const next = new Set(prev);
+      if (next.has(blockId)) next.delete(blockId);
+      else next.add(blockId);
+      return next;
+    });
+  }
 
-  const allApps = useMemo(() => {
-    const total = bridgeTotalMs || 1;
-    const rows = analysis ? parseTopApps(analysis) : aggregateAppsFromSessions(sessions);
-    return rows.map((r) => ({
-      app: r.app,
-      dur: r.duration_ms,
-      pct: Math.round((r.duration_ms / total) * 100),
-    }));
-  }, [analysis, sessions, bridgeTotalMs]);
-
-  const bridgeChips = useMemo(() => allApps.slice(0, 3), [allApps]);
+  function getBlockSessions(block: SummaryBlock): WindowSession[] {
+    return sessions
+      .filter((s) => s.startMs < block.endMs && s.endMs > block.startMs)
+      .sort((a, b) => a.startMs - b.startMs);
+  }
 
   const rulerWin = useMemo(() => dayActivityWindowMs(date), [date]);
 
@@ -349,114 +315,40 @@ export default function TimelinePage() {
 
         <header className="mb-5 flex flex-wrap items-start justify-between gap-4 border-b border-[var(--tl-line)] pb-4">
           <div>
-            <p className="font-mono text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[var(--tl-muted)]">
-              TimeLens
-            </p>
-            <h1 className="mt-1.5 text-[1.45rem] font-bold leading-snug tracking-wide text-[var(--tl-ink)]">
-              {t("timeline.title").split("完整时间线")[0]}<span className="text-[var(--tl-p3-accent)]">{t("timeline.title").includes("完整时间线") ? "完整时间线" : t("timeline.title")}</span>
+            <h1 className="text-[1.25rem] font-bold leading-snug tracking-wide text-[var(--tl-ink)]">
+              {t("timeline.title")}
             </h1>
+            <p className="mt-1 text-[0.72rem] text-[var(--tl-muted)]">
+              {loading ? "…" : `${formatDurationShortMs(sessionsTotalMs)} · ${t("timeline.sessionCount", { count: sessions.length })}`}
+            </p>
           </div>
           <div className="text-right text-[0.72rem] text-[var(--tl-muted)]">
             <strong className="mb-0.5 block text-[0.95rem] font-semibold text-[var(--tl-ink)]">
               {zhDateLabel(date)}
             </strong>
-            <span>{loading ? "…" : t("timeline.sessionCount", { count: sessions.length })}</span>
           </div>
         </header>
 
-        <section className="tl-p3-bridge mb-6" aria-label={t("timeline.sameCalibration")}>
-          <p className="mb-2 text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-[var(--tl-muted)]">
-            {t("timeline.sameCalibration")}
-          </p>
-          <div className="mb-3 flex h-2 overflow-hidden rounded" role="img" aria-label="意图占比">
-            {bridgeBar.length === 0 ? (
-              <span className="h-full w-full rounded bg-[var(--tl-bar-empty)]" />
-            ) : (
-              bridgeBar.map((b) => (
-                <span
-                  key={b.key}
-                  className="h-full min-w-[3px]"
-                  style={{ flex: `${b.flex} 1 0`, background: b.color }}
-                />
-              ))
-            )}
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="font-mono text-[1.35rem] font-bold leading-none tracking-tight text-[var(--tl-ink)]">
-                {loading ? "…" : formatDurationMs(bridgeTotalMs)}
-              </p>
-              <p className="mt-0.5 text-[0.62rem] font-medium tracking-wide text-[var(--tl-muted)]">
-                {t("timeline.recordedTime")}
-              </p>
-            </div>
-            <div className="flex max-w-full flex-wrap justify-end gap-1.5">
-              {bridgeChips.length === 0 && !loading ? (
-                <span className="rounded-md border border-[var(--tl-line)] bg-[var(--tl-chip-bg)] px-2 py-1 text-[0.65rem] text-[var(--tl-muted)]">
-                  {t("timeline.noTopApps")}
-                </span>
-              ) : (
-                bridgeChips.map((c) => (
-                  <span
-                    key={c.app}
-                    className="rounded-md border border-[var(--tl-line)] bg-[var(--tl-chip-bg)] px-2 py-1 text-[0.65rem] text-[var(--tl-muted)]"
-                  >
-                    <strong className="font-semibold text-[var(--tl-ink)]">{c.app}</strong>{" "}
-                    {formatDurationShortMs(c.dur)} · {c.pct}%
-                  </span>
-                ))
-              )}
-              {allApps.length > 3 && (
-                <button
-                  type="button"
-                  className="rounded-md border border-[var(--tl-line)] bg-[var(--tl-chip-bg)] px-2 py-1 text-[0.65rem] text-[var(--tl-cyan)] hover:bg-[var(--tl-surface)]"
-                  onClick={() => setAppsExpanded(!appsExpanded)}
-                >
-                  {appsExpanded ? t("timeline.collapseApps") : t("timeline.expandApps")}
-                </button>
-              )}
-            </div>
-          </div>
-          {appsExpanded && allApps.length > 3 && (
-            <div className="mt-3 space-y-1.5 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-surface)] p-3">
-              {allApps.map((a) => (
-                <div key={a.app} className="flex items-center gap-2 text-[0.7rem]">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-white/[0.06] text-[0.55rem] font-bold text-[var(--tl-muted)]">
-                    {appIconLabel(a.app)}
-                  </span>
-                  <span className="w-24 truncate font-medium text-[var(--tl-ink)]">{a.app}</span>
-                  <div className="flex-1">
-                    <div className="h-1.5 overflow-hidden rounded-full bg-[var(--tl-line)]">
-                      <div className="h-full rounded-full bg-[var(--tl-cyan)]" style={{ width: `${Math.max(a.pct, 1)}%` }} />
-                    </div>
-                  </div>
-                  <span className="w-16 text-right font-mono text-[var(--tl-muted)]">{formatDurationShortMs(a.dur)}</span>
-                  <span className="w-8 text-right font-mono text-[var(--tl-muted)]">{a.pct}%</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <div className="mb-5">
-          <div className="mb-1.5 flex justify-between text-[0.58rem] uppercase tracking-[0.08em] text-[var(--tl-muted)]">
+        {/* ── Activity density band ── */}
+        <div className="mb-6">
+          <div className="mb-2 flex justify-between text-[0.68rem] font-medium text-[var(--tl-muted)]">
             <span>{t("timeline.activityDensity")}</span>
             <span>{t("timeline.timeRange")}</span>
           </div>
           <div
-            className="relative h-3.5 overflow-hidden rounded-full bg-white/[0.04]"
+            className="group relative h-9 overflow-hidden rounded-lg bg-[var(--tl-surface)]"
             role="presentation"
-            aria-hidden
           >
             {rulerSegs.map(({ s, leftPct, widthPct, color }) => (
               <span
                 key={s.id}
-                className="absolute top-0 bottom-0 rounded-sm shadow-[inset_0_0_0_1px_rgba(0,0,0,0.2)] opacity-90"
-                style={{ left: `${leftPct}%`, width: `${widthPct}%`, background: color }}
+                className="absolute top-0 bottom-0 rounded transition-opacity hover:opacity-100 opacity-85"
+                style={{ left: `${leftPct}%`, width: `${Math.max(widthPct, 0.5)}%`, background: color }}
+                title={`${s.appName} · ${fmtTime(s.startMs)}–${fmtTime(s.endMs)} · ${formatDurationShortMs(s.durationMs)}`}
               />
             ))}
           </div>
-          <div className="mt-1.5 flex justify-between font-mono text-[0.55rem] text-[var(--tl-muted)] opacity-85">
+          <div className="mt-1.5 flex justify-between font-mono text-[0.68rem] text-[var(--tl-muted)]">
             <span>08</span>
             <span>12</span>
             <span>16</span>
@@ -492,43 +384,72 @@ export default function TimelinePage() {
         ) : sessions.length === 0 ? (
           <p className="text-center text-sm text-[var(--tl-muted)]">{t("timeline.noSessions")}</p>
         ) : viewMode === "summary" ? (
-          <div className="tl-p3-tl" role="list">
+          <div className="space-y-2" role="list">
             {summaryBlocks.map((b) => {
               const { bucket, label: intentLabel } = intentVisual(b.intent);
               const intentCls =
                 bucket === "a" ? "tl-p3-intent-a" : bucket === "b" ? "tl-p3-intent-b" : bucket === "c" ? "tl-p3-intent-c" : "tl-p3-intent-d";
-              const dot = P3_COLORS[bucket];
+              const isExpanded = expandedBlocks.has(b.id);
+              const blockSessions = isExpanded ? getBlockSessions(b) : [];
+              const status = statusLabel(b);
               return (
-                <article key={b.id} className="tl-p3-item" role="listitem">
-                  <div className="tl-p3-time">
-                    {fmtTime(b.startMs)}
-                    <span className="dur block text-[0.58rem] font-normal opacity-85">
-                      {formatDurationShortMs(b.totalDurationMs)}
-                    </span>
-                  </div>
-                  <div className="tl-p3-axis">
-                    <span className="tl-p3-dot" style={{ background: dot }} />
-                  </div>
-                  <div className="tl-p3-card">
-                    <div className="mb-1 flex items-center justify-between gap-2">
-                      <span className="flex items-center gap-1.5 text-[0.82rem] font-semibold text-[var(--tl-ink)]">
-                        <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md bg-white/[0.06] text-[0.65rem] font-bold text-[var(--tl-muted)]">
+                <article key={b.id} role="listitem">
+                  <button
+                    type="button"
+                    className="tl-interactive-row flex w-full items-start gap-3 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-surface)] px-4 py-3 text-left transition-colors hover:bg-[var(--tl-nav-hover-bg)]"
+                    onClick={() => toggleBlock(b.id)}
+                  >
+                    <div className="flex shrink-0 flex-col items-center pt-0.5">
+                      <span className="text-[0.78rem] font-semibold tabular-nums text-[var(--tl-ink)]">{fmtTime(b.startMs)}</span>
+                      <span className="text-[0.6rem] text-[var(--tl-muted)]">{fmtTime(b.endMs)}</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md bg-[var(--tl-accent-06)] text-[0.6rem] font-bold text-[var(--tl-cyan)]">
                           {appIconLabel(b.primaryApp.split(" + ")[0])}
                         </span>
-                        {b.primaryApp}
-                        <span className="text-[0.6rem] text-[var(--tl-muted)]">({b.primaryPct}%)</span>
-                      </span>
-                      <span className={`shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.06em] ${intentCls}`}>
-                        {intentLabel}
-                      </span>
+                        <span className="text-[0.85rem] font-semibold text-[var(--tl-ink)]">{b.primaryApp}</span>
+                        <span className="text-[0.68rem] font-medium text-[var(--tl-cyan)]">{formatDurationShortMs(b.totalDurationMs)}</span>
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <span className={`rounded px-1.5 py-0.5 text-[0.58rem] font-semibold ${intentCls}`}>{intentLabel}</span>
+                        <span className="rounded bg-[var(--tl-surface-deep)] px-1.5 py-0.5 text-[0.58rem] text-[var(--tl-muted)]">{status}</span>
+                        {b.secondaryApps.length > 0 && (
+                          <span className="text-[0.62rem] text-[var(--tl-muted)]">{t("timeline.alsoUsed")} {b.secondaryApps.join("、")}</span>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-[0.74rem] leading-snug text-[var(--tl-muted)]">
-                      {fmtTime(b.startMs)} — {fmtTime(b.endMs)}
-                      {b.secondaryApps.length > 0 && (
-                        <span className="ml-2 text-[0.65rem]">· {t("timeline.alsoUsed")} {b.secondaryApps.join("、")}</span>
-                      )}
-                    </p>
-                  </div>
+                    <span className="shrink-0 pt-1 text-[0.7rem] text-[var(--tl-muted)] transition-transform" style={{ transform: isExpanded ? "rotate(90deg)" : "none" }}>
+                      ▸
+                    </span>
+                  </button>
+                  {isExpanded && blockSessions.length > 0 && (
+                    <div className="ml-6 mt-1 space-y-0.5 border-l-2 border-[var(--tl-line)] pl-4 pb-2">
+                      {blockSessions.map((s) => {
+                        const sv = intentVisual(s.intent);
+                        const sCls = sv.bucket === "a" ? "tl-p3-intent-a" : sv.bucket === "b" ? "tl-p3-intent-b" : sv.bucket === "c" ? "tl-p3-intent-c" : "tl-p3-intent-d";
+                        return (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setPick(s); }}
+                            className="tl-interactive-row flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-[var(--tl-surface)]"
+                          >
+                            <span className="w-12 shrink-0 text-[0.68rem] tabular-nums text-[var(--tl-muted)]">{fmtTime(s.startMs)}</span>
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-[var(--tl-accent-06)] text-[0.5rem] font-bold text-[var(--tl-muted)]">
+                              {appIconLabel(s.appName)}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate text-[0.75rem] text-[var(--tl-ink)]">
+                              <strong className="font-medium">{s.appName}</strong>
+                              {s.windowTitle && <span className="ml-1.5 text-[var(--tl-muted)]">{s.windowTitle}</span>}
+                            </span>
+                            <span className="shrink-0 text-[0.62rem] tabular-nums text-[var(--tl-muted)]">{formatDurationShortMs(s.durationMs)}</span>
+                            <span className={`shrink-0 rounded px-1 py-0.5 text-[0.5rem] font-semibold ${sCls}`}>{sv.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </article>
               );
             })}
@@ -559,7 +480,7 @@ export default function TimelinePage() {
                   >
                     <div className="mb-1 flex items-center justify-between gap-2">
                       <span className="flex items-center gap-1.5 text-[0.82rem] font-semibold text-[var(--tl-ink)]">
-                        <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md bg-white/[0.06] text-[0.65rem] font-bold text-[var(--tl-muted)]">
+                        <span className="flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-md bg-[var(--tl-accent-06)] text-[0.65rem] font-bold text-[var(--tl-muted)]">
                           {appIconLabel(s.appName)}
                         </span>
                         {s.appName}
@@ -570,10 +491,6 @@ export default function TimelinePage() {
                     </div>
                     <p className="text-[0.74rem] leading-snug text-[var(--tl-muted)] [word-break:break-word]">
                       {s.windowTitle || t("timeline.noWindowTitle")}
-                    </p>
-                    <p className="mt-2 font-mono text-[0.62rem] text-[var(--tl-muted)] opacity-90">
-                      {t("timeline.sessionEvents", { count: s.rawEventCount })}
-                      {s.bundleId ? ` · ${s.bundleId}` : ""}
                     </p>
                   </button>
                 </article>
