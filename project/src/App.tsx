@@ -123,6 +123,8 @@ export default function App() {
       );
       unsubs.push(
         await api.listenEvent("nudge_fragmentation", (p) => {
+          const protectUntil = useAppStore.getState().fragmentationProtectUntilMs;
+          if (protectUntil && Date.now() < protectUntil) return;
           api.getRecentAppSwitches(p.windowMin).then(async (switches) => {
             const alert = {
               switchCount: p.switchCount,
@@ -131,6 +133,7 @@ export default function App() {
             };
 
             if (typeof window === "undefined" || !("Notification" in window)) {
+              useAppStore.getState().setFragmentationAlert(alert);
               return;
             }
 
@@ -143,6 +146,7 @@ export default function App() {
               }
             }
             if (permission !== "granted") {
+              useAppStore.getState().setFragmentationAlert(alert);
               return;
             }
 
