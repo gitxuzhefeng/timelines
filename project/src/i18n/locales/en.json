@@ -301,7 +301,8 @@
     "addGroup": "Add",
     "confirmDeleteGroup": "Delete group \"{{name}}\"? Assigned apps will become ungrouped.",
     "matchPreview": "Match Preview",
-    "applyAll": "Apply All"
+    "applyAll": "Apply All",
+    "builtinGroups": "Built-in Groups"
   },
   "recap": {
     "title": "Recap",

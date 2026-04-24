@@ -303,7 +303,8 @@
     "addGroup": "添加",
     "confirmDeleteGroup": "确定删除分组「{{name}}」？已分配的应用将回退为未分组。",
     "matchPreview": "匹配预览",
-    "applyAll": "全部应用"
+    "applyAll": "全部应用",
+    "builtinGroups": "内置分组"
   },
   "recap": {
     "title": "复盘",

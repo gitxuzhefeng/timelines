@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Virtuoso } from "react-virtuoso";
 import {
   INTENT_PRESET_OPTIONS,
+  BUILTIN_INTENT_COLORS,
   intentSourceLabel,
   type IntentSourceFilter,
 } from "../lib/intentPresets";
@@ -489,6 +490,34 @@ export default function IntentManagePage() {
 
       {showGroupForm && (
         <div className="border-b border-[var(--tl-line)] bg-[var(--tl-surface)] px-4 py-3">
+          <h3 className="mb-2 text-sm font-medium">{t("intents.builtinGroups")}</h3>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {INTENT_PRESET_OPTIONS.filter(o => o.value).map((preset) => {
+              const override = customIntents.find(ci => ci.name === preset.value);
+              const currentColor = override?.color ?? BUILTIN_INTENT_COLORS[preset.value] ?? "#6b7280";
+              return (
+                <div key={preset.value} className="flex items-center gap-1.5 rounded-lg border border-[var(--tl-line)] bg-[var(--tl-bg)] px-2 py-1 text-[0.72rem]">
+                  <input
+                    type="color"
+                    className="h-5 w-5 cursor-pointer rounded border-0"
+                    value={currentColor}
+                    onChange={async (e) => {
+                      const color = e.target.value;
+                      if (override) {
+                        await api.updateCustomIntent(override.id, undefined, color);
+                      } else {
+                        await api.createCustomIntent(preset.value, color);
+                      }
+                      const list = await api.listCustomIntents();
+                      setCustomIntents(list);
+                    }}
+                  />
+                  <span className="text-[var(--tl-ink)]">{preset.label}</span>
+                </div>
+              );
+            })}
+          </div>
+
           <h3 className="mb-2 text-sm font-medium">{t("intents.customGroups")}</h3>
           <div className="mb-3 flex flex-wrap gap-2">
             {customIntents.map((ci) => (

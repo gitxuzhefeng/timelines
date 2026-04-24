@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { Snapshot, WindowSession } from "../types";
+import type { CustomIntent } from "../services/tauri";
 import { snapshotTimelensUrl } from "../types";
 import {
   daypartFromStartMs,
@@ -10,17 +11,9 @@ import {
   zhDateLabel,
   type Daypart,
 } from "../lib/phase3Format";
+import { BUILTIN_INTENT_COLORS, INTENT_FALLBACK_COLOR } from "../lib/intentPresets";
 import * as api from "../services/tauri";
 import { useAppStore } from "../stores/appStore";
-
-type IntentBucket = "a" | "b" | "c" | "d";
-
-const P3_COLORS: Record<IntentBucket, string> = {
-  a: "var(--tl-p3-c-a)",
-  b: "var(--tl-p3-c-b)",
-  c: "var(--tl-p3-c-c)",
-  d: "var(--tl-p3-c-d)",
-};
 
 function fmtTime(ms: number): string {
   return new Date(ms).toLocaleTimeString(undefined, {
@@ -29,19 +22,23 @@ function fmtTime(ms: number): string {
   });
 }
 
-function intentVisual(intent: string | null): { bucket: IntentBucket; label: string } {
-  const raw = (intent || "").trim();
-  const t = raw.toLowerCase();
-  if (/深度|deep|集中|专注|focus/.test(t)) {
-    return { bucket: "a", label: raw || "深度工作" };
+function buildIntentColorMap(customIntents: CustomIntent[]): Record<string, string> {
+  const map: Record<string, string> = { ...BUILTIN_INTENT_COLORS };
+  for (const ci of customIntents) {
+    if (ci.color) map[ci.name] = ci.color;
   }
-  if (/协作|沟通|会议|commun|slack|message|mail|邮件/.test(t)) {
-    return { bucket: "b", label: raw || "协作沟通" };
-  }
-  if (/浏览|学习|阅读|search|文档|doc|wiki/.test(t)) {
-    return { bucket: "c", label: raw || "浏览与学习" };
-  }
-  return { bucket: "d", label: raw || "其他" };
+  return map;
+}
+
+function getIntentColor(colorMap: Record<string, string>, intent: string | null): string {
+  const name = (intent || "").trim();
+  if (!name) return INTENT_FALLBACK_COLOR;
+  return colorMap[name] ?? INTENT_FALLBACK_COLOR;
+}
+
+function getIntentLabel(intent: string | null): string {
+  const name = (intent || "").trim();
+  return name || "其他";
 }
 
 function appIconLabel(name: string): string {
@@ -95,12 +92,16 @@ export default function TimelinePage() {
     try { const v = localStorage.getItem("timelens_view_timeline"); if (v === "summary" || v === "full") return v; } catch {}
     return "summary";
   });
+  const [customIntents, setCustomIntents] = useState<CustomIntent[]>([]);
+
+  const intentColorMap = useMemo(() => buildIntentColorMap(customIntents), [customIntents]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await api.getSessions(date);
+      const [list, ci] = await Promise.all([api.getSessions(date), api.listCustomIntents()]);
       setSessions(list);
+      setCustomIntents(ci);
     } catch {
       setSessions([]);
     } finally {
@@ -244,7 +245,7 @@ export default function TimelinePage() {
       .map((s) => {
         const g = sessionRulerSeg(s, rulerWin);
         if (!g) return null;
-        return { s, ...g, color: P3_COLORS[intentVisual(s.intent).bucket] };
+        return { s, ...g, color: getIntentColor(intentColorMap, s.intent) };
       })
       .filter((x): x is NonNullable<typeof x> => x != null);
   }, [sessions, rulerWin]);
@@ -386,9 +387,8 @@ export default function TimelinePage() {
         ) : viewMode === "summary" ? (
           <div className="space-y-2" role="list">
             {summaryBlocks.map((b) => {
-              const { bucket, label: intentLabel } = intentVisual(b.intent);
-              const intentCls =
-                bucket === "a" ? "tl-p3-intent-a" : bucket === "b" ? "tl-p3-intent-b" : bucket === "c" ? "tl-p3-intent-c" : "tl-p3-intent-d";
+              const intentLabel = getIntentLabel(b.intent);
+              const intentColor = getIntentColor(intentColorMap, b.intent);
               const isExpanded = expandedBlocks.has(b.id);
               const blockSessions = isExpanded ? getBlockSessions(b) : [];
               const status = statusLabel(b);
@@ -412,7 +412,7 @@ export default function TimelinePage() {
                         <span className="text-[0.68rem] font-medium text-[var(--tl-cyan)]">{formatDurationShortMs(b.totalDurationMs)}</span>
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <span className={`rounded px-1.5 py-0.5 text-[0.58rem] font-semibold ${intentCls}`}>{intentLabel}</span>
+                        <span className="rounded px-1.5 py-0.5 text-[0.58rem] font-semibold text-white" style={{ background: intentColor }}>{intentLabel}</span>
                         <span className="rounded bg-[var(--tl-surface-deep)] px-1.5 py-0.5 text-[0.58rem] text-[var(--tl-muted)]">{status}</span>
                         {b.secondaryApps.length > 0 && (
                           <span className="text-[0.62rem] text-[var(--tl-muted)]">{t("timeline.alsoUsed")} {b.secondaryApps.join("、")}</span>
@@ -426,8 +426,8 @@ export default function TimelinePage() {
                   {isExpanded && blockSessions.length > 0 && (
                     <div className="ml-6 mt-1 space-y-0.5 border-l-2 border-[var(--tl-line)] pl-4 pb-2">
                       {blockSessions.map((s) => {
-                        const sv = intentVisual(s.intent);
-                        const sCls = sv.bucket === "a" ? "tl-p3-intent-a" : sv.bucket === "b" ? "tl-p3-intent-b" : sv.bucket === "c" ? "tl-p3-intent-c" : "tl-p3-intent-d";
+                        const sColor = getIntentColor(intentColorMap, s.intent);
+                        const sLabel = getIntentLabel(s.intent);
                         return (
                           <button
                             key={s.id}
@@ -444,7 +444,7 @@ export default function TimelinePage() {
                               {s.windowTitle && <span className="ml-1.5 text-[var(--tl-muted)]">{s.windowTitle}</span>}
                             </span>
                             <span className="shrink-0 text-[0.62rem] tabular-nums text-[var(--tl-muted)]">{formatDurationShortMs(s.durationMs)}</span>
-                            <span className={`shrink-0 rounded px-1 py-0.5 text-[0.5rem] font-semibold ${sCls}`}>{sv.label}</span>
+                            <span className="shrink-0 rounded px-1 py-0.5 text-[0.5rem] font-semibold text-white" style={{ background: sColor }}>{sLabel}</span>
                           </button>
                         );
                       })}
@@ -457,10 +457,8 @@ export default function TimelinePage() {
         ) : viewMode === "full" ? (
           <div className="tl-p3-tl" role="list">
             {reversedSessions.map((s) => {
-              const { bucket, label: intentLabel } = intentVisual(s.intent);
-              const intentCls =
-                bucket === "a" ? "tl-p3-intent-a" : bucket === "b" ? "tl-p3-intent-b" : bucket === "c" ? "tl-p3-intent-c" : "tl-p3-intent-d";
-              const dot = P3_COLORS[bucket];
+              const intentLabel = getIntentLabel(s.intent);
+              const intentColor = getIntentColor(intentColorMap, s.intent);
               const active = pick?.id === s.id;
               return (
                 <article key={s.id} className="tl-p3-item" role="listitem">
@@ -471,7 +469,7 @@ export default function TimelinePage() {
                     </span>
                   </div>
                   <div className="tl-p3-axis">
-                    <span className="tl-p3-dot" style={{ background: dot }} />
+                    <span className="tl-p3-dot" style={{ background: intentColor }} />
                   </div>
                   <button
                     type="button"
@@ -485,7 +483,7 @@ export default function TimelinePage() {
                         </span>
                         {s.appName}
                       </span>
-                      <span className={`shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.06em] ${intentCls}`}>
+                      <span className="shrink-0 whitespace-nowrap rounded px-1.5 py-0.5 text-[0.58rem] font-semibold text-white" style={{ background: intentColor }}>
                         {intentLabel}
                       </span>
                     </div>
