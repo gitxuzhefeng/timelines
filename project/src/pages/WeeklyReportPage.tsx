@@ -5,6 +5,7 @@ import * as api from "../services/tauri";
 import type { WeeklyAnalysisDto, WeeklyReportDto } from "../services/tauri";
 import { formatDurationMs } from "../lib/phase3Format";
 import { useAppStore } from "../stores/appStore";
+import { InlineAskButton } from "../components/assistant/InlineAskButton";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -515,6 +516,7 @@ export default function WeeklyReportPage() {
           >
             {generating ? t("weekly.generating") : t("weekly.refresh")}
           </button>
+          <InlineAskButton contextType="weekly" date={date} weekStart={weekStart} />
           <div className="ml-2 flex rounded-lg border border-[var(--tl-line)] bg-[var(--tl-input-fill)] p-0.5">
             <button
               type="button"

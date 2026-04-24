@@ -14,6 +14,7 @@ import {
 import { BUILTIN_INTENT_COLORS, INTENT_FALLBACK_COLOR } from "../lib/intentPresets";
 import * as api from "../services/tauri";
 import { useAppStore } from "../stores/appStore";
+import { InlineAskButton } from "../components/assistant/InlineAskButton";
 
 function fmtTime(ms: number): string {
   return new Date(ms).toLocaleTimeString(undefined, {
@@ -327,6 +328,7 @@ export default function TimelinePage() {
             <strong className="mb-0.5 block text-[0.95rem] font-semibold text-[var(--tl-ink)]">
               {zhDateLabel(date)}
             </strong>
+            <InlineAskButton contextType="daily" date={date} />
           </div>
         </header>
 

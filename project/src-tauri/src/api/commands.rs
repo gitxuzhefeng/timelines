@@ -1,13 +1,14 @@
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
-use chrono::{Local, Utc};
+use chrono::{Local, NaiveDate, Utc};
 use rusqlite::params;
 use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{json, Value};
 use tauri::{async_runtime, AppHandle, Emitter, State};
 use uuid::Uuid;
 
@@ -2446,6 +2447,382 @@ pub fn get_weekly_report(
     Ok(row)
 }
 
+// ── 十五期：AI 助手产品化基础协议 ───────────────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct BriefingDto {
+    pub date: String,
+    pub has_data: bool,
+    pub flow_score: Option<f64>,
+    pub deep_work_minutes: Option<i64>,
+    pub fragmentation_pct: Option<f64>,
+    pub total_active_minutes: Option<i64>,
+    pub top_app: Option<String>,
+    pub top_intent: Option<String>,
+    pub highlight_key: Option<String>,
+    pub highlight_params: Option<Value>,
+    pub suggested_questions: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct WeeklyBriefingDto {
+    pub week_start: String,
+    pub week_end: String,
+    pub has_data: bool,
+    pub valid_days: i64,
+    pub avg_flow_score: Option<f64>,
+    pub avg_deep_work_minutes: Option<f64>,
+    pub avg_fragmentation_pct: Option<f64>,
+    pub peak_focus_day: Option<String>,
+    pub peak_focus_hour_range: Option<String>,
+    pub top_app: Option<String>,
+    pub highlight_key: Option<String>,
+    pub highlight_params: Option<Value>,
+    pub suggested_questions: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AssistantContextExtDto {
+    pub context_type: String,
+    pub date_range: String,
+    pub data_sources: Vec<String>,
+    pub privacy_scope: Vec<String>,
+    pub payload: Value,
+}
+
+fn normalize_score_pct(score: Option<f64>) -> Option<f64> {
+    score.map(|v| if v <= 1.0 { v * 100.0 } else { v })
+}
+
+fn parse_json_text(value: Option<String>) -> Option<Value> {
+    value.and_then(|s| serde_json::from_str::<Value>(&s).ok())
+}
+
+fn top_name_from_top_apps(value: &Value) -> Option<String> {
+    value.as_array().and_then(|rows| {
+        rows.iter()
+            .filter_map(|row| {
+                let name = row.get("app")?.as_str()?;
+                let duration = row
+                    .get("duration_ms")
+                    .or_else(|| row.get("durationMs"))
+                    .and_then(|v| v.as_i64())
+                    .unwrap_or_default();
+                Some((name.to_string(), duration))
+            })
+            .max_by_key(|(_, duration)| *duration)
+            .map(|(name, _)| name)
+    })
+}
+
+fn top_key_from_object(value: &Value) -> Option<String> {
+    value.as_object().and_then(|obj| {
+        obj.iter()
+            .filter_map(|(k, v)| v.as_f64().map(|n| (k.clone(), n)))
+            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
+            .map(|(k, _)| k)
+    })
+}
+
+fn build_daily_assistant_context(
+    conn: &rusqlite::Connection,
+    date: &str,
+) -> Result<Option<Value>, String> {
+    let row: Option<(
+        Option<i64>,
+        Option<String>,
+        Option<String>,
+        Option<i32>,
+        Option<i64>,
+        Option<f64>,
+        Option<f64>,
+        Option<f64>,
+        Option<i64>,
+        Option<String>,
+    )> = conn
+        .query_row(
+            "SELECT total_active_ms, intent_breakdown, top_apps, total_switches, \
+             deep_work_total_ms, fragmentation_pct, flow_score_avg, struggle_score_avg, \
+             notification_count, scene_breakdown \
+             FROM daily_analysis WHERE analysis_date = ?1",
+            [date],
+            |r| {
+                Ok((
+                    r.get(0)?,
+                    r.get(1)?,
+                    r.get(2)?,
+                    r.get(3)?,
+                    r.get(4)?,
+                    r.get(5)?,
+                    r.get(6)?,
+                    r.get(7)?,
+                    r.get(8)?,
+                    r.get(9)?,
+                ))
+            },
+        )
+        .optional()
+        .map_err(|e| e.to_string())?;
+
+    let Some((
+        total_active_ms,
+        intent_breakdown,
+        top_apps,
+        total_switches,
+        deep_work_total_ms,
+        fragmentation_pct,
+        flow_score_avg,
+        struggle_score_avg,
+        notification_count,
+        scene_breakdown,
+    )) = row
+    else {
+        return Ok(None);
+    };
+
+    let ctx = json!({
+        "analysis_date": date,
+        "total_active_ms": total_active_ms,
+        "total_active_minutes": total_active_ms.map(|v| v / 60000),
+        "intent_breakdown": parse_json_text(intent_breakdown),
+        "top_apps": parse_json_text(top_apps),
+        "total_switches": total_switches,
+        "deep_work_total_ms": deep_work_total_ms,
+        "deep_work_minutes": deep_work_total_ms.map(|v| v / 60000),
+        "fragmentation_pct": fragmentation_pct,
+        "flow_score_avg": normalize_score_pct(flow_score_avg),
+        "struggle_score_avg": normalize_score_pct(struggle_score_avg),
+        "notification_count": notification_count,
+        "scene_breakdown": parse_json_text(scene_breakdown),
+    });
+    Ok(Some(ctx))
+}
+
+fn build_weekly_assistant_context(
+    conn: &rusqlite::Connection,
+    week_start: &str,
+) -> Result<Option<Value>, String> {
+    let row: Option<(
+        String,
+        i64,
+        Option<f64>,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<f64>,
+        Option<f64>,
+        Option<String>,
+        Option<String>,
+    )> = conn
+        .query_row(
+            "SELECT week_end, valid_days, avg_flow_score, daily_flow_scores, hourly_heatmap, weekly_top_apps, \
+             avg_deep_work_minutes, avg_fragmentation_pct, peak_focus_day, peak_focus_hour_range \
+             FROM weekly_analysis WHERE week_start = ?1",
+            [week_start],
+            |r| {
+                Ok((
+                    r.get(0)?,
+                    r.get(1)?,
+                    r.get(2)?,
+                    r.get(3)?,
+                    r.get(4)?,
+                    r.get(5)?,
+                    r.get(6)?,
+                    r.get(7)?,
+                    r.get(8)?,
+                    r.get(9)?,
+                ))
+            },
+        )
+        .optional()
+        .map_err(|e| e.to_string())?;
+
+    let Some((
+        week_end,
+        valid_days,
+        avg_flow_score,
+        daily_flow_scores,
+        hourly_heatmap,
+        weekly_top_apps,
+        avg_deep_work_minutes,
+        avg_fragmentation_pct,
+        peak_focus_day,
+        peak_focus_hour_range,
+    )) = row
+    else {
+        return Ok(None);
+    };
+
+    let ctx = json!({
+        "week_start": week_start,
+        "week_end": week_end,
+        "valid_days": valid_days,
+        "avg_flow_score": normalize_score_pct(avg_flow_score),
+        "daily_flow_scores": parse_json_text(daily_flow_scores),
+        "hourly_heatmap": parse_json_text(hourly_heatmap),
+        "weekly_top_apps": parse_json_text(weekly_top_apps),
+        "avg_deep_work_minutes": avg_deep_work_minutes,
+        "avg_fragmentation_pct": avg_fragmentation_pct,
+        "peak_focus_day": peak_focus_day,
+        "peak_focus_hour_range": peak_focus_hour_range,
+    });
+    Ok(Some(ctx))
+}
+
+fn build_time_segment_assistant_context(
+    conn: &rusqlite::Connection,
+    date: &str,
+    segment_start_ms: i64,
+    segment_end_ms: i64,
+) -> Result<Option<Value>, String> {
+    if segment_end_ms <= segment_start_ms {
+        return Ok(None);
+    }
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT start_ms, end_ms, app_name, intent \
+             FROM window_sessions \
+             WHERE start_ms < ?2 AND end_ms > ?1 \
+             ORDER BY start_ms ASC",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([segment_start_ms, segment_end_ms], |r| {
+            Ok((
+                r.get::<_, i64>(0)?,
+                r.get::<_, i64>(1)?,
+                r.get::<_, String>(2)?,
+                r.get::<_, Option<String>>(3)?,
+            ))
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut total_active_ms = 0_i64;
+    let mut session_count = 0_i64;
+    let mut app_totals: BTreeMap<String, i64> = BTreeMap::new();
+    let mut intent_totals: BTreeMap<String, i64> = BTreeMap::new();
+
+    for row in rows {
+        let (start_ms, end_ms, app_name, intent) = row.map_err(|e| e.to_string())?;
+        let clipped_start = start_ms.max(segment_start_ms);
+        let clipped_end = end_ms.min(segment_end_ms);
+        if clipped_end <= clipped_start {
+            continue;
+        }
+        let clipped_ms = clipped_end - clipped_start;
+        total_active_ms += clipped_ms;
+        session_count += 1;
+        *app_totals.entry(app_name).or_default() += clipped_ms;
+        *intent_totals
+            .entry(intent.unwrap_or_else(|| "unknown".to_string()))
+            .or_default() += clipped_ms;
+    }
+
+    if session_count == 0 {
+        return Ok(None);
+    }
+
+    let total_switches: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM app_switches WHERE timestamp_ms >= ?1 AND timestamp_ms <= ?2",
+            [segment_start_ms, segment_end_ms],
+            |r| r.get(0),
+        )
+        .unwrap_or(0);
+
+    let top_apps: Vec<Value> = app_totals
+        .into_iter()
+        .map(|(app, duration_ms)| json!({ "app": app, "duration_ms": duration_ms }))
+        .collect();
+    let intent_breakdown: serde_json::Map<String, Value> = intent_totals
+        .into_iter()
+        .map(|(intent, duration_ms)| (intent, json!(duration_ms)))
+        .collect();
+
+    Ok(Some(json!({
+        "analysis_date": date,
+        "segment_start_ms": segment_start_ms,
+        "segment_end_ms": segment_end_ms,
+        "session_count": session_count,
+        "total_active_ms": total_active_ms,
+        "total_active_minutes": total_active_ms / 60000,
+        "top_apps": top_apps,
+        "intent_breakdown": intent_breakdown,
+        "total_switches": total_switches,
+    })))
+}
+
+fn build_assistant_context_ext(
+    conn: &rusqlite::Connection,
+    date: &str,
+    context_type: &str,
+    week_start: Option<&str>,
+    segment_start_ms: Option<i64>,
+    segment_end_ms: Option<i64>,
+) -> Result<Option<AssistantContextExtDto>, String> {
+    match context_type {
+        "daily" => build_daily_assistant_context(conn, date).map(|payload| {
+            payload.map(|payload| AssistantContextExtDto {
+                context_type: "daily".into(),
+                date_range: date.to_string(),
+                data_sources: vec!["daily_analysis".into()],
+                privacy_scope: vec![
+                    "aggregated_metrics".into(),
+                    "app_names".into(),
+                    "intent_labels".into(),
+                ],
+                payload,
+            })
+        }),
+        "weekly" => {
+            let ws = week_start.unwrap_or(date);
+            build_weekly_assistant_context(conn, ws).map(|payload| {
+                payload.map(|payload| AssistantContextExtDto {
+                    context_type: "weekly".into(),
+                    date_range: format!("{ws}..{}", payload.get("week_end").and_then(|v| v.as_str()).unwrap_or(ws)),
+                    data_sources: vec!["weekly_analysis".into()],
+                    privacy_scope: vec![
+                        "aggregated_metrics".into(),
+                        "app_names".into(),
+                        "intent_labels".into(),
+                    ],
+                    payload,
+                })
+            })
+        }
+        "time_segment" => {
+            let Some(start_ms) = segment_start_ms else { return Ok(None); };
+            let Some(end_ms) = segment_end_ms else { return Ok(None); };
+            build_time_segment_assistant_context(conn, date, start_ms, end_ms).map(|payload| {
+                payload.map(|payload| AssistantContextExtDto {
+                    context_type: "time_segment".into(),
+                    date_range: date.to_string(),
+                    data_sources: vec!["window_sessions".into(), "app_switches".into()],
+                    privacy_scope: vec![
+                        "aggregated_metrics".into(),
+                        "app_names".into(),
+                        "intent_labels".into(),
+                    ],
+                    payload,
+                })
+            })
+        }
+        _ => Ok(None),
+    }
+}
+
+fn build_week_end_label(week_start: &str) -> String {
+    NaiveDate::parse_from_str(week_start, "%Y-%m-%d")
+        .ok()
+        .and_then(|d| d.checked_add_signed(chrono::Duration::days(6)))
+        .map(|d| d.format("%Y-%m-%d").to_string())
+        .unwrap_or_else(|| week_start.to_string())
+}
+
 // ── 十期：AI 对话助手命令 ────────────────────────────────────────────────────
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -2495,6 +2872,179 @@ pub fn clear_assistant_history(state: State<'_, AppState>) -> Result<(), String>
     Ok(())
 }
 
+#[tauri::command]
+pub fn get_today_briefing(state: State<'_, AppState>, date: String) -> Result<BriefingDto, String> {
+    let conn = state.0.read_conn.lock();
+    let Some(ctx) = build_daily_assistant_context(&conn, &date)? else {
+        return Ok(BriefingDto {
+            date,
+            has_data: false,
+            flow_score: None,
+            deep_work_minutes: None,
+            fragmentation_pct: None,
+            total_active_minutes: None,
+            top_app: None,
+            top_intent: None,
+            highlight_key: None,
+            highlight_params: None,
+            suggested_questions: vec![
+                "assistant.preset.dailyReview".into(),
+                "assistant.preset.improveSuggestion".into(),
+            ],
+        });
+    };
+
+    let flow_score = normalize_score_pct(ctx.get("flow_score_avg").and_then(|v| v.as_f64()));
+    let deep_work_minutes = ctx.get("deep_work_minutes").and_then(|v| v.as_i64());
+    let fragmentation_pct = ctx.get("fragmentation_pct").and_then(|v| v.as_f64());
+    let total_active_minutes = ctx.get("total_active_minutes").and_then(|v| v.as_i64());
+    let top_app = ctx.get("top_apps").and_then(top_name_from_top_apps);
+    let top_intent = ctx.get("intent_breakdown").and_then(top_key_from_object);
+
+    let (highlight_key, highlight_params) = if flow_score.unwrap_or_default() >= 70.0 {
+        (
+            Some("assistant.briefing.highFlow".to_string()),
+            Some(json!({ "score": flow_score.unwrap_or_default().round() as i64 })),
+        )
+    } else if fragmentation_pct.unwrap_or_default() >= 60.0 {
+        (
+            Some("assistant.briefing.highFragmentation".to_string()),
+            Some(json!({ "pct": fragmentation_pct.unwrap_or_default().round() as i64 })),
+        )
+    } else if deep_work_minutes.unwrap_or_default() >= 90 {
+        (
+            Some("assistant.briefing.deepWork".to_string()),
+            Some(json!({ "min": deep_work_minutes.unwrap_or_default() })),
+        )
+    } else if total_active_minutes.unwrap_or_default() > 0 {
+        (
+            Some("assistant.briefing.activeTime".to_string()),
+            Some(json!({ "min": total_active_minutes.unwrap_or_default() })),
+        )
+    } else {
+        (None, None)
+    };
+
+    Ok(BriefingDto {
+        date,
+        has_data: true,
+        flow_score,
+        deep_work_minutes,
+        fragmentation_pct,
+        total_active_minutes,
+        top_app,
+        top_intent,
+        highlight_key,
+        highlight_params,
+        suggested_questions: vec![
+            "assistant.preset.dailyReview".into(),
+            "assistant.preset.segmentExplain".into(),
+            "assistant.preset.appFocus".into(),
+            "assistant.preset.improveSuggestion".into(),
+        ],
+    })
+}
+
+#[tauri::command]
+pub fn get_weekly_briefing(
+    state: State<'_, AppState>,
+    week_start: String,
+) -> Result<WeeklyBriefingDto, String> {
+    let conn = state.0.read_conn.lock();
+    let week_end = build_week_end_label(&week_start);
+    let Some(ctx) = build_weekly_assistant_context(&conn, &week_start)? else {
+        return Ok(WeeklyBriefingDto {
+            week_start,
+            week_end,
+            has_data: false,
+            valid_days: 0,
+            avg_flow_score: None,
+            avg_deep_work_minutes: None,
+            avg_fragmentation_pct: None,
+            peak_focus_day: None,
+            peak_focus_hour_range: None,
+            top_app: None,
+            highlight_key: None,
+            highlight_params: None,
+            suggested_questions: vec![
+                "assistant.preset.weeklyCompare".into(),
+                "assistant.preset.improveSuggestion".into(),
+            ],
+        });
+    };
+
+    let avg_flow_score = normalize_score_pct(ctx.get("avg_flow_score").and_then(|v| v.as_f64()));
+    let avg_deep_work_minutes = ctx.get("avg_deep_work_minutes").and_then(|v| v.as_f64());
+    let avg_fragmentation_pct = ctx.get("avg_fragmentation_pct").and_then(|v| v.as_f64());
+    let peak_focus_day = ctx.get("peak_focus_day").and_then(|v| v.as_str()).map(str::to_string);
+    let peak_focus_hour_range = ctx
+        .get("peak_focus_hour_range")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let top_app = ctx.get("weekly_top_apps").and_then(top_name_from_top_apps);
+    let valid_days = ctx.get("valid_days").and_then(|v| v.as_i64()).unwrap_or_default();
+
+    let (highlight_key, highlight_params) = if avg_flow_score.unwrap_or_default() >= 70.0 {
+        (
+            Some("assistant.briefing.weeklyHighFlow".to_string()),
+            Some(json!({ "score": avg_flow_score.unwrap_or_default().round() as i64 })),
+        )
+    } else if avg_fragmentation_pct.unwrap_or_default() >= 55.0 {
+        (
+            Some("assistant.briefing.weeklyFragmentation".to_string()),
+            Some(json!({ "pct": avg_fragmentation_pct.unwrap_or_default().round() as i64 })),
+        )
+    } else if let Some(day) = peak_focus_day.clone() {
+        (
+            Some("assistant.briefing.weeklyPeakFocus".to_string()),
+            Some(json!({ "day": day, "range": peak_focus_hour_range.clone() })),
+        )
+    } else {
+        (None, None)
+    };
+
+    Ok(WeeklyBriefingDto {
+        week_start,
+        week_end,
+        has_data: true,
+        valid_days,
+        avg_flow_score,
+        avg_deep_work_minutes,
+        avg_fragmentation_pct,
+        peak_focus_day,
+        peak_focus_hour_range,
+        top_app,
+        highlight_key,
+        highlight_params,
+        suggested_questions: vec![
+            "assistant.preset.weeklyCompare".into(),
+            "assistant.preset.weeklyBestDay".into(),
+            "assistant.preset.weeklyTopApp".into(),
+            "assistant.preset.improveSuggestion".into(),
+        ],
+    })
+}
+
+#[tauri::command]
+pub fn get_assistant_context_extended(
+    state: State<'_, AppState>,
+    date: String,
+    context_type: String,
+    week_start: Option<String>,
+    segment_start_ms: Option<i64>,
+    segment_end_ms: Option<i64>,
+) -> Result<Option<AssistantContextExtDto>, String> {
+    let conn = state.0.read_conn.lock();
+    build_assistant_context_ext(
+        &conn,
+        &date,
+        &context_type,
+        week_start.as_deref(),
+        segment_start_ms,
+        segment_end_ms,
+    )
+}
+
 /// Build a context snapshot from today's daily_analysis for the assistant.
 #[tauri::command]
 pub fn get_assistant_context(
@@ -2502,72 +3052,7 @@ pub fn get_assistant_context(
     date: String,
 ) -> Result<Option<serde_json::Value>, String> {
     let conn = state.0.read_conn.lock();
-    let row: Option<(
-        Option<i64>,
-        Option<String>,
-        Option<String>,
-        Option<i32>,
-        Option<f64>,
-        Option<f64>,
-        Option<f64>,
-        Option<f64>,
-        Option<i64>,
-        Option<String>,
-    )> = conn
-        .query_row(
-            "SELECT total_active_ms, intent_breakdown, top_apps, total_switches, \
-             deep_work_total_ms, fragmentation_pct, flow_score_avg, struggle_score_avg, \
-             notification_count, scene_breakdown \
-             FROM daily_analysis WHERE analysis_date = ?1",
-            [&date],
-            |r| {
-                Ok((
-                    r.get(0)?,
-                    r.get(1)?,
-                    r.get(2)?,
-                    r.get(3)?,
-                    r.get(4)?,
-                    r.get(5)?,
-                    r.get(6)?,
-                    r.get(7)?,
-                    r.get(8)?,
-                    r.get(9)?,
-                ))
-            },
-        )
-        .optional()
-        .map_err(|e| e.to_string())?;
-    let Some((
-        total_active_ms,
-        intent_breakdown,
-        top_apps,
-        total_switches,
-        deep_work_total_ms,
-        fragmentation_pct,
-        flow_score_avg,
-        struggle_score_avg,
-        notification_count,
-        scene_breakdown,
-    )) = row
-    else {
-        return Ok(None);
-    };
-    let ctx = json!({
-        "analysis_date": date,
-        "total_active_ms": total_active_ms,
-        "total_active_minutes": total_active_ms.map(|v| v / 60000),
-        "intent_breakdown": intent_breakdown.and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()),
-        "top_apps": top_apps.and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()),
-        "total_switches": total_switches,
-        "deep_work_total_ms": deep_work_total_ms,
-        "deep_work_minutes": deep_work_total_ms.map(|v| (v / 60000.0) as i64),
-        "fragmentation_pct": fragmentation_pct,
-        "flow_score_avg": flow_score_avg,
-        "struggle_score_avg": struggle_score_avg,
-        "notification_count": notification_count,
-        "scene_breakdown": scene_breakdown.and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()),
-    });
-    Ok(Some(ctx))
+    build_daily_assistant_context(&conn, &date)
 }
 
 #[tauri::command]
@@ -2577,15 +3062,47 @@ pub async fn query_assistant(
     context_date: Option<String>,
 ) -> Result<AssistantMessageDto, String> {
     let state = state.inner().clone();
-    async_runtime::spawn_blocking(move || query_assistant_sync(&state, question, context_date))
-        .await
-        .map_err(|e| e.to_string())?
+    async_runtime::spawn_blocking(move || {
+        query_assistant_sync(&state, question, context_date, "daily".to_string(), None, None, None)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub async fn query_assistant_v2(
+    state: State<'_, AppState>,
+    question: String,
+    context_type: String,
+    date: String,
+    week_start: Option<String>,
+    segment_start_ms: Option<i64>,
+    segment_end_ms: Option<i64>,
+) -> Result<AssistantMessageDto, String> {
+    let state = state.inner().clone();
+    async_runtime::spawn_blocking(move || {
+        query_assistant_sync(
+            &state,
+            question,
+            Some(date),
+            context_type,
+            week_start,
+            segment_start_ms,
+            segment_end_ms,
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 fn query_assistant_sync(
     state: &AppState,
     question: String,
     context_date: Option<String>,
+    context_type: String,
+    week_start: Option<String>,
+    segment_start_ms: Option<i64>,
+    segment_end_ms: Option<i64>,
 ) -> Result<AssistantMessageDto, String> {
     if !state.0.ai_enabled.load(Ordering::Relaxed) {
         return Err("AI 未开启：请先在设置中开启并配置 AI".into());
@@ -2601,7 +3118,6 @@ fn query_assistant_sync(
     };
     let (model_name, lang) = model;
 
-    // Get conversation history
     let history: Vec<crate::analysis::assistant::ChatMessage> = {
         let conn = state.0.read_conn.lock();
         let mut stmt = conn
@@ -2620,39 +3136,21 @@ fn query_assistant_sync(
         rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())?
     };
 
-    // Get context snapshot
-    let context_snapshot = if let Some(date) = context_date {
+    let context_ext = if let Some(date) = context_date.as_deref() {
         let conn = state.0.read_conn.lock();
-        let row: Option<(
-            Option<i64>, Option<String>, Option<String>,
-            Option<i32>, Option<f64>, Option<f64>, Option<f64>,
-        )> = conn
-            .query_row(
-                "SELECT total_active_ms, intent_breakdown, top_apps, total_switches, \
-                 deep_work_total_ms, fragmentation_pct, flow_score_avg \
-                 FROM daily_analysis WHERE analysis_date = ?1",
-                [&date],
-                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?)),
-            )
-            .optional()
-            .map_err(|e| e.to_string())?;
-        row.map(|(tam, ib, ta, ts, dwtm, fp, fsa)| {
-            json!({
-                "analysis_date": date,
-                "total_active_minutes": tam.map(|v| v / 60000),
-                "intent_breakdown": ib.and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()),
-                "top_apps": ta.and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()),
-                "total_switches": ts,
-                "deep_work_minutes": dwtm.map(|v| (v / 60000.0) as i64),
-                "fragmentation_pct": fp,
-                "flow_score_avg": fsa,
-            })
-        })
+        build_assistant_context_ext(
+            &conn,
+            date,
+            &context_type,
+            week_start.as_deref(),
+            segment_start_ms,
+            segment_end_ms,
+        )?
     } else {
         None
     };
+    let context_snapshot = context_ext.as_ref().map(|ctx| &ctx.payload);
 
-    // Save user message first
     let user_id = Uuid::new_v4().to_string();
     let now_ms = Utc::now().timestamp_millis();
     {
@@ -2660,23 +3158,27 @@ fn query_assistant_sync(
         c.execute(
             "INSERT INTO assistant_history (id, role, content, context_snapshot, created_at) \
              VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![user_id, "user", question, Option::<String>::None, now_ms],
+            params![
+                user_id,
+                "user",
+                question,
+                context_ext.as_ref().and_then(|ctx| serde_json::to_string(ctx).ok()),
+                now_ms
+            ],
         )
         .map_err(|e| e.to_string())?;
     }
 
-    // Call AI
     let answer = crate::analysis::assistant::query_assistant(
         &base_url,
         &api_key,
         &model_name,
-        context_snapshot.as_ref(),
+        context_snapshot,
         &history,
         &question,
         &lang,
     )?;
 
-    // Save assistant response
     let reply_id = Uuid::new_v4().to_string();
     let reply_ms = Utc::now().timestamp_millis();
     {

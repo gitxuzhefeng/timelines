@@ -57,7 +57,9 @@
     "about": "About",
     "aboutDesc": "Version · Links · Updates · Feedback",
     "weeklyReport": "Weekly Report",
-    "weeklyReportDesc": "Weekly aggregation · Trend analysis"
+    "weeklyReportDesc": "Weekly aggregation · Trend analysis",
+    "assistant": "AI Assistant",
+    "assistantDesc": "Dedicated analyst · Data-grounded Q&A"
   },
   "permissions": {
     "refreshPermissions": "Refresh system permissions",
@@ -548,16 +550,54 @@
     "send": "Send",
     "inputPlaceholder": "Ask about today's data… (Enter to send, Shift+Enter for newline)",
     "contextDate": "Data context: {{date}}",
+    "toggleSidebar": "Toggle assistant",
     "clearHistory": "Clear conversation",
     "clearConfirm": "Click again to confirm",
     "error": "AI error: {{error}}",
     "quick1": "How was my work today?",
     "quick2": "What productivity issues should I watch out for?",
     "quick3": "Give me some improvement suggestions",
+    "askAboutThis": "Ask Assistant",
+    "aiUnavailable": "AI service is unavailable right now.",
+    "configureHint": "Enable AI and configure your API key in Settings.",
+    "preset": {
+      "dailyReview": "How was my day?",
+      "segmentExplain": "Why was this period fragmented?",
+      "appFocus": "What did I mainly do in this app?",
+      "weeklyCompare": "How does this week compare to last week?",
+      "weeklyBestDay": "Which day was my best this week?",
+      "weeklyTopApp": "Which app took most of my week?",
+      "improveSuggestion": "What should I adjust next?"
+    },
+    "briefing": {
+      "title": "Today's Briefing",
+      "weeklyTitle": "This Week's Briefing",
+      "highFlow": "Today's flow score reached {{score}} — a strong focus day.",
+      "highFragmentation": "Fragmentation reached {{pct}}% today. It may be worth checking your interruptions.",
+      "deepWork": "You accumulated {{min}} minutes of deep work today.",
+      "activeTime": "You were active for {{min}} minutes today.",
+      "weeklyHighFlow": "This week's average flow score reached {{score}}.",
+      "weeklyFragmentation": "This week's average fragmentation stayed around {{pct}}%.",
+      "weeklyPeakFocus": "Your best focus window appeared on {{day}} {{range}}."
+    },
+    "context": {
+      "daily": "Daily data",
+      "weekly": "Weekly data",
+      "segment": "Selected period",
+      "localOnly": "Local aggregated",
+      "noScreenshots": "No screenshots shared"
+    },
+    "answer": {
+      "conclusion": "Conclusion",
+      "findings": "Findings",
+      "suggestions": "Suggestions"
+    },
     "action": {
       "timeline": "View timeline {{param}}",
       "report": "View daily report {{param}}",
-      "lens": "View today's lens {{param}}"
+      "lens": "View today's lens {{param}}",
+      "weekly": "View weekly report {{param}}",
+      "compare": "Compare around {{param}}"
     }
   },
   "fragmentation": {
