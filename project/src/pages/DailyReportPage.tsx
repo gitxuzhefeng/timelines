@@ -5,6 +5,7 @@ import { DailyChartView } from "../components/DailyChartView";
 import type { DailyAnalysisDto } from "../types";
 import * as api from "../services/tauri";
 import { useAppStore } from "../stores/appStore";
+import { InlineAskButton } from "../components/assistant/InlineAskButton";
 
 type ViewMode = "chart" | "text";
 
@@ -24,6 +25,7 @@ export default function DailyReportPage() {
   return (
     <div className="h-full min-h-0 flex flex-col p-5">
       <div className="mb-4 flex items-center gap-3">
+        <InlineAskButton contextType="daily" date={date} />
         <div className="flex rounded-lg border border-[var(--tl-line)] bg-[var(--tl-input-fill)] p-0.5">
           <button
             type="button"

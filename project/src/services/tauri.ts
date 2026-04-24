@@ -463,6 +463,56 @@ export interface AssistantMessageDto {
   createdAt: number;
 }
 
+export interface BriefingDto {
+  date: string;
+  hasData: boolean;
+  flowScore: number | null;
+  deepWorkMinutes: number | null;
+  fragmentationPct: number | null;
+  totalActiveMinutes: number | null;
+  topApp: string | null;
+  topIntent: string | null;
+  highlightKey: string | null;
+  highlightParams: Record<string, unknown> | null;
+  suggestedQuestions: string[];
+}
+
+export interface WeeklyBriefingDto {
+  weekStart: string;
+  weekEnd: string;
+  hasData: boolean;
+  validDays: number;
+  avgFlowScore: number | null;
+  avgDeepWorkMinutes: number | null;
+  avgFragmentationPct: number | null;
+  peakFocusDay: string | null;
+  peakFocusHourRange: string | null;
+  topApp: string | null;
+  highlightKey: string | null;
+  highlightParams: Record<string, unknown> | null;
+  suggestedQuestions: string[];
+}
+
+export interface AssistantContextExtDto {
+  contextType: string;
+  dateRange: string;
+  dataSources: string[];
+  privacyScope: string[];
+  payload: Record<string, unknown>;
+}
+
+export interface AssistantContextExtParams {
+  date: string;
+  contextType: string;
+  weekStart?: string | null;
+  segmentStartMs?: number | null;
+  segmentEndMs?: number | null;
+}
+
+export interface QueryAssistantV2Params extends AssistantContextExtParams {
+  question: string;
+}
+
 export async function getAssistantHistory(limit?: number | null): Promise<AssistantMessageDto[]> {
   return invoke<AssistantMessageDto[]>("get_assistant_history", { limit: limit ?? null });
 }
@@ -471,8 +521,28 @@ export async function clearAssistantHistory(): Promise<void> {
   await invoke("clear_assistant_history");
 }
 
+export async function getTodayBriefing(date: string): Promise<BriefingDto> {
+  return invoke<BriefingDto>("get_today_briefing", { date });
+}
+
+export async function getWeeklyBriefing(weekStart: string): Promise<WeeklyBriefingDto> {
+  return invoke<WeeklyBriefingDto>("get_weekly_briefing", { weekStart });
+}
+
 export async function getAssistantContext(date: string): Promise<Record<string, unknown> | null> {
   return invoke<Record<string, unknown> | null>("get_assistant_context", { date });
+}
+
+export async function getAssistantContextExtended(
+  params: AssistantContextExtParams,
+): Promise<AssistantContextExtDto | null> {
+  return invoke<AssistantContextExtDto | null>("get_assistant_context_extended", {
+    date: params.date,
+    contextType: params.contextType,
+    weekStart: params.weekStart ?? null,
+    segmentStartMs: params.segmentStartMs ?? null,
+    segmentEndMs: params.segmentEndMs ?? null,
+  });
 }
 
 export async function queryAssistant(
@@ -482,6 +552,19 @@ export async function queryAssistant(
   return invoke<AssistantMessageDto>("query_assistant", {
     question,
     contextDate: contextDate ?? null,
+  });
+}
+
+export async function queryAssistantV2(
+  params: QueryAssistantV2Params,
+): Promise<AssistantMessageDto> {
+  return invoke<AssistantMessageDto>("query_assistant_v2", {
+    question: params.question,
+    contextType: params.contextType,
+    date: params.date,
+    weekStart: params.weekStart ?? null,
+    segmentStartMs: params.segmentStartMs ?? null,
+    segmentEndMs: params.segmentEndMs ?? null,
   });
 }
 

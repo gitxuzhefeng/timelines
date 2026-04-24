@@ -22,6 +22,7 @@ import {
 import * as api from "../services/tauri";
 import { useAiTaskStore } from "../stores/aiTaskStore";
 import { useAppStore } from "../stores/appStore";
+import { InlineAskButton } from "../components/assistant/InlineAskButton";
 
 const PIPE_KEYS_BASE = [
   { k: "capture" as const, icon: "▣", labelKey: "todayLens.pipeCapture", subKey: "todayLens.pipeCaptureFrames" },
@@ -231,6 +232,9 @@ export default function TodayLensPage() {
           {zhDateLabel(date)}
         </p>
         <h2 className="mb-3 text-xl font-bold leading-snug tracking-tight md:text-2xl">{headline}</h2>
+        <div className="mb-3">
+          <InlineAskButton contextType="daily" date={date} />
+        </div>
         <p className="mb-1 font-mono text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-[var(--tl-cyan)]">
           {t("todayLens.languageInsights")}
         </p>

@@ -3,10 +3,12 @@ import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../stores/appStore";
 import { useDevModeStore } from "../stores/devModeStore";
+import { useAssistantSidebarStore } from "../stores/assistantSidebarStore";
 import { useThemeStore, type UiTheme } from "../stores/themeStore";
 import { setLanguage, type SupportedLanguage } from "../i18n";
 import * as api from "../services/tauri";
 import { AiTaskBanner } from "../components/AiTaskBanner";
+import { AssistantSidebar } from "../components/assistant/AssistantSidebar";
 
 const AUTO_REFRESH_PATHS = ["/lens", "/timeline"];
 const REFRESH_DEBOUNCE_MS = 30_000;
@@ -35,6 +37,8 @@ export default function AppShell() {
   );
   const [refreshing, setRefreshing] = useState(false);
   const lastRefreshRef = useRef(0);
+  const sidebarOpen = useAssistantSidebarStore((s) => s.isOpen);
+  const toggleSidebar = useAssistantSidebarStore((s) => s.toggle);
 
   useEffect(() => {
     const shouldRefresh = AUTO_REFRESH_PATHS.some((p) => location.pathname.startsWith(p));
@@ -129,7 +133,20 @@ export default function AppShell() {
             <div className="px-2 py-2 font-mono text-[0.58rem] font-semibold uppercase tracking-widest text-[var(--tl-muted)]">
               {t("nav.features")}
             </div>
-            {MAIN_NAV.map(({ to, label, icon }) => (
+            {MAIN_NAV.map(({ to, label, icon }) =>
+              to === "/assistant" ? (
+                <button
+                  key={to}
+                  type="button"
+                  onClick={toggleSidebar}
+                  className={navCls(sidebarOpen)}
+                >
+                  <span className={`w-5 text-center ${sidebarOpen ? "text-[var(--tl-cyan)]" : "text-[var(--tl-cyan-dim)]"}`}>
+                    {icon}
+                  </span>
+                  <span className="flex-1">{label}</span>
+                </button>
+              ) : (
               <NavLink key={to} to={to} className={({ isActive }) => navCls(isActive)}>
                 {({ isActive }) => (
                   <>
@@ -145,7 +162,8 @@ export default function AppShell() {
                   </>
                 )}
               </NavLink>
-            ))}
+              )
+            )}
             {devEnabled && (
               <>
                 <div className="mt-3 px-2 py-2 font-mono text-[0.58rem] font-semibold uppercase tracking-widest text-[var(--tl-muted)]">
@@ -269,11 +287,22 @@ export default function AppShell() {
                   className="rounded-lg border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-2 py-1.5 text-[var(--tl-ink)]"
                 />
               </label>
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                title={t("assistant.toggleSidebar")}
+                className={`rounded-lg border px-2.5 py-1.5 font-mono text-sm transition-colors ${sidebarOpen ? "border-[var(--tl-cyan)] bg-[var(--tl-accent-15)] text-[var(--tl-cyan)]" : "border-[var(--tl-line)] text-[var(--tl-muted)] hover:text-[var(--tl-ink)]"}`}
+              >
+                ✦
+              </button>
             </div>
           </header>
-          <main className="min-h-0 flex-1 overflow-hidden">
-            <Outlet />
-          </main>
+          <div className="flex min-h-0 flex-1">
+            <main className="min-h-0 flex-1 overflow-hidden">
+              <Outlet />
+            </main>
+            {sidebarOpen && <AssistantSidebar />}
+          </div>
           <AiTaskBanner />
         </div>
       </div>

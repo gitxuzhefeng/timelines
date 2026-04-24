@@ -538,6 +538,67 @@
     "chartView": "图表",
     "markdownView": "Markdown"
   },
+  "assistant": {
+    "insightTitle": "今日洞察",
+    "insightHighFlow": "今天的专注评分达到 {{score}}，状态很不错。想继续看看原因吗？",
+    "insightHighFrag": "今天的上下文切换碎片化约为 {{pct}}%。要不要看看是哪些因素打断了你？",
+    "insightDeepWork": "今天已经积累了 {{min}} 分钟深度工作，表现不错。",
+    "insightActiveTime": "今天活跃时长为 {{min}} 分钟。",
+    "emptyHint": "你好，我是你的专属分析师。\n你可以问我今天的工作状态、效率问题，或接下来该怎么调整。",
+    "thinking": "正在分析…",
+    "send": "发送",
+    "inputPlaceholder": "问问我今天的数据…（Enter 发送，Shift+Enter 换行）",
+    "contextDate": "数据上下文：{{date}}",
+    "toggleSidebar": "切换助手侧栏",
+    "clearHistory": "清空对话",
+    "clearConfirm": "再次点击确认",
+    "error": "AI 错误：{{error}}",
+    "quick1": "我今天的工作状态怎么样？",
+    "quick2": "今天最值得注意的效率问题是什么？",
+    "quick3": "给我一些改进建议",
+    "askAboutThis": "追问助手",
+    "aiUnavailable": "当前 AI 服务暂不可用。",
+    "configureHint": "请先在设置中启用 AI 并配置 API Key。",
+    "preset": {
+      "dailyReview": "我今天的状态怎么样？",
+      "segmentExplain": "这段时间为什么会碎？",
+      "appFocus": "我在这个应用上主要做了什么？",
+      "weeklyCompare": "这周和上周相比怎样？",
+      "weeklyBestDay": "这周哪天状态最好？",
+      "weeklyTopApp": "这周哪个应用最占时间？",
+      "improveSuggestion": "我接下来该怎么调整？"
+    },
+    "briefing": {
+      "title": "今日简报",
+      "weeklyTitle": "本周简报",
+      "highFlow": "今天的专注评分达到 {{score}}，是一个不错的高专注日。",
+      "highFragmentation": "今天碎片化率达到 {{pct}}%，建议重点回看打断来源。",
+      "deepWork": "今天累计了 {{min}} 分钟深度工作。",
+      "activeTime": "今天总活跃时长为 {{min}} 分钟。",
+      "weeklyHighFlow": "本周平均专注评分达到 {{score}}。",
+      "weeklyFragmentation": "本周平均碎片化率约为 {{pct}}%。",
+      "weeklyPeakFocus": "本周最佳专注时段出现在 {{day}} {{range}}。"
+    },
+    "context": {
+      "daily": "当日数据",
+      "weekly": "周度数据",
+      "segment": "选中时段",
+      "localOnly": "本地聚合",
+      "noScreenshots": "未共享截图"
+    },
+    "answer": {
+      "conclusion": "结论",
+      "findings": "发现",
+      "suggestions": "建议"
+    },
+    "action": {
+      "timeline": "查看时间线 {{param}}",
+      "report": "查看日报 {{param}}",
+      "lens": "查看今日透视 {{param}}",
+      "weekly": "查看周报 {{param}}",
+      "compare": "对比 {{param}} 附近数据"
+    }
+  },
   "fragmentation": {
     "title": "注意力分散预警",
     "subtitle": "最近 {{minutes}} 分钟内切换了 {{count}} 次应用",
