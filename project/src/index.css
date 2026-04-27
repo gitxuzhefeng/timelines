@@ -571,3 +571,358 @@ body {
 [data-os="windows"][data-win-perf="on"] .tl-preview-image {
   box-shadow: 0 8px 24px -18px rgba(0, 0, 0, 0.55) !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TimeLens Map — 今日透视首屏（V17）
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Animations */
+@keyframes lensCorePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 245, 212, 0); }
+  50%       { box-shadow: 0 0 0 12px rgba(0, 245, 212, 0.12); }
+}
+@keyframes lensFloatNode {
+  0%, 100% { transform: translate(-50%, -50%) translateY(0px); }
+  50%       { transform: translate(-50%, -50%) translateY(-5px); }
+}
+@keyframes lensScanMove {
+  0%, 100% { top: 10%; opacity: 0.3; }
+  50%       { top: 88%; opacity: 0.6; }
+}
+@keyframes lensShimmer {
+  0%, 100% { opacity: 0; }
+  50%       { opacity: 0.22; }
+}
+@keyframes lensPulseDot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+/* ── Hero two-column container ───────────────────────────────────────────── */
+.lens-hero {
+  display: grid;
+  grid-template-columns: 5fr 7fr;
+  gap: 0;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--tl-card, rgba(15, 20, 30, 0.82));
+  backdrop-filter: blur(20px);
+  overflow: hidden;
+  min-height: 420px;
+  box-shadow:
+    0 0 0 1px rgba(0, 245, 212, 0.1) inset,
+    0 24px 64px -24px rgba(0, 0, 0, 0.6);
+}
+
+/* ── Left copy column ────────────────────────────────────────────────────── */
+.lens-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 36px 32px 32px;
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.lens-eyebrow {
+  font-family: "IBM Plex Mono", "Menlo", monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--tl-cyan-dim, rgba(0, 245, 212, 0.55));
+  margin-bottom: 12px;
+}
+
+.lens-headline {
+  font-size: clamp(22px, 2.6vw, 38px);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: var(--tl-ink, #e2e8f0);
+  margin-bottom: 10px;
+  max-width: 28rem;
+  background: linear-gradient(120deg, var(--tl-ink, #e2e8f0) 60%, rgba(0, 245, 212, 0.7));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.lens-sub {
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--tl-muted, rgba(148, 163, 184, 0.8));
+  margin-bottom: 24px;
+  max-width: 300px;
+}
+
+/* ── CTA buttons ─────────────────────────────────────────────────────────── */
+.lens-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.lens-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  position: relative;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.lens-btn--primary {
+  background: var(--tl-cyan, #00f5d4);
+  color: #0a1628;
+  border: none;
+  box-shadow:
+    0 0 18px -4px rgba(0, 245, 212, 0.45),
+    0 2px 8px rgba(0, 0, 0, 0.25);
+}
+.lens-btn--primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 40%, rgba(255, 255, 255, 0.3) 50%, transparent 60%);
+  animation: lensShimmer 3.8s ease-in-out infinite;
+}
+.lens-btn--primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 28px -4px rgba(0, 245, 212, 0.65), 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.lens-btn--secondary {
+  background: transparent;
+  color: var(--tl-ink, #e2e8f0);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+.lens-btn--secondary:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.26);
+}
+
+.lens-btn__label {
+  font-weight: 600;
+}
+.lens-btn__hint {
+  font-size: 0.68rem;
+  font-weight: 400;
+  opacity: 0.6;
+  margin-left: 2px;
+}
+
+/* ── Capability micro-tags ───────────────────────────────────────────────── */
+.lens-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.lens-tag {
+  font-size: 0.68rem;
+  padding: 3px 9px;
+  border-radius: 20px;
+  border: 1px solid rgba(0, 245, 212, 0.22);
+  background: rgba(0, 245, 212, 0.06);
+  color: var(--tl-cyan-dim, rgba(0, 245, 212, 0.7));
+  letter-spacing: 0.03em;
+}
+
+/* ── Right map column ────────────────────────────────────────────────────── */
+.lens-map-col {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 420px;
+}
+
+/* Scanning line */
+.lens-map-scan {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 245, 212, 0.5), transparent);
+  animation: lensScanMove 5.5s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Legend bar */
+.lens-map-legend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 8px;
+  flex-shrink: 0;
+}
+.lens-map-legend__title {
+  font-family: "IBM Plex Mono", "Menlo", monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--tl-cyan, #00f5d4);
+  font-weight: 600;
+}
+.lens-map-legend__active {
+  font-family: "IBM Plex Mono", "Menlo", monospace;
+  font-size: 0.58rem;
+  color: var(--tl-muted, rgba(148, 163, 184, 0.6));
+}
+
+/* Radial container */
+.lens-map-radial {
+  flex: 1;
+  position: relative;
+  min-height: 340px;
+}
+
+/* SVG layer — full container, z=0 */
+.lens-map-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Center card */
+.lens-map-core {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  transform: translate(-50%, -50%);
+  width: 130px;
+  text-align: center;
+  padding: 14px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 245, 212, 0.3);
+  background: rgba(0, 245, 212, 0.06);
+  backdrop-filter: blur(8px);
+  animation: lensCorePulse 4s ease-in-out infinite;
+  z-index: 2;
+}
+.lens-map-core__label {
+  font-size: 0.55rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--tl-cyan-dim, rgba(0, 245, 212, 0.6));
+  margin-bottom: 6px;
+}
+.lens-map-core__thread {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--tl-ink, #e2e8f0);
+  line-height: 1.3;
+  word-break: break-word;
+  margin-bottom: 5px;
+}
+.lens-map-core__badge {
+  font-family: "IBM Plex Mono", "Menlo", monospace;
+  font-size: 0.5rem;
+  letter-spacing: 0.1em;
+  color: var(--tl-cyan, #00f5d4);
+  opacity: 0.7;
+  margin-bottom: 4px;
+}
+.lens-map-core__time {
+  font-family: "IBM Plex Mono", "Menlo", monospace;
+  font-size: 0.58rem;
+  color: var(--tl-muted, rgba(148, 163, 184, 0.6));
+}
+
+/* Node cards */
+.lens-map-node {
+  position: absolute;
+  width: 120px;
+  padding: 10px 10px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top-width: 2px;
+  background: rgba(15, 20, 30, 0.7);
+  backdrop-filter: blur(8px);
+  animation: lensFloatNode 5s ease-in-out infinite;
+  z-index: 2;
+}
+.lens-map-node__header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 6px;
+}
+.lens-map-node__icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  flex-shrink: 0;
+}
+.lens-map-node__name {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--tl-ink, #e2e8f0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lens-map-node__value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 3px;
+}
+.lens-map-node__sub {
+  font-family: "IBM Plex Mono", "Menlo", monospace;
+  font-size: 0.58rem;
+  color: var(--tl-muted, rgba(148, 163, 184, 0.6));
+  line-height: 1.4;
+}
+
+/* ── Light theme overrides ───────────────────────────────────────────────── */
+[data-theme="white"] .lens-hero {
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 0 0 1px rgba(13, 148, 136, 0.12) inset, 0 16px 48px -20px rgba(0, 0, 0, 0.15);
+}
+[data-theme="white"] .lens-map-node {
+  background: rgba(250, 252, 255, 0.85);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+[data-theme="white"] .lens-map-core {
+  background: rgba(240, 253, 250, 0.9);
+  border-color: rgba(13, 148, 136, 0.3);
+}
+[data-theme="white"] .lens-btn--secondary {
+  border-color: rgba(0, 0, 0, 0.14);
+  color: var(--tl-ink);
+}
+
+/* ── Windows performance mode overrides ─────────────────────────────────── */
+[data-os="windows"][data-win-perf="on"] .lens-map-node,
+[data-os="windows"][data-win-perf="on"] .lens-map-core {
+  backdrop-filter: none;
+}
+[data-os="windows"][data-win-perf="on"] .lens-btn--primary::after,
+[data-os="windows"][data-win-perf="on"] .lens-map-scan,
+[data-os="windows"][data-win-perf="on"] .lens-map-node,
+[data-os="windows"][data-win-perf="on"] .lens-map-core {
+  animation: none !important;
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .lens-map-scan,
+  .lens-map-core,
+  .lens-map-node,
+  .lens-btn--primary::after {
+    animation: none !important;
+  }
+}

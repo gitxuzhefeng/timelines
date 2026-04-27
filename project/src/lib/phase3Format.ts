@@ -45,6 +45,25 @@ export function zhDateLabel(isoDate: string): string {
   return `${y}年${mo}月${d}日 · ${w}`;
 }
 
+const EN_MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+export function enDateLabel(isoDate: string): string {
+  const parts = isoDate.split("-").map(Number);
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return isoDate;
+  const [y, mo, d] = parts;
+  const dt = new Date(y, mo - 1, d);
+  const w = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][dt.getDay()] ?? "";
+  return `${EN_MONTHS[mo - 1]} ${d}, ${y} · ${w}`;
+}
+
+/** Returns locale-aware date label (zh or en) */
+export function localeDateLabel(isoDate: string, locale: string): string {
+  return locale.startsWith("zh") ? zhDateLabel(isoDate) : enDateLabel(isoDate);
+}
+
 /** 从事实报告 Markdown 取首段可读摘要（跳过标题行） */
 export function extractReportNarrativeSnippet(md: string, maxLen = 480): string {
   const t = md.trim();

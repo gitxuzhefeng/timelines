@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>原型 · V17 今日透视 · TimeLens Map v4</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #07080c;
+      --ink: #e8f4f2;
+      --muted: #7a8f8c;
+      --line: rgba(0, 245, 212, 0.12);
+      --cyan: #00f5d4;
+      --purple: #9b7ed9;
+      --amber: #d4a24c;
+      --green: #3d9b8b;
+      --blue: #7c6fd4;
+      --sans: "Outfit", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* 全局背景光晕 */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        radial-gradient(circle at 72% 34%, rgba(0, 245, 212, 0.15), transparent 30%),
+        radial-gradient(circle at 86% 12%, rgba(155, 126, 217, 0.16), transparent 26%),
+        radial-gradient(circle at 12% 80%, rgba(212, 162, 76, 0.10), transparent 24%);
+    }
+
+    .frame {
+      display: flex;
+      min-height: 100vh;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* 侧边栏 */
+    .sidebar {
+      width: 56px;
+      flex-shrink: 0;
+      background: rgba(8, 10, 16, 0.96);
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 14px 0;
+      gap: 6px;
+    }
+    .s-logo {
+      width: 30px;
+      height: 30px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      box-shadow: 0 0 22px rgba(0, 245, 212, 0.32);
+      margin-bottom: 10px;
+    }
+    .s-item {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .s-item.on {
+      background: rgba(0, 245, 212, 0.10);
+      border: 1px solid rgba(0, 245, 212, 0.20);
+      color: var(--cyan);
+    }
+
+    /* 主区 */
+    .main {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .topbar {
+      height: 44px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(8, 10, 14, 0.88);
+      backdrop-filter: blur(12px);
+    }
+    .topbar-l {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+    }
+    .dot-live {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 10px var(--cyan);
+      animation: pulseDot 2s ease-in-out infinite;
+    }
+    .topbar-r {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: rgba(0, 245, 212, 0.42);
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+    }
+
+    /* 内容区 */
+    .content {
+      flex: 1;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Hero 卡片 */
+    .hero {
+      flex: 1;
+      min-height: 600px;
+      display: grid;
+      grid-template-columns: 5fr 7fr;
+      border-radius: 28px;
+      border: 1px solid rgba(0, 245, 212, 0.16);
+      background: linear-gradient(155deg, rgba(8, 12, 18, 0.78), rgba(12, 14, 24, 0.62));
+      backdrop-filter: blur(20px);
+      box-shadow: 0 32px 80px rgba(0, 0, 0, 0.50), inset 0 0 40px rgba(0, 245, 212, 0.025);
+      overflow: hidden;
+      position: relative;
+    }
+    /* 霓虹渐变边框 */
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 28px;
+      padding: 1px;
+      background: linear-gradient(135deg,
+        rgba(0, 245, 212, 0.55),
+        rgba(155, 126, 217, 0.28),
+        rgba(212, 162, 76, 0.16),
+        transparent 68%);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    /* ── 左侧文案 ── */
+    .copy {
+      padding: 44px 38px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      border-right: 1px solid rgba(0, 245, 212, 0.07);
+      position: relative;
+      z-index: 2;
+    }
+    .eyebrow {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: rgba(0, 245, 212, 0.55);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+    }
+    .headline {
+      font-size: clamp(28px, 3.2vw, 44px);
+      font-weight: 800;
+      line-height: 1.02;
+      letter-spacing: -0.045em;
+      margin-bottom: 14px;
+    }
+    .headline .accent {
+      background: linear-gradient(90deg, var(--cyan) 0%, var(--purple) 60%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 0 16px rgba(0, 245, 212, 0.20));
+    }
+    .sub {
+      font-size: 15px;
+      color: #8da19e;
+      line-height: 1.6;
+      margin-bottom: 34px;
+      max-width: 300px;
+    }
+    .sub b { color: var(--ink); font-weight: 700; }
+
+    /* 按钮 */
+    .btns { display: flex; flex-direction: column; gap: 10px; max-width: 290px; }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-radius: 16px;
+      border: none;
+      font-family: var(--sans);
+      font-size: 15px;
+      font-weight: 700;
+      cursor: default;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-l { display: flex; align-items: center; gap: 9px; }
+    .btn-l svg { width: 17px; height: 17px; flex-shrink: 0; }
+    .btn-hint {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 500;
+      opacity: 0.60;
+    }
+
+    /* 主按钮：实心强对比 */
+    .btn-primary {
+      background: var(--cyan);
+      color: #001a17;
+      box-shadow: 0 0 32px rgba(0, 245, 212, 0.38), 0 4px 18px rgba(0, 245, 212, 0.22);
+    }
+    .btn-primary::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.45), transparent 70%);
+      transform: translateX(-110%);
+      animation: shimmer 3.8s ease-in-out infinite;
+    }
+
+    /* 副按钮：描边 */
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: var(--ink);
+    }
+
+    /* 微标签 */
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 24px; }
+    .tag {
+      font-size: 11px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(0, 245, 212, 0.14);
+      color: #8da19e;
+      background: rgba(0, 0, 0, 0.20);
+    }
+
+    /* ── 右侧 TimeLens Map ── */
+    .map-col {
+      position: relative;
+      overflow: hidden;
+    }
+    /* 点阵背景 */
+    .map-col::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      opacity: 0.22;
+      background-image: radial-gradient(circle, rgba(0, 245, 212, 0.38) 1px, transparent 1px);
+      background-size: 26px 26px;
+    }
+    .map-legend {
+      position: absolute;
+      top: 14px;
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: rgba(0, 245, 212, 0.42);
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      pointer-events: none;
+      z-index: 5;
+    }
+    /* 扫描线 */
+    .scan {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 80px;
+      background: linear-gradient(180deg, transparent, rgba(0, 245, 212, 0.055), transparent);
+      animation: scanMove 5.5s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 3;
+    }
+    /* SVG 连线层 */
+    .map-svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 2;
+    }
+
+    /* 中心卡片 */
+    .core {
+      position: absolute;
+      left: 50%;
+      top: 48%;
+      transform: translate(-50%, -50%);
+      width: 196px;
+      padding: 18px 20px;
+      text-align: center;
+      border-radius: 22px;
+      border: 1px solid rgba(0, 245, 212, 0.30);
+      background:
+        radial-gradient(circle at 50% 0%, rgba(0, 245, 212, 0.14), transparent 58%),
+        rgba(5, 6, 10, 0.92);
+      box-shadow:
+        0 0 56px rgba(0, 245, 212, 0.14),
+        0 0 120px rgba(0, 245, 212, 0.06),
+        inset 0 0 20px rgba(0, 245, 212, 0.04);
+      animation: corePulse 4s ease-in-out infinite;
+      z-index: 10;
+    }
+    .core-lbl {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: rgba(0, 245, 212, 0.58);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .core-title {
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+      color: var(--ink);
+      margin-bottom: 7px;
+    }
+    .core-badge {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--cyan);
+      background: rgba(0, 245, 212, 0.10);
+      border: 1px solid rgba(0, 245, 212, 0.22);
+      border-radius: 999px;
+      padding: 3px 8px;
+      letter-spacing: 0.07em;
+      margin-bottom: 7px;
+    }
+    .core-time {
+      font-family: var(--mono);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--cyan);
+    }
+
+    /* 能力节点 */
+    .node {
+      position: absolute;
+      width: 148px;
+      transform: translate(-50%, -50%);
+      padding: 10px 13px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-top-width: 2px;
+      background: rgba(5, 6, 10, 0.90);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.44);
+      backdrop-filter: blur(10px);
+      animation: floatNode 5s ease-in-out infinite;
+      z-index: 10;
+    }
+    .node-hd {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 6px;
+    }
+    .node-ico {
+      width: 20px;
+      height: 20px;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+    .node-ico svg { width: 12px; height: 12px; }
+    .node-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .node-val {
+      font-family: var(--mono);
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 3px;
+    }
+    .node-sub {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    /*
+      辐射状布局：5 个节点均匀分布于中心 (50%, 48%) 半径 36% 的圆上
+      角度从顶部 -90° 起，每步 72° 顺时针。
+      n1 -90° : (50, 12)
+      n2 -18° : (79.5, 36.8)
+      n3  54° : (68.3, 77.2)
+      n4 126° : (31.7, 77.2)
+      n5 198° : (20.5, 36.8)
+    */
+    .n1 { left: 50%;   top: 12%;   }
+    .n2 { left: 79.5%; top: 36.8%; animation-delay: 0.7s; }
+    .n3 { left: 68.3%; top: 77.2%; animation-delay: 1.4s; }
+    .n4 { left: 31.7%; top: 77.2%; animation-delay: 2.1s; }
+    .n5 { left: 20.5%; top: 36.8%; animation-delay: 2.8s; }
+
+    /* 说明 */
+    .proto-note {
+      margin-top: 12px;
+      font-family: var(--mono);
+      font-size: 10px;
+      color: rgba(122, 143, 140, 0.55);
+      text-align: center;
+    }
+
+    /* 动画 */
+    @keyframes pulseDot {
+      0%, 100% { opacity: 0.5; transform: scale(0.85); }
+      50%       { opacity: 1;   transform: scale(1.15); }
+    }
+    @keyframes shimmer {
+      0%,  50% { transform: translateX(-110%); }
+      70%, 100% { transform: translateX(110%); }
+    }
+    @keyframes scanMove {
+      0%        { top: -80px;  opacity: 0; }
+      10%, 80%  { opacity: 1; }
+      100%      { top: calc(100% + 80px); opacity: 0; }
+    }
+    @keyframes corePulse {
+      0%, 100% { box-shadow: 0 0 44px rgba(0,245,212,.12), 0 0 88px rgba(0,245,212,.05); }
+      50%      { box-shadow: 0 0 88px rgba(0,245,212,.24), 0 0 176px rgba(0,245,212,.09); }
+    }
+    @keyframes floatNode {
+      0%, 100% { transform: translate(-50%, -50%) translateY(0); }
+      50%      { transform: translate(-50%, -50%) translateY(-8px); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; }
+    }
+    @media (max-width: 960px) {
+      .hero { grid-template-columns: 1fr; min-height: auto; }
+      .map-col { min-height: 520px; }
+      body { overflow: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+
+    <!-- 侧边栏 -->
+    <aside class="sidebar" aria-hidden="true">
+      <div class="s-logo"></div>
+      <div class="s-item on">◎</div>
+      <div class="s-item">▤</div>
+      <div class="s-item">日</div>
+      <div class="s-item">设</div>
+    </aside>
+
+    <div class="main">
+      <!-- 顶栏 -->
+      <header class="topbar">
+        <div class="topbar-l">
+          <div class="dot-live"></div>
+          Today Lens · Live
+        </div>
+        <div class="topbar-r">Local Work Intelligence</div>
+      </header>
+
+      <div class="content">
+        <section class="hero">
+
+          <!-- 左侧：文案 + CTA -->
+          <div class="copy">
+            <div class="eyebrow">2026年4月27日 · 今日透视</div>
+            <h1 class="headline">
+              今天的主线<br />是 <span class="accent">v17 设计</span>。
+            </h1>
+            <p class="sub">深度工作 <b>3h 14m</b>，下午切换偏多。</p>
+
+            <div class="btns">
+              <button type="button" class="btn btn-primary">
+                <div class="btn-l">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M4 12h14"/><path d="m13 5 7 7-7 7"/>
+                  </svg>
+                  打开时间线
+                </div>
+                <span class="btn-hint">今天做了什么</span>
+              </button>
+              <button type="button" class="btn btn-secondary">
+                <div class="btn-l">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M4 19.5V5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-1.5Z"/>
+                    <path d="M8 7h6M8 11h8M8 15h5"/>
+                  </svg>
+                  打开日报
+                </div>
+                <span class="btn-hint">今日总结</span>
+              </button>
+            </div>
+
+            <div class="tags">
+              <span class="tag">本地优先</span>
+              <span class="tag">截图增强</span>
+              <span class="tag">OCR 识别</span>
+              <span class="tag">上下文还原</span>
+            </div>
+          </div>
+
+          <!-- 右侧：TimeLens Map -->
+          <div class="map-col">
+            <div class="scan"></div>
+            <div class="map-legend">
+              <span>TimeLens Map</span>
+              <span>今日活跃 6h 42m</span>
+            </div>
+
+            <!--
+              SVG 连线层：viewBox="0 0 100 100" + preserveAspectRatio="none"
+              节点中心坐标与 CSS left/top 百分比一一对应，拉伸时同步形变，始终对齐。
+              中心 (50, 48)，半径 36，5节点均匀分布。
+            -->
+            <svg class="map-svg" viewBox="0 0 100 100" preserveAspectRatio="none"
+                 xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <defs>
+                <!-- 每条线从中心颜色渐变到节点颜色（透明尾） -->
+                <linearGradient id="lg1" x1="50" y1="48" x2="50"   y2="12"   gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#00f5d4" stop-opacity="0.8"/>
+                  <stop offset="100%" stop-color="#00f5d4" stop-opacity="0.15"/>
+                </linearGradient>
+                <linearGradient id="lg2" x1="50" y1="48" x2="79.5" y2="36.8" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#9b7ed9" stop-opacity="0.8"/>
+                  <stop offset="100%" stop-color="#9b7ed9" stop-opacity="0.15"/>
+                </linearGradient>
+                <linearGradient id="lg3" x1="50" y1="48" x2="68.3" y2="77.2" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#d4a24c" stop-opacity="0.8"/>
+                  <stop offset="100%" stop-color="#d4a24c" stop-opacity="0.15"/>
+                </linearGradient>
+                <linearGradient id="lg4" x1="50" y1="48" x2="31.7" y2="77.2" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#3d9b8b" stop-opacity="0.8"/>
+                  <stop offset="100%" stop-color="#3d9b8b" stop-opacity="0.15"/>
+                </linearGradient>
+                <linearGradient id="lg5" x1="50" y1="48" x2="20.5" y2="36.8" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#7c6fd4" stop-opacity="0.8"/>
+                  <stop offset="100%" stop-color="#7c6fd4" stop-opacity="0.15"/>
+                </linearGradient>
+              </defs>
+
+              <!-- 虚线轨道圆 -->
+              <circle cx="50" cy="48" r="35.6"
+                fill="none"
+                stroke="rgba(0,245,212,0.07)"
+                stroke-width="0.25"
+                stroke-dasharray="1.8 2.8"/>
+
+              <!-- 辐射连线（从中心出发，渐变到节点，宽度适中） -->
+              <line x1="50"  y1="48" x2="50"   y2="12"   stroke="url(#lg1)" stroke-width="0.35"/>
+              <line x1="50"  y1="48" x2="79.5" y2="36.8" stroke="url(#lg2)" stroke-width="0.35"/>
+              <line x1="50"  y1="48" x2="68.3" y2="77.2" stroke="url(#lg3)" stroke-width="0.35"/>
+              <line x1="50"  y1="48" x2="31.7" y2="77.2" stroke="url(#lg4)" stroke-width="0.35"/>
+              <line x1="50"  y1="48" x2="20.5" y2="36.8" stroke="url(#lg5)" stroke-width="0.35"/>
+
+              <!-- 节点端点光点 -->
+              <circle cx="50"   cy="12"   r="1.1" fill="#00f5d4" opacity="0.85"/>
+              <circle cx="79.5" cy="36.8" r="1.1" fill="#9b7ed9" opacity="0.85"/>
+              <circle cx="68.3" cy="77.2" r="1.1" fill="#d4a24c" opacity="0.85"/>
+              <circle cx="31.7" cy="77.2" r="1.1" fill="#3d9b8b" opacity="0.85"/>
+              <circle cx="20.5" cy="36.8" r="1.1" fill="#7c6fd4" opacity="0.85"/>
+            </svg>
+
+            <!-- 中心卡片 -->
+            <div class="core">
+              <div class="core-lbl">今日识别</div>
+              <div class="core-title">v17 设计推进</div>
+              <div class="core-badge">MAIN THREAD</div>
+              <div class="core-time">3h 14m 主线</div>
+            </div>
+
+            <!-- 节点 1：窗口（顶，青色） -->
+            <div class="node n1" style="border-top-color:#00f5d4">
+              <div class="node-hd">
+                <div class="node-ico" style="background:rgba(0,245,212,.12)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#00f5d4" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="14" rx="2"/>
+                    <path d="M8 22h8M12 18v4"/>
+                  </svg>
+                </div>
+                <div class="node-name">窗口</div>
+              </div>
+              <div class="node-val" style="color:#00f5d4">3 个应用</div>
+              <div class="node-sub">VS Code · Chrome · Finder</div>
+            </div>
+
+            <!-- 节点 2：OCR（右上，紫色） -->
+            <div class="node n2" style="border-top-color:#9b7ed9">
+              <div class="node-hd">
+                <div class="node-ico" style="background:rgba(155,126,217,.12)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#9b7ed9" stroke-width="2">
+                    <path d="M4 7V5a2 2 0 0 1 2-2h2M16 3h2a2 2 0 0 1 2 2v2M20 17v2a2 2 0 0 1-2 2h-2M8 21H6a2 2 0 0 1-2-2v-2"/>
+                    <path d="M8 12h8M8 16h5M8 8h8"/>
+                  </svg>
+                </div>
+                <div class="node-name">OCR</div>
+              </div>
+              <div class="node-val" style="color:#9b7ed9">142 条文本</div>
+              <div class="node-sub">PRD · 原型 · 会议记录</div>
+            </div>
+
+            <!-- 节点 3：切换（右下，琥珀） -->
+            <div class="node n3" style="border-top-color:#d4a24c">
+              <div class="node-hd">
+                <div class="node-ico" style="background:rgba(212,162,76,.12)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#d4a24c" stroke-width="2">
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3"/>
+                    <path d="M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/>
+                  </svg>
+                </div>
+                <div class="node-name">切换</div>
+              </div>
+              <div class="node-val" style="color:#d4a24c">118 次</div>
+              <div class="node-sub">下午最密集</div>
+            </div>
+
+            <!-- 节点 4：本地分析（左下，绿） -->
+            <div class="node n4" style="border-top-color:#3d9b8b">
+              <div class="node-hd">
+                <div class="node-ico" style="background:rgba(61,155,139,.12)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#3d9b8b" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/>
+                    <path d="m9 12 2 2 4-4"/>
+                  </svg>
+                </div>
+                <div class="node-name">本地分析</div>
+              </div>
+              <div class="node-val" style="color:#3d9b8b">纯本地</div>
+              <div class="node-sub">不联网 · 可回溯</div>
+            </div>
+
+            <!-- 节点 5：会话（左上，蓝紫） -->
+            <div class="node n5" style="border-top-color:#7c6fd4">
+              <div class="node-hd">
+                <div class="node-ico" style="background:rgba(124,111,212,.12)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#7c6fd4" stroke-width="2">
+                    <path d="M4 19V5M4 19h16"/>
+                    <path d="M8 16V9M12 16V6M16 16v-4"/>
+                  </svg>
+                </div>
+                <div class="node-name">会话</div>
+              </div>
+              <div class="node-val" style="color:#7c6fd4">6 段</div>
+              <div class="node-sub">最长 54 min</div>
+            </div>
+          </div>
+
+        </section>
+
+        <p class="proto-note">
+          V17 · TimeLens Map v4 · 五节点辐射布局 · SVG 精确连线 · reduced-motion 支持
+        </p>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

@@ -322,11 +322,12 @@ export function SettingsForm({ className }: SettingsFormProps) {
           <div className="flex flex-wrap gap-2">
             {([
               ["white", t("settings.themeWhite"), "#0d9488"],
-              ["claude", t("settings.themeClaude"), "#c96442"],
               ["cursor", t("settings.themeCursor"), "#f54e00"],
               ["catppuccin", t("settings.themeCatppuccin" as any), "#1e66f5"],
               ["rosepine", t("settings.themeRosepine" as any), "#286983"],
-              ["gruvbox-light", t("settings.themeGruvboxLight" as any), "#076678"],
+              ["sakura", t("settings.themeSakura" as any), "#e88faf"],
+              ["cotton-candy", t("settings.themeCottonCandy" as any), "#c084fc"],
+              ["peach-milk", t("settings.themePeachMilk" as any), "#fb7c5a"],
             ] as [UiTheme, string, string][]).map(([id, label, color]) => (
               <button
                 key={id}
@@ -350,13 +351,10 @@ export function SettingsForm({ className }: SettingsFormProps) {
           <div className="flex flex-wrap gap-2">
             {([
               ["tech", t("settings.themeTech"), "#00f5d4"],
-              ["raycast", t("settings.themeRaycast"), "#FF6363"],
               ["spotify", t("settings.themeSpotify"), "#1ed760"],
               ["linear", t("settings.themeLinear"), "#5e6ad2"],
               ["dracula", t("settings.themeDracula" as any), "#bd93f9"],
-              ["nord", t("settings.themeNord" as any), "#88c0d0"],
               ["tokyo-night", t("settings.themeTokyoNight" as any), "#7aa2f7"],
-              ["gruvbox-dark", t("settings.themeGruvboxDark" as any), "#83a598"],
               ["one-dark", t("settings.themeOneDark" as any), "#61afef"],
             ] as [UiTheme, string, string][]).map(([id, label, color]) => (
               <button
