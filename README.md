@@ -55,6 +55,35 @@ No manual check-ins. No data uploads. Everything stays on your device.
 
 ---
 
+## 动态演示 / Live demo
+
+下方为 **今日透视（Today’s Lens）** 界面录屏：左侧为中文界面，右侧为英文界面。GIF 便于快速浏览；MP4 画质更清晰，可点击播放控件观看。
+
+Below are screen recordings of **Today’s Lens**: Chinese UI on the left, English on the right. Use the GIFs for a quick preview, or the MP4 files for higher quality (use the player controls).
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <strong>中文 / Chinese</strong><br><br>
+      <img src="docs/assets/ezgif.com-animated-gif-maker_Chinese.gif" alt="TimeLens 今日透视 — 中文界面演示" width="100%">
+      <br><br>
+      <video src="docs/assets/ezgif.com-gif-to-mp4-converter_chinese.mp4" controls playsinline width="100%"></video>
+      <br>
+      <sub>MP4 高清 / HD video</sub>
+    </td>
+    <td align="center" width="50%">
+      <strong>English</strong><br><br>
+      <img src="docs/assets/ezgif.com-animated-gif-maker.gif" alt="TimeLens Today’s Lens — English UI demo" width="100%">
+      <br><br>
+      <video src="docs/assets/ezgif.com-gif-to-mp4-converter.mp4" controls playsinline width="100%"></video>
+      <br>
+      <sub>MP4 HD</sub>
+    </td>
+  </tr>
+</table>
+
+---
+
 ## 核心特性 / Features
 
 - **被动采集 / Passive capture** — 后台检测前台窗口变化，自动记录应用名、窗口标题与时长，不打断工作流 / Detects foreground window changes in the background; records app name, window title, and duration without interrupting your workflow
