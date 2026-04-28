@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: TimeLens README
+    url: https://github.com/gitxuzhefeng/timelines#readme
+    about: Read product overview, download links, and macOS first-launch notes.
+  - name: Download latest release
+    url: https://github.com/gitxuzhefeng/timelines/releases/latest
+    about: Download TimeLens for macOS or Windows.

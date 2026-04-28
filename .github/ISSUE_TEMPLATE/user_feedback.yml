@@ -1,0 +1,64 @@
+name: User feedback / 使用反馈
+description: Share your first-use experience, workflow, or general feedback.
+title: "[Feedback]: "
+labels: ["feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We are collecting real feedback from macOS and Windows users to improve TimeLens.
+
+        我们正在收集 macOS 和 Windows 用户的真实使用反馈，用于改进 TimeLens。
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform / 平台
+      options:
+        - macOS
+        - Windows
+        - Both / 双平台
+    validations:
+      required: true
+
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Your use case / 你的使用场景
+      description: What kind of work do you use TimeLens to review?
+      placeholder: Coding, writing, research, meetings, design, remote work...
+    validations:
+      required: true
+
+  - type: textarea
+    id: first_impression
+    attributes:
+      label: First impression / 首用感受
+      description: What felt useful, confusing, or surprising?
+    validations:
+      required: true
+
+  - type: textarea
+    id: friction
+    attributes:
+      label: Friction / 卡点
+      description: Installation, permissions, AI setup, reports, performance, language, or anything unclear.
+
+  - type: textarea
+    id: favorite
+    attributes:
+      label: Most useful part / 最有用的地方
+      description: Which feature would you keep using?
+
+  - type: textarea
+    id: improvement
+    attributes:
+      label: One thing to improve / 最希望改进的一点
+      description: If we could improve one thing next, what should it be?
+
+  - type: checkboxes
+    id: follow_up
+    attributes:
+      label: Follow-up / 后续沟通
+      options:
+        - label: You may ask me follow-up questions in this issue.

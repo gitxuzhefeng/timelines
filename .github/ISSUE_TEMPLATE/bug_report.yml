@@ -1,0 +1,81 @@
+name: Bug report / 缺陷反馈
+description: Report a TimeLens bug or unexpected behavior.
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve TimeLens. Please include enough detail so we can reproduce the problem.
+
+        感谢反馈 TimeLens 问题。请尽量提供可复现的信息，方便定位。
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform / 平台
+      options:
+        - macOS
+        - Windows
+        - Both / 双平台
+        - Not sure / 不确定
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: TimeLens version / TimeLens 版本
+      description: Example: v0.16.0, latest release, or Actions build date.
+      placeholder: v0.16.0
+    validations:
+      required: true
+
+  - type: input
+    id: os_version
+    attributes:
+      label: OS version / 系统版本
+      placeholder: macOS 14.5 / Windows 11 23H2
+    validations:
+      required: true
+
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened? / 发生了什么？
+      description: Describe the bug and what you expected to happen.
+      placeholder: Tell us what you saw, what you expected, and why it looks wrong.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / 复现步骤
+      placeholder: |
+        1. Open ...
+        2. Click ...
+        3. See ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or screen recordings / 截图或录屏
+      description: Drag images or videos here if they help explain the issue.
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / 日志
+      description: Paste relevant logs if available. Remove private data before sharing.
+      render: text
+
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check / 隐私确认
+      options:
+        - label: I have removed sensitive window titles, screenshots, API keys, and personal data before sharing.
+          required: true

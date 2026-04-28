@@ -1,0 +1,81 @@
+name: Installation help / 安装问题
+description: Get help with macOS or Windows installation and first launch.
+title: "[Install]: "
+labels: ["installation", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form if TimeLens cannot be installed, opened, or launched.
+
+        如果 TimeLens 无法安装、无法打开或首次启动失败，请使用这个模板。
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform / 平台
+      options:
+        - macOS
+        - Windows
+    validations:
+      required: true
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package type / 安装包类型
+      options:
+        - macOS .dmg
+        - Windows installer
+        - Windows portable
+        - GitHub Actions artifact
+        - Not sure / 不确定
+    validations:
+      required: true
+
+  - type: input
+    id: os_version
+    attributes:
+      label: OS version / 系统版本
+      placeholder: macOS 14.5 / Windows 11 23H2
+    validations:
+      required: true
+
+  - type: textarea
+    id: error_message
+    attributes:
+      label: Error message / 错误提示
+      description: Copy the exact message or attach a screenshot.
+      placeholder: Example: "TimeLens.app is damaged and can't be opened"
+    validations:
+      required: true
+
+  - type: textarea
+    id: tried
+    attributes:
+      label: What have you tried? / 已尝试的操作
+      placeholder: |
+        - Re-downloaded the release
+        - Restarted the app
+        - Ran xattr command on macOS
+    validations:
+      required: false
+
+  - type: markdown
+    attributes:
+      value: |
+        macOS note:
+
+        If you see `"TimeLens.app is damaged and can't be opened"`, this is usually caused by the system quarantine attribute rather than actual file corruption. You can try:
+
+        ```bash
+        xattr -rd com.apple.quarantine "/Applications/TimeLens.app"
+        ```
+
+  - type: checkboxes
+    id: release_check
+    attributes:
+      label: Release check / 下载来源确认
+      options:
+        - label: I downloaded TimeLens from the official GitHub Releases page or GitHub Actions.
+          required: true

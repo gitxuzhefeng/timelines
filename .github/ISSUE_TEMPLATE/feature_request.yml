@@ -1,0 +1,72 @@
+name: Feature request / 功能建议
+description: Suggest an improvement or a new feature for TimeLens.
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement. Please focus on the workflow problem you want TimeLens to solve.
+
+        感谢提出建议。请尽量描述你想解决的工作流问题，而不只是功能名称。
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / 你遇到的问题
+      description: What are you trying to understand, review, automate, or improve?
+      placeholder: I want to understand..., but currently...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution / 期望方案
+      description: Describe what you would like TimeLens to do.
+      placeholder: It would be helpful if TimeLens could...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Product area / 相关模块
+      options:
+        - Timeline / 时间线
+        - Today Lens / 今日透视
+        - Daily or weekly report / 日报或周报
+        - OCR search / OCR 搜索
+        - AI assistant / AI 助手
+        - Data export / 数据导出
+        - Installation or onboarding / 安装或首用
+        - Privacy or local data / 隐私或本地数据
+        - Other / 其他
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform / 平台
+      options:
+        - macOS
+        - Windows
+        - Both / 双平台
+        - Not platform-specific / 与平台无关
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives / 你试过的替代方案
+      description: Are you currently using another tool or workflow?
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution / 参与意愿
+      options:
+        - label: I am willing to test this feature if it is implemented.
+        - label: I am interested in contributing a PR or design feedback.
