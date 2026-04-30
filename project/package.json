@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "test": "cargo test --manifest-path src-tauri/Cargo.toml",
-    "verify:no-net": "node scripts/check-no-external-fetch.mjs"
+    "verify:no-net": "node scripts/check-no-external-fetch.mjs",
+    "verify:lens-map": "node scripts/check-lens-map-ui.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
