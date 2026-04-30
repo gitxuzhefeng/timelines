@@ -35,8 +35,6 @@ body:
     attributes:
       label: First impression / 首用感受
       description: What felt useful, confusing, or surprising?
-    validations:
-      required: true
 
   - type: textarea
     id: friction
