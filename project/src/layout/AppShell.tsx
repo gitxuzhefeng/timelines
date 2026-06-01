@@ -10,7 +10,7 @@ import * as api from "../services/tauri";
 import { AiTaskBanner } from "../components/AiTaskBanner";
 import { AssistantSidebar } from "../components/assistant/AssistantSidebar";
 
-const AUTO_REFRESH_PATHS = ["/lens", "/timeline"];
+const AUTO_REFRESH_PATHS = ["/lens", "/timeline", "/replay"];
 const REFRESH_DEBOUNCE_MS = 30_000;
 function navCls(active: boolean): string {
   return [
@@ -68,6 +68,7 @@ export default function AppShell() {
   const MAIN_NAV = [
     { to: "/lens", label: t("nav.todayLens"), icon: "◉" },
     { to: "/timeline", label: t("nav.timeline"), icon: "≡" },
+    { to: "/replay", label: t("nav.timeReplay"), icon: "▷" },
     { to: "/report", label: t("nav.dailyReport"), icon: "¶" },
     { to: "/weekly", label: t("nav.weeklyReport"), icon: "⊞" },
     { to: "/assistant", label: t("nav.assistant"), icon: "✦" },
@@ -86,6 +87,7 @@ export default function AppShell() {
   function titleForPath(pathname: string): { title: string; sub?: string } {
     if (pathname.startsWith("/lens")) return { title: t("nav.todayLens"), sub: t("nav.todayLensDesc") };
     if (pathname.startsWith("/timeline")) return { title: t("nav.timeline"), sub: t("nav.timelineDesc") };
+    if (pathname.startsWith("/replay")) return { title: t("nav.timeReplay"), sub: t("nav.timeReplayDesc") };
     if (pathname.startsWith("/report")) return { title: t("nav.dailyReport"), sub: t("nav.dailyReportDesc") };
     if (pathname.startsWith("/weekly")) return { title: t("nav.weeklyReport"), sub: t("nav.weeklyReportDesc") };
     if (pathname.startsWith("/assistant")) return { title: t("nav.assistant"), sub: t("nav.assistantDesc") };

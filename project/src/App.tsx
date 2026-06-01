@@ -24,6 +24,7 @@ import SettingsShellPage from "./pages/SettingsShellPage";
 import AboutPage from "./pages/AboutPage";
 import WeeklyReportPage from "./pages/WeeklyReportPage";
 import AssistantPage from "./pages/AssistantPage";
+import TimeReplayPage from "./pages/TimeReplayPage";
 import FragmentationDetail from "./components/FragmentationDetail";
 import UpdateNotice from "./components/UpdateNotice";
 import { detectClientDesktopOs } from "./lib/platform";
@@ -201,6 +202,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/lens" replace />} />
           <Route path="/lens" element={<TodayLensPage />} />
           <Route path="/timeline" element={<TimelinePage />} />
+          <Route path="/replay" element={<TimeReplayPage />} />
           <Route path="/report" element={<DailyReportPage />} />
           <Route path="/weekly" element={<WeeklyReportPage />} />
           <Route path="/assistant" element={<AssistantPage />} />

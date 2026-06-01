@@ -18,7 +18,7 @@ pub struct ExternalAiProvider {
     pub label_zh: &'static str,
     pub label_en: &'static str,
     pub web_url: &'static str,
-    pub mac_app_name: Option<&'static str>,
+    pub mac_app_names: &'static [&'static str],
 }
 
 const DOUBAO_WEB: ExternalAiProvider = ExternalAiProvider {
@@ -26,7 +26,7 @@ const DOUBAO_WEB: ExternalAiProvider = ExternalAiProvider {
     label_zh: "豆包（网页）",
     label_en: "Doubao (Web)",
     web_url: "https://www.doubao.com/chat",
-    mac_app_name: None,
+    mac_app_names: &[],
 };
 
 const DOUBAO_APP: ExternalAiProvider = ExternalAiProvider {
@@ -34,7 +34,7 @@ const DOUBAO_APP: ExternalAiProvider = ExternalAiProvider {
     label_zh: "豆包（客户端）",
     label_en: "Doubao (App)",
     web_url: "https://www.doubao.com/chat",
-    mac_app_name: Some("豆包"),
+    mac_app_names: &["豆包", "Doubao", "doubao"],
 };
 
 pub fn providers(lang: &str) -> Vec<ExternalAiProviderDto> {
@@ -80,13 +80,15 @@ pub fn launch_provider(provider: &ExternalAiProvider) -> Result<Option<String>, 
 fn launch_doubao_app(provider: &ExternalAiProvider) -> Result<Option<String>, String> {
     #[cfg(target_os = "macos")]
     {
-        if let Some(app_name) = provider.mac_app_name {
+        for app_name in provider.mac_app_names {
             let status = Command::new("open")
                 .arg("-a")
                 .arg(app_name)
                 .status()
                 .map_err(|e| e.to_string())?;
             if status.success() {
+                // 给客户端启动和前台聚焦一点时间，避免粘贴过早。
+                thread::sleep(Duration::from_millis(1200));
                 return Ok(None);
             }
         }
@@ -112,34 +114,42 @@ fn launch_doubao_app(provider: &ExternalAiProvider) -> Result<Option<String>, St
     }
 }
 
-pub fn try_auto_paste() -> Result<(), String> {
-    thread::sleep(Duration::from_millis(650));
+pub fn try_auto_paste(provider_id: &str) -> Result<(), String> {
+    let attempts = if provider_id == "doubao_app" { 4 } else { 3 };
+    let initial_delay = if provider_id == "doubao_app" { 900 } else { 1200 };
+    thread::sleep(Duration::from_millis(initial_delay));
 
     #[cfg(target_os = "macos")]
     {
-        let status = Command::new("osascript")
-            .arg("-e")
-            .arg("tell application \"System Events\" to keystroke \"v\" using command down")
-            .status()
-            .map_err(|e| e.to_string())?;
-        if status.success() {
-            return Ok(());
+        for _ in 0..attempts {
+            let status = Command::new("osascript")
+                .arg("-e")
+                .arg("tell application \"System Events\" to keystroke \"v\" using command down")
+                .status()
+                .map_err(|e| e.to_string())?;
+            if status.success() {
+                return Ok(());
+            }
+            thread::sleep(Duration::from_millis(450));
         }
         return Err("auto paste failed on macOS".to_string());
     }
 
     #[cfg(target_os = "windows")]
     {
-        let status = Command::new("powershell")
-            .arg("-NoProfile")
-            .arg("-Command")
-            .arg(
-                "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^v')",
-            )
-            .status()
-            .map_err(|e| e.to_string())?;
-        if status.success() {
-            return Ok(());
+        for _ in 0..attempts {
+            let status = Command::new("powershell")
+                .arg("-NoProfile")
+                .arg("-Command")
+                .arg(
+                    "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('^v')",
+                )
+                .status()
+                .map_err(|e| e.to_string())?;
+            if status.success() {
+                return Ok(());
+            }
+            thread::sleep(Duration::from_millis(500));
         }
         return Err("auto paste failed on Windows".to_string());
     }

@@ -1685,7 +1685,7 @@ pub fn send_to_external_ai_summary(
     let mut auto_ok = false;
     let auto_attempted = auto_paste.unwrap_or(true);
     if auto_attempted {
-        if let Err(e) = external_ai::try_auto_paste() {
+        if let Err(e) = external_ai::try_auto_paste(provider.id) {
             warning = Some(match warning {
                 Some(prev) => format!("{prev}; {e}"),
                 None => format!("{e}; 内容已复制，请手动粘贴"),

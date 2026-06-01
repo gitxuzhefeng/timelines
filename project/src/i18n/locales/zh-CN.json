@@ -30,6 +30,8 @@
     "todayLensDesc": "结构 · 管线 · 当日摘要",
     "timeline": "时间线",
     "timelineDesc": "按时段核对会话",
+    "timeReplay": "时间回放",
+    "timeReplayDesc": "幻灯片回看关键时刻",
     "dailyReport": "日报告",
     "dailyReportDesc": "事实层 / AI 增强",
     "settings": "设置",
@@ -227,6 +229,13 @@
       "sendWarning": "已发送到 {{provider}}，但需要手动处理：{{warning}}（导出目录：{{path}}）",
       "exportSuccess": "导出成功：{{count}} 张截图，目录 {{path}}"
     }
+  },
+  "replay": {
+    "title": "时间回放",
+    "loading": "正在加载回放数据…",
+    "empty": "当前日期没有可用于回放的截图与 OCR。",
+    "progress": "进度 {{progress}}%",
+    "ocrPreview": "OCR 摘要"
   },
   "ocrSearch": {
     "title": "OCR 检索",

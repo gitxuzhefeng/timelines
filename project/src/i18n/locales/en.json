@@ -30,6 +30,8 @@
     "todayLensDesc": "Structure · Pipeline · Daily summary",
     "timeline": "Timeline",
     "timelineDesc": "Verify sessions by time period",
+    "timeReplay": "Time Replay",
+    "timeReplayDesc": "Slideshow playback of key moments",
     "dailyReport": "Daily Report",
     "dailyReportDesc": "Fact layer / AI enhanced",
     "settings": "Settings",
@@ -227,6 +229,13 @@
       "sendWarning": "Sent to {{provider}}, but manual action is needed: {{warning}} (export dir: {{path}})",
       "exportSuccess": "Exported {{count}} screenshots to {{path}}"
     }
+  },
+  "replay": {
+    "title": "Time Replay",
+    "loading": "Loading replay data…",
+    "empty": "No replayable screenshots/OCR for this date.",
+    "progress": "Progress {{progress}}%",
+    "ocrPreview": "OCR preview"
   },
   "ocrSearch": {
     "title": "OCR Search",
