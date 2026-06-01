@@ -201,6 +201,34 @@ export interface DailyReportDto {
   aiPromptHash: string | null;
 }
 
+/** 与 Rust `ContentRecapDto` 对齐 */
+export interface ContentRecapDto {
+  date: string;
+  slice: "full_day" | "evening" | string;
+  startMs: number;
+  endMs: number;
+  items: ContentRecapItemDto[];
+  stats: ContentRecapStatsDto;
+}
+
+export interface ContentRecapStatsDto {
+  snapshotsInRange: number;
+  ocrOkInRange: number;
+  selectedCount: number;
+}
+
+export interface ContentRecapItemDto {
+  snapshotId: string;
+  sessionId: string;
+  capturedAtMs: number;
+  appName: string;
+  windowTitle: string;
+  sessionIntent: string | null;
+  ocrPreview: string;
+}
+
+export type ContentRecapSlice = "full_day" | "evening";
+
 /** 与 Rust `DailyAnalysisDto`（serde camelCase）对齐 */
 export interface DailyAnalysisDto {
   id: string;

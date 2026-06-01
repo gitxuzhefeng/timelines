@@ -674,9 +674,24 @@
     "viewUpdate": "前往更新",
     "later": "稍后提醒"
   },
+  "contentRecap": {
+    "loading": "正在加载内容时间轴…",
+    "sliceLabel": "时段",
+    "sliceFullDay": "全天",
+    "sliceEvening": "晚间",
+    "statsLine": "{{selected}} 条代表帧 · 时段内 {{snapshots}} 张截图 · {{ocr}} 条 OCR",
+    "openEvidence": "在会话中查看",
+    "openTimeline": "打开时间线",
+    "empty": {
+      "noSnapshots": "该时段没有截图记录。请确认采集与屏幕录制权限已开启。",
+      "noOcr": "有截图但尚无可用 OCR。请在设置中开启 OCR 并等待处理完成。",
+      "noHighlights": "有 OCR 数据，但经降噪后没有代表帧。可打开时间线查看全部截图。"
+    }
+  },
   "daily": {
     "chartView": "图表",
     "textView": "文本",
+    "contentView": "内容",
     "chart": {
       "totalTime": "总活跃时长",
       "deepWork": "深度工作",

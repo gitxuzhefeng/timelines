@@ -427,6 +427,7 @@ pub fn run() {
             api::get_daily_analysis,
             api::generate_daily_report,
             api::get_daily_report,
+            api::get_content_recap,
             api::export_daily_report,
             api::export_sessions_csv,
             api::export_daily_json,

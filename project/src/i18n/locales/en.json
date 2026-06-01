@@ -674,9 +674,24 @@
     "viewUpdate": "View Update",
     "later": "Remind me later"
   },
+  "contentRecap": {
+    "loading": "Loading content timeline…",
+    "sliceLabel": "Time slice",
+    "sliceFullDay": "Full day",
+    "sliceEvening": "Evening",
+    "statsLine": "{{selected}} highlights · {{snapshots}} screenshots · {{ocr}} OCR rows",
+    "openEvidence": "View in sessions",
+    "openTimeline": "Open timeline",
+    "empty": {
+      "noSnapshots": "No screenshots in this period. Check capture and screen recording permissions.",
+      "noOcr": "Screenshots exist but no OCR yet. Enable OCR in settings and wait for processing.",
+      "noHighlights": "OCR data exists but no highlights after filtering. Try the full timeline."
+    }
+  },
   "daily": {
     "chartView": "Charts",
     "textView": "Text",
+    "contentView": "Content",
     "chart": {
       "totalTime": "Total Active",
       "deepWork": "Deep Work",

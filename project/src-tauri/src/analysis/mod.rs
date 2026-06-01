@@ -2,6 +2,7 @@
 
 pub mod ai_client;
 pub mod assistant;
+pub mod content_recap;
 pub mod daily;
 pub mod report;
 pub mod weekly;

@@ -4,6 +4,8 @@ import type {
   ActivityStats,
   AiSettingsDto,
   DailyAnalysisDto,
+  ContentRecapDto,
+  ContentRecapSlice,
   DailyReportDto,
   EngineFlagsResponse,
   AppIntentAggregate,
@@ -323,6 +325,13 @@ export async function getDailyReport(
     date,
     reportType: reportType ?? null,
   });
+}
+
+export async function getContentRecap(
+  date: string,
+  slice: ContentRecapSlice = "full_day",
+): Promise<ContentRecapDto> {
+  return invoke<ContentRecapDto>("get_content_recap", { date, slice });
 }
 
 export async function exportDailyReport(

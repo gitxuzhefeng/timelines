@@ -1568,6 +1568,17 @@ pub fn get_daily_report(
 }
 
 #[tauri::command]
+pub fn get_content_recap(
+    state: State<'_, AppState>,
+    date: String,
+    slice: Option<String>,
+) -> Result<crate::analysis::content_recap::ContentRecapDto, String> {
+    let slice = slice.unwrap_or_else(|| "full_day".into());
+    let conn = state.0.read_conn.lock();
+    crate::analysis::content_recap::build_content_recap(&conn, &date, &slice)
+}
+
+#[tauri::command]
 pub fn export_daily_report(
     state: State<'_, AppState>,
     date: String,
