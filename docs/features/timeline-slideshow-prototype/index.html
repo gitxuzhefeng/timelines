@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TimeLens · 时间线幻灯片（浅色原型）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f6f8fa;
+      --bg-elevated: #ffffff;
+      --ink: #0f172a;
+      --ink-secondary: #334155;
+      --muted: #64748b;
+      --line: rgba(15, 23, 42, 0.08);
+      --line-strong: rgba(15, 23, 42, 0.12);
+      --accent: #0d9488;
+      --accent-soft: rgba(13, 148, 136, 0.1);
+      --accent-ring: rgba(13, 148, 136, 0.35);
+      --accent-glow: rgba(13, 148, 136, 0.15);
+      --purple: #7c3aed;
+      --purple-soft: rgba(124, 58, 237, 0.08);
+      --amber: #d97706;
+      --amber-soft: rgba(217, 119, 6, 0.1);
+      --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+      --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.04);
+      --shadow-lg: 0 20px 50px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.06);
+      --shadow-focus: 0 0 0 4px var(--accent-ring);
+      --radius: 16px;
+      --radius-sm: 10px;
+      --font: "DM Sans", system-ui, sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .shell {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 24px 20px 40px;
+      background:
+        radial-gradient(ellipse 100% 60% at 50% -10%, rgba(13, 148, 136, 0.07), transparent 55%),
+        radial-gradient(ellipse 80% 40% at 100% 0%, rgba(124, 58, 237, 0.04), transparent 50%),
+        var(--bg);
+    }
+
+    /* ── Header + day summary ── */
+    .top-bar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .top-bar h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--ink);
+    }
+
+    .top-bar .sub {
+      margin-top: 4px;
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+
+    .day-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .day-chip {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--line);
+      color: var(--ink-secondary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .day-chip strong {
+      color: var(--accent);
+      font-family: var(--mono);
+      font-weight: 500;
+    }
+
+    /* ── Compact timeline (single control) ── */
+    .scrub-panel {
+      background: var(--bg-elevated);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 14px 18px 12px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 16px;
+    }
+
+    .scrub-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 0.75rem;
+    }
+
+    .scrub-head .live-time {
+      font-family: var(--mono);
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .scrub-head .counter {
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .scrub-track-wrap {
+      position: relative;
+      height: 36px;
+      cursor: pointer;
+      touch-action: none;
+    }
+
+    .scrub-track {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 6px;
+      transform: translateY(-50%);
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .scrub-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #5eead4, var(--accent));
+      border-radius: 999px;
+      transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .scrub-thumb {
+      position: absolute;
+      top: 50%;
+      width: 18px;
+      height: 18px;
+      margin: -9px 0 0 -9px;
+      border-radius: 50%;
+      background: var(--bg-elevated);
+      border: 3px solid var(--accent);
+      box-shadow: var(--shadow-md), 0 0 0 4px var(--accent-glow);
+      transition: left 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+      pointer-events: none;
+      z-index: 3;
+    }
+
+    .scrub-marks {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .scrub-mark {
+      position: absolute;
+      top: 50%;
+      width: 4px;
+      height: 4px;
+      margin: -2px 0 0 -2px;
+      border-radius: 50%;
+      background: #cbd5e1;
+      transition: transform 0.2s, background 0.2s;
+    }
+
+    .scrub-mark.is-active {
+      transform: scale(1.8);
+      background: var(--accent);
+    }
+
+    .scrub-mark.is-passed {
+      background: #94a3b8;
+    }
+
+    .scrub-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 6px;
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--muted);
+    }
+
+    /* ── Hero card: title + image focus ── */
+    .hero-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--line);
+      border-radius: calc(var(--radius) + 4px);
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+    }
+
+    .hero-copy {
+      padding: 22px 24px 16px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%);
+    }
+
+    .hero-title {
+      font-size: clamp(1.15rem, 4vw, 1.45rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.25;
+      color: var(--ink);
+      margin-bottom: 10px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 14px;
+      margin-bottom: 12px;
+    }
+
+    .hero-app {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--ink-secondary);
+    }
+
+    .hero-app__icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #fff;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .hero-time {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .hero-duration {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .hero-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-left: auto;
+    }
+
+    .tag {
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+
+    .tag--intent { background: var(--accent-soft); color: #0f766e; }
+    .tag--ocr { background: var(--purple-soft); color: var(--purple); }
+    .tag--key { background: var(--amber-soft); color: var(--amber); }
+
+    .hero-ocr {
+      font-size: 0.88rem;
+      line-height: 1.55;
+      color: var(--ink-secondary);
+      padding: 12px 14px;
+      background: #f1f5f9;
+      border-radius: var(--radius-sm);
+      border-left: 3px solid var(--accent);
+    }
+
+    .hero-ocr em {
+      font-style: normal;
+      font-weight: 600;
+      color: var(--ink);
+      background: rgba(13, 148, 136, 0.12);
+      padding: 0 2px;
+      border-radius: 3px;
+    }
+
+    /* ── Image stage ── */
+    .stage {
+      position: relative;
+      background: linear-gradient(165deg, #f1f5f9 0%, #e2e8f0 100%);
+      min-height: min(52vh, 420px);
+    }
+
+    .stage-viewport {
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      scroll-behavior: smooth;
+      height: 100%;
+      min-height: inherit;
+      scrollbar-width: none;
+    }
+
+    .stage-viewport::-webkit-scrollbar { display: none; }
+
+    .stage-slide {
+      flex: 0 0 100%;
+      scroll-snap-align: center;
+      scroll-snap-stop: always;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 24px 28px;
+      min-height: inherit;
+    }
+
+    .stage-frame {
+      position: relative;
+      max-width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.45s;
+    }
+
+    .stage-slide.is-center .stage-frame {
+      transform: scale(1);
+      box-shadow: var(--shadow-lg), 0 0 0 1px var(--line);
+    }
+
+    .stage-slide:not(.is-center) .stage-frame {
+      transform: scale(0.96);
+      opacity: 0.85;
+    }
+
+    .stage-frame img {
+      display: block;
+      max-width: min(100%, 680px);
+      max-height: min(48vh, 380px);
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      vertical-align: middle;
+    }
+
+    /* 简化操作：点击图片左右半区切换 */
+    .stage-hit {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 28%;
+      z-index: 4;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+    }
+
+    .stage-hit--prev { left: 0; }
+    .stage-hit--next { right: 0; }
+
+    .stage-hit:hover {
+      background: linear-gradient(90deg, rgba(255,255,255,0.35), transparent);
+    }
+
+    .stage-hit--next:hover {
+      background: linear-gradient(270deg, rgba(255,255,255,0.35), transparent);
+    }
+
+    .stage-hint {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.68rem;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.92);
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow-sm);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s;
+    }
+
+    .stage:hover .stage-hint { opacity: 1; }
+
+    /* ── Thumbnail strip (optional quick jump, single row) ── */
+    .thumb-strip {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px;
+      overflow-x: auto;
+      border-top: 1px solid var(--line);
+      background: #fafbfc;
+      scrollbar-width: thin;
+    }
+
+    .thumb-strip::-webkit-scrollbar { height: 4px; }
+    .thumb-strip::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+    .thumb {
+      flex: 0 0 auto;
+      width: 72px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid transparent;
+      cursor: pointer;
+      opacity: 0.65;
+      transition: opacity 0.2s, border-color 0.2s, transform 0.2s;
+      background: #e2e8f0;
+    }
+
+    .thumb:hover { opacity: 1; transform: translateY(-2px); }
+
+    .thumb.is-active {
+      opacity: 1;
+      border-color: var(--accent);
+      box-shadow: var(--shadow-focus);
+    }
+
+    .thumb img {
+      width: 100%;
+      height: 44px;
+      object-fit: cover;
+      object-position: top;
+      display: block;
+    }
+
+    .thumb time {
+      display: block;
+      font-family: var(--mono);
+      font-size: 0.58rem;
+      text-align: center;
+      padding: 3px 0;
+      color: var(--muted);
+      background: #fff;
+    }
+
+    .data-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: #0f766e;
+      background: var(--accent-soft);
+      padding: 5px 10px;
+      border-radius: 999px;
+      margin-bottom: 10px;
+    }
+
+    .load-banner {
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 0.82rem;
+      margin-bottom: 14px;
+      border: 1px solid var(--line);
+    }
+
+    .load-banner--ok {
+      background: #ecfdf5;
+      color: #047857;
+      border-color: #a7f3d0;
+    }
+
+    .load-banner--err {
+      background: #fef2f2;
+      color: #b91c1c;
+      border-color: #fecaca;
+    }
+
+    .load-banner code {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+    }
+
+    .ai-actions {
+      margin: 0 0 14px;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--bg-elevated);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .ai-actions label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.74rem;
+      color: var(--muted);
+    }
+
+    .ai-actions select,
+    .ai-actions button {
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--ink);
+      font-size: 0.74rem;
+      padding: 7px 10px;
+    }
+
+    .ai-actions button {
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .ai-actions button:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .ai-actions button:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
+
+    .ai-feedback {
+      width: 100%;
+      font-size: 0.72rem;
+      color: var(--muted);
+      word-break: break-word;
+    }
+
+    .ai-feedback--err {
+      color: #b91c1c;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <span class="data-badge" id="dataBadge">本地真实数据 · 加载中…</span>
+    <p class="load-banner load-banner--ok" id="loadBanner" hidden></p>
+
+    <header class="top-bar">
+      <div>
+        <h1>今天做了什么</h1>
+        <p class="sub" id="pageSub">最近 2 小时 · 代表截图（来自 TimeLens 数据库）</p>
+      </div>
+      <div class="day-chips" id="dayChips">
+        <span class="day-chip"><strong id="chipCount">—</strong> 个时刻</span>
+        <span class="day-chip">OCR 候选 <strong id="chipOcr">—</strong></span>
+        <span class="day-chip"><span id="chipRange">—</span></span>
+      </div>
+    </header>
+
+    <section class="ai-actions" aria-label="发送到外部 AI">
+      <label>
+        目标 AI
+        <select id="providerSelect">
+          <option value="doubao_web">豆包（网页）</option>
+          <option value="doubao_app">豆包（客户端）</option>
+        </select>
+      </label>
+      <button type="button" id="sendToAiBtn">发送到本地 AI 工具进行总结</button>
+      <button type="button" id="exportBundleBtn">一键导出</button>
+      <p class="ai-feedback" id="aiFeedback">原型模式：优先调用 Tauri 命令；纯浏览器环境会降级为示意交互。</p>
+    </section>
+
+    <!-- 单一时间轴控件：拖动/点击即可跳转 -->
+    <section class="scrub-panel" aria-label="时间轴">
+      <div class="scrub-head">
+        <span class="live-time" id="liveTime">18:42</span>
+        <span class="counter" id="counter">1 / 8</span>
+      </div>
+      <div class="scrub-track-wrap" id="scrubWrap">
+        <div class="scrub-track"><div class="scrub-fill" id="scrubFill"></div></div>
+        <div class="scrub-marks" id="scrubMarks"></div>
+        <div class="scrub-thumb" id="scrubThumb"></div>
+      </div>
+      <div class="scrub-labels" id="scrubLabels">
+        <span id="lblStart">—</span><span id="lblMid">—</span><span id="lblEnd">—</span>
+      </div>
+    </section>
+
+  <article class="hero-card">
+      <div class="hero-copy">
+        <h2 class="hero-title" id="heroTitle">content_recap.rs — timelines</h2>
+        <div class="hero-meta">
+          <span class="hero-app">
+            <span class="hero-app__icon" id="heroIcon" style="background:#007acc">VS</span>
+            <span id="heroApp">Visual Studio Code</span>
+          </span>
+          <span class="hero-time" id="heroTime">18:42</span>
+          <span class="hero-duration" id="heroDuration">· 会话 12 分钟</span>
+          <div class="hero-tags" id="heroTags"></div>
+        </div>
+        <p class="hero-ocr" id="heroOcr"></p>
+      </div>
+
+      <div class="stage">
+        <div class="stage-viewport" id="viewport" tabindex="0" aria-label="截图幻灯片，左右滑动或点击两侧切换"></div>
+        <button type="button" class="stage-hit stage-hit--prev" id="hitPrev" aria-label="上一张"></button>
+        <button type="button" class="stage-hit stage-hit--next" id="hitNext" aria-label="下一张"></button>
+        <span class="stage-hint">点击图片左右区域 · 或滑动切换</span>
+      </div>
+
+      <div class="thumb-strip" id="thumbStrip" role="tablist" aria-label="快速跳转"></div>
+    </article>
+  </div>
+
+  <script>
+    let SLIDES = [];
+    let META = null;
+
+    const viewport = document.getElementById("viewport");
+    const scrubMarks = document.getElementById("scrubMarks");
+    const scrubFill = document.getElementById("scrubFill");
+    const scrubThumb = document.getElementById("scrubThumb");
+    const scrubWrap = document.getElementById("scrubWrap");
+    const thumbStrip = document.getElementById("thumbStrip");
+    const sendToAiBtn = document.getElementById("sendToAiBtn");
+    const exportBundleBtn = document.getElementById("exportBundleBtn");
+    const providerSelect = document.getElementById("providerSelect");
+    const aiFeedback = document.getElementById("aiFeedback");
+    const tauriInvoke =
+      window.__TAURI__?.core?.invoke ||
+      window.__TAURI_INVOKE__;
+
+    let index = 0;
+    let scrollRaf = 0;
+
+    function escAttr(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/</g, "&lt;");
+    }
+
+    function setFeedback(text, isErr = false) {
+      aiFeedback.textContent = text;
+      aiFeedback.classList.toggle("ai-feedback--err", isErr);
+    }
+
+    function applyMeta(meta) {
+      META = meta;
+      const mid = meta.labelStart && meta.labelEnd
+        ? (() => {
+            const [sh, sm] = meta.labelStart.split(":").map(Number);
+            const [eh, em] = meta.labelEnd.split(":").map(Number);
+            const ms = (sh * 60 + sm + eh * 60 + em) / 2;
+            const h = Math.floor(ms / 60);
+            const m = Math.round(ms % 60);
+            return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+          })()
+        : "—";
+      document.getElementById("chipCount").textContent = meta.slideCount;
+      document.getElementById("chipOcr").textContent = meta.totalCandidates;
+      document.getElementById("chipRange").textContent = `${meta.labelStart} – ${meta.labelEnd}`;
+      document.getElementById("lblStart").textContent = meta.labelStart;
+      document.getElementById("lblMid").textContent = mid;
+      document.getElementById("lblEnd").textContent = meta.labelEnd;
+      document.getElementById("pageSub").textContent =
+        `最近 ${meta.hours} 小时（${meta.labelStart}–${meta.labelEnd}）· 选帧 ${meta.slideCount} / OCR ${meta.totalCandidates}`;
+      document.getElementById("dataBadge").textContent =
+        `本地真实数据 · ${meta.slideCount} 帧 · 更新于 ${new Date(meta.generatedAt).toLocaleString("zh-CN")}`;
+    }
+
+    function renderSlides() {
+      viewport.innerHTML = SLIDES.map(
+        (s, i) => `
+        <div class="stage-slide" data-i="${i}">
+          <div class="stage-frame">
+            <img src="${s.img}" alt="${escAttr(s.title)}" loading="${i < 2 ? "eager" : "lazy"}" />
+          </div>
+        </div>`
+      ).join("");
+
+      scrubMarks.innerHTML = SLIDES.map(
+        (s, i) => `<span class="scrub-mark" data-i="${i}" style="left:${s.pct}%"></span>`
+      ).join("");
+
+      thumbStrip.innerHTML = SLIDES.map(
+        (s, i) => `
+        <button type="button" class="thumb" data-i="${i}" role="tab" aria-selected="${i === 0}">
+          <img src="${s.img}" alt="" />
+          <time>${s.time}</time>
+        </button>`
+      ).join("");
+    }
+
+    function setIndex(i, smooth = true) {
+      const n = Math.max(0, Math.min(SLIDES.length - 1, i));
+      const slide = viewport.children[n];
+      if (!slide) return;
+      viewport.scrollTo({ left: slide.offsetLeft, behavior: smooth ? "smooth" : "auto" });
+      if (n !== index) applyUI(n);
+    }
+
+    function applyUI(i) {
+      index = i;
+      const s = SLIDES[i];
+
+      document.getElementById("heroTitle").textContent = s.title;
+      document.getElementById("heroApp").textContent = s.app;
+      const icon = document.getElementById("heroIcon");
+      icon.textContent = s.icon;
+      icon.style.background = s.color;
+      document.getElementById("heroTime").textContent = s.time;
+      document.getElementById("heroDuration").textContent = `· ${s.duration}`;
+      document.getElementById("liveTime").textContent = s.time;
+      document.getElementById("counter").textContent = `${i + 1} / ${SLIDES.length}`;
+      document.getElementById("heroOcr").textContent = s.ocr;
+
+      document.getElementById("heroTags").innerHTML = s.tags
+        .map((t) => `<span class="tag tag--${t.k}">${t.t}</span>`)
+        .join("");
+
+      scrubFill.style.width = `${s.pct}%`;
+      scrubThumb.style.left = `${s.pct}%`;
+
+      scrubMarks.querySelectorAll(".scrub-mark").forEach((el, j) => {
+        el.classList.toggle("is-active", j === i);
+        el.classList.toggle("is-passed", j < i);
+      });
+
+      thumbStrip.querySelectorAll(".thumb").forEach((el, j) => {
+        el.classList.toggle("is-active", j === i);
+        el.setAttribute("aria-selected", j === i ? "true" : "false");
+      });
+
+      viewport.querySelectorAll(".stage-slide").forEach((el, j) => {
+        el.classList.toggle("is-center", j === i);
+      });
+    }
+
+    function indexFromScroll() {
+      const w = viewport.clientWidth;
+      return w > 0 ? Math.round(viewport.scrollLeft / w) : 0;
+    }
+
+    viewport.addEventListener(
+      "scroll",
+      () => {
+        cancelAnimationFrame(scrollRaf);
+        scrollRaf = requestAnimationFrame(() => {
+          const i = indexFromScroll();
+          if (i !== index) applyUI(i);
+        });
+      },
+      { passive: true }
+    );
+
+    scrubWrap.addEventListener("click", (e) => {
+      const mark = e.target.closest(".scrub-mark");
+      if (mark) {
+        setIndex(Number(mark.dataset.i));
+        return;
+      }
+      const rect = scrubWrap.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width;
+      let best = 0;
+      let dist = Infinity;
+      SLIDES.forEach((s, i) => {
+        const d = Math.abs(s.pct / 100 - x);
+        if (d < dist) {
+          dist = d;
+          best = i;
+        }
+      });
+      setIndex(best);
+    });
+
+    thumbStrip.addEventListener("click", (e) => {
+      const t = e.target.closest(".thumb");
+      if (t) setIndex(Number(t.dataset.i));
+    });
+
+    document.getElementById("hitPrev").addEventListener("click", () => setIndex(index - 1));
+    document.getElementById("hitNext").addEventListener("click", () => setIndex(index + 1));
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") setIndex(index - 1);
+      if (e.key === "ArrowRight") setIndex(index + 1);
+    });
+
+    async function boot() {
+      const banner = document.getElementById("loadBanner");
+      try {
+        const res = await fetch("data/slides.json", { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const payload = await res.json();
+        SLIDES = payload.slides || [];
+        if (!SLIDES.length) throw new Error("slides 为空");
+        if (payload.meta) applyMeta(payload.meta);
+        renderSlides();
+        applyUI(0);
+        setIndex(0, false);
+        requestAnimationFrame(() =>
+          viewport.querySelector(".stage-slide")?.classList.add("is-center"),
+        );
+        banner.hidden = true;
+      } catch (e) {
+        banner.hidden = false;
+        banner.className = "load-banner load-banner--err";
+        banner.innerHTML =
+          `无法加载真实数据（${escAttr(e.message)}）。请先运行：<br><code>node scripts/build-timeline-slideshow-demo.mjs</code><br>然后用本地服务器打开本页，例如：<code>cd docs/features/timeline-slideshow-prototype && python3 -m http.server 8765</code> → <code>http://localhost:8765</code>`;
+        document.getElementById("dataBadge").textContent = "未加载数据";
+      }
+    }
+
+    async function onSendToAi() {
+      sendToAiBtn.disabled = true;
+      try {
+        if (tauriInvoke) {
+          const res = await tauriInvoke("send_to_external_ai_summary", {
+            date: META?.date || new Date().toISOString().slice(0, 10),
+            slice: "full_day",
+            providerId: providerSelect.value,
+            autoPaste: true,
+          });
+          setFeedback(
+            res.warning
+              ? `已发送，需手动处理：${res.warning}`
+              : `已发送到 ${res.providerLabel}，并导出 ${res.screenshotCount} 张截图。`,
+            false,
+          );
+        } else {
+          const demoText = `TimeLens 幻灯片摘要（示意）\n帧数：${SLIDES.length}\n请在豆包粘贴发送。`;
+          await navigator.clipboard.writeText(demoText);
+          window.open("https://www.doubao.com/chat", "_blank", "noopener");
+          setFeedback("纯浏览器模式：内容已复制并打开豆包网页，请手动粘贴发送。", false);
+        }
+      } catch (e) {
+        setFeedback(`发送失败：${e?.message || String(e)}`, true);
+      } finally {
+        sendToAiBtn.disabled = false;
+      }
+    }
+
+    async function onExportBundle() {
+      exportBundleBtn.disabled = true;
+      try {
+        if (tauriInvoke) {
+          const res = await tauriInvoke("export_external_ai_summary_bundle", {
+            date: META?.date || new Date().toISOString().slice(0, 10),
+            slice: "full_day",
+            openFolder: true,
+          });
+          setFeedback(`导出成功：${res.screenshotCount} 张截图，目录 ${res.exportDir}`, false);
+        } else {
+          setFeedback("纯浏览器模式无法直接导出，请在仓库根目录运行 node scripts/export-for-doubao.mjs", false);
+        }
+      } catch (e) {
+        setFeedback(`导出失败：${e?.message || String(e)}`, true);
+      } finally {
+        exportBundleBtn.disabled = false;
+      }
+    }
+
+    sendToAiBtn.addEventListener("click", onSendToAi);
+    exportBundleBtn.addEventListener("click", onExportBundle);
+
+    boot();
+  </script>
+</body>
+</html>

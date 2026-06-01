@@ -5,6 +5,7 @@ pub mod intent_mapping;
 pub mod ocr;
 pub mod models;
 pub mod nudge;
+pub mod external_ai;
 pub mod privacy;
 pub mod settings;
 pub mod writer;

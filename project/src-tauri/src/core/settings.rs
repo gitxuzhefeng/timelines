@@ -13,6 +13,7 @@ const K_AI_PRIVACY_ACK: &str = "ai_privacy_acknowledged";
 const K_AI_BASE_URL: &str = "ai_base_url";
 const K_AI_MODEL: &str = "ai_model";
 const K_AI_API_KEY: &str = "ai_api_key";
+const K_EXTERNAL_AI_LAST_PROVIDER_ID: &str = "external_ai_last_provider_id";
 
 const K_OCR_ENABLED: &str = "ocr_enabled";
 const K_OCR_PRIVACY_ACK: &str = "ocr_privacy_acknowledged";
@@ -342,6 +343,14 @@ pub fn get_language(conn: &Connection) -> String {
 
 pub fn set_language(conn: &mut Connection, lang: &str) -> rusqlite::Result<()> {
     set_setting_str(conn, K_LANGUAGE, lang.trim())
+}
+
+pub fn get_external_ai_last_provider_id(conn: &Connection) -> String {
+    get_setting_str(conn, K_EXTERNAL_AI_LAST_PROVIDER_ID, "doubao_web")
+}
+
+pub fn set_external_ai_last_provider_id(conn: &mut Connection, provider_id: &str) -> rusqlite::Result<()> {
+    set_setting_str(conn, K_EXTERNAL_AI_LAST_PROVIDER_ID, provider_id.trim())
 }
 
 /// 周起始日：0 = 周日，1 = 周一（默认）。

@@ -1,6 +1,7 @@
 //! 二期 M1–M3：日聚合与日终 Markdown 报告（事实层）；AI 增强叙事（二期 AI）。
 
 pub mod ai_client;
+pub mod agent_export;
 pub mod assistant;
 pub mod content_recap;
 pub mod daily;

@@ -218,7 +218,15 @@
     "alsoUsed": "also used",
     "statusFocused": "Focused",
     "statusModerate": "Moderate switching",
-    "statusFragmented": "High switching"
+    "statusFragmented": "High switching",
+    "externalAi": {
+      "target": "AI target",
+      "send": "Send to local AI for summary",
+      "export": "One-click export",
+      "sendSuccess": "Sent to {{provider}}. Summary text copied and {{count}} screenshots exported.",
+      "sendWarning": "Sent to {{provider}}, but manual action is needed: {{warning}} (export dir: {{path}})",
+      "exportSuccess": "Exported {{count}} screenshots to {{path}}"
+    }
   },
   "ocrSearch": {
     "title": "OCR Search",

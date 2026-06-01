@@ -229,6 +229,26 @@ export interface ContentRecapItemDto {
 
 export type ContentRecapSlice = "full_day" | "evening";
 
+export interface ExternalAiProvider {
+  id: string;
+  label: string;
+}
+
+export interface ExternalAiExportResult {
+  exportDir: string;
+  markdownPath: string;
+  screenshotCount: number;
+}
+
+export interface ExternalAiSendResult extends ExternalAiExportResult {
+  providerId: string;
+  providerLabel: string;
+  clipboardChars: number;
+  autoPasteAttempted: boolean;
+  autoPasteSucceeded: boolean;
+  warning?: string;
+}
+
 /** 与 Rust `DailyAnalysisDto`（serde camelCase）对齐 */
 export interface DailyAnalysisDto {
   id: string;

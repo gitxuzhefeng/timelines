@@ -6,6 +6,9 @@ import type {
   DailyAnalysisDto,
   ContentRecapDto,
   ContentRecapSlice,
+  ExternalAiExportResult,
+  ExternalAiProvider,
+  ExternalAiSendResult,
   DailyReportDto,
   EngineFlagsResponse,
   AppIntentAggregate,
@@ -332,6 +335,36 @@ export async function getContentRecap(
   slice: ContentRecapSlice = "full_day",
 ): Promise<ContentRecapDto> {
   return invoke<ContentRecapDto>("get_content_recap", { date, slice });
+}
+
+export async function listExternalAiProviders(): Promise<ExternalAiProvider[]> {
+  return invoke<ExternalAiProvider[]>("list_external_ai_providers");
+}
+
+export async function exportExternalAiSummaryBundle(
+  date: string,
+  slice: ContentRecapSlice = "full_day",
+  openFolder = false,
+): Promise<ExternalAiExportResult> {
+  return invoke<ExternalAiExportResult>("export_external_ai_summary_bundle", {
+    date,
+    slice,
+    openFolder,
+  });
+}
+
+export async function sendToExternalAiSummary(params: {
+  date: string;
+  slice?: ContentRecapSlice;
+  providerId?: string;
+  autoPaste?: boolean;
+}): Promise<ExternalAiSendResult> {
+  return invoke<ExternalAiSendResult>("send_to_external_ai_summary", {
+    date: params.date,
+    slice: params.slice ?? "full_day",
+    providerId: params.providerId,
+    autoPaste: params.autoPaste ?? true,
+  });
 }
 
 export async function exportDailyReport(

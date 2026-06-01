@@ -218,7 +218,15 @@
     "alsoUsed": "也用了",
     "statusFocused": "连续专注",
     "statusModerate": "中度切换",
-    "statusFragmented": "高频切换"
+    "statusFragmented": "高频切换",
+    "externalAi": {
+      "target": "目标 AI",
+      "send": "发送到本地 AI 工具进行总结",
+      "export": "一键导出",
+      "sendSuccess": "已发送到 {{provider}}，已复制总结文本并导出 {{count}} 张截图。",
+      "sendWarning": "已发送到 {{provider}}，但需要手动处理：{{warning}}（导出目录：{{path}}）",
+      "exportSuccess": "导出成功：{{count}} 张截图，目录 {{path}}"
+    }
   },
   "ocrSearch": {
     "title": "OCR 检索",

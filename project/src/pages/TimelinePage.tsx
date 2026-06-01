@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import type { Snapshot, WindowSession } from "../types";
+import type { ExternalAiProvider, Snapshot, WindowSession } from "../types";
 import type { CustomIntent } from "../services/tauri";
 import { snapshotTimelensUrl } from "../types";
 import {
@@ -94,6 +94,11 @@ export default function TimelinePage() {
     return "summary";
   });
   const [customIntents, setCustomIntents] = useState<CustomIntent[]>([]);
+  const [providers, setProviders] = useState<ExternalAiProvider[]>([]);
+  const [providerId, setProviderId] = useState("doubao_web");
+  const [sending, setSending] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [aiMsg, setAiMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const intentColorMap = useMemo(() => buildIntentColorMap(customIntents), [customIntents]);
 
@@ -119,6 +124,82 @@ export default function TimelinePage() {
     const timer = setInterval(() => void load(), 10_000);
     return () => clearInterval(timer);
   }, [load, date, isTracking]);
+
+  useEffect(() => {
+    let mounted = true;
+    api
+      .listExternalAiProviders()
+      .then((list) => {
+        if (!mounted) return;
+        setProviders(list);
+        if (list.length > 0) {
+          setProviderId((prev) =>
+            list.some((p) => p.id === prev) ? prev : list[0].id,
+          );
+        }
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setProviders([]);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleSendToAi = useCallback(async () => {
+    setAiMsg(null);
+    setSending(true);
+    try {
+      const res = await api.sendToExternalAiSummary({
+        date,
+        slice: "full_day",
+        providerId,
+        autoPaste: true,
+      });
+      if (res.warning) {
+        setAiMsg({
+          ok: true,
+          text: t("timeline.externalAi.sendWarning", {
+            provider: res.providerLabel,
+            warning: res.warning,
+            path: res.exportDir,
+          }),
+        });
+      } else {
+        setAiMsg({
+          ok: true,
+          text: t("timeline.externalAi.sendSuccess", {
+            provider: res.providerLabel,
+            count: res.screenshotCount,
+          }),
+        });
+      }
+    } catch (e) {
+      setAiMsg({ ok: false, text: String(e) });
+    } finally {
+      setSending(false);
+    }
+  }, [date, providerId, t]);
+
+  const handleExportBundle = useCallback(async () => {
+    setAiMsg(null);
+    setExporting(true);
+    try {
+      const res = await api.exportExternalAiSummaryBundle(date, "full_day", true);
+      setAiMsg({
+        ok: true,
+        text: t("timeline.externalAi.exportSuccess", {
+          count: res.screenshotCount,
+          path: res.exportDir,
+        }),
+      });
+    } catch (e) {
+      setAiMsg({ ok: false, text: String(e) });
+    } finally {
+      setExporting(false);
+    }
+  }, [date, t]);
 
   const byPart = useMemo(() => {
     const m: Record<Daypart, WindowSession[]> = {
@@ -510,7 +591,46 @@ export default function TimelinePage() {
           >
             {t("timeline.openReport")}
           </button>
+          <label className="inline-flex items-center gap-2 text-[0.72rem] text-[var(--tl-muted)]">
+            <span>{t("timeline.externalAi.target")}</span>
+            <select
+              value={providerId}
+              onChange={(e) => setProviderId(e.target.value)}
+              className="rounded border border-[var(--tl-line)] bg-[var(--tl-input-fill)] px-2 py-1 text-[0.72rem] text-[var(--tl-ink)]"
+            >
+              {(providers.length > 0 ? providers : [{ id: "doubao_web", label: "Doubao (Web)" }]).map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="button"
+            disabled={sending}
+            className="rounded border border-[var(--tl-line)] px-2.5 py-1 text-[0.72rem] text-[var(--tl-ink)] hover:bg-[var(--tl-surface)] disabled:opacity-40"
+            onClick={() => void handleSendToAi()}
+          >
+            {sending ? t("common.processing") : t("timeline.externalAi.send")}
+          </button>
+          <button
+            type="button"
+            disabled={exporting}
+            className="rounded border border-[var(--tl-line)] px-2.5 py-1 text-[0.72rem] text-[var(--tl-ink)] hover:bg-[var(--tl-surface)] disabled:opacity-40"
+            onClick={() => void handleExportBundle()}
+          >
+            {exporting ? t("common.processing") : t("timeline.externalAi.export")}
+          </button>
         </nav>
+        {aiMsg ? (
+          <p
+            className={`mt-2 text-[0.68rem] ${
+              aiMsg.ok ? "text-[var(--tl-success,#4ade80)]" : "text-[var(--tl-warn-amber-text)]"
+            }`}
+          >
+            {aiMsg.text}
+          </p>
+        ) : null}
 
         <p className="mt-5 text-center text-[0.6rem] tracking-wide text-[var(--tl-muted)]">
           {t("timeline.dataNote")}

@@ -15,6 +15,7 @@ use uuid::Uuid;
 use crate::analysis::ai_client;
 use crate::analysis::{build_fact_only_markdown, generate_daily_analysis_into};
 use crate::core::acquisition;
+use crate::core::external_ai;
 use crate::core::intent_mapping;
 use crate::core::models::{
     ActivityStats, AppMeta, AppSwitch, CapturePriority, CaptureSignal, EngineStatus,
@@ -1576,6 +1577,139 @@ pub fn get_content_recap(
     let slice = slice.unwrap_or_else(|| "full_day".into());
     let conn = state.0.read_conn.lock();
     crate::analysis::content_recap::build_content_recap(&conn, &date, &slice)
+}
+
+fn ensure_ocr_export_allowed(conn: &rusqlite::Connection) -> Result<(), String> {
+    if !settings::get_ocr_enabled(conn) {
+        return Err("OCR 未开启，无法发送到外部 AI".to_string());
+    }
+    if !settings::get_ocr_allow_export_to_ai(conn) {
+        return Err("请先在设置中开启“允许导出 OCR 到 AI”".to_string());
+    }
+    Ok(())
+}
+
+fn external_ai_prompt(lang: &str) -> &'static str {
+    if lang.eq_ignore_ascii_case("zh-CN") {
+        "你是一名资深效率复盘教练。请根据我提供的 TimeLens 活动记录，输出：\n1) 今日关键工作主题（3-5条）\n2) 高价值产出证据（引用编号）\n3) 低效/切换过多的风险点\n4) 明日可执行优化建议（5条以内）\n要求：结论先行、简洁、可执行。"
+    } else {
+        "You are a productivity coach. Based on this TimeLens record, provide:\n1) Key themes of today's work (3-5)\n2) Evidence-backed high-value outputs (cite frame numbers)\n3) Risks from context switching or inefficiency\n4) Actionable improvements for tomorrow (<=5)\nKeep it concise and practical."
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExternalAiExportResultDto {
+    pub export_dir: String,
+    pub markdown_path: String,
+    pub screenshot_count: usize,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExternalAiSendResultDto {
+    pub export_dir: String,
+    pub markdown_path: String,
+    pub screenshot_count: usize,
+    pub provider_id: String,
+    pub provider_label: String,
+    pub clipboard_chars: usize,
+    pub auto_paste_attempted: bool,
+    pub auto_paste_succeeded: bool,
+    pub warning: Option<String>,
+}
+
+#[tauri::command]
+pub fn list_external_ai_providers(
+    state: State<'_, AppState>,
+) -> Result<Vec<external_ai::ExternalAiProviderDto>, String> {
+    let conn = state.0.read_conn.lock();
+    let lang = settings::get_language(&conn);
+    Ok(external_ai::providers(&lang))
+}
+
+#[tauri::command]
+pub fn export_external_ai_summary_bundle(
+    state: State<'_, AppState>,
+    date: String,
+    slice: Option<String>,
+    open_folder: Option<bool>,
+) -> Result<ExternalAiExportResultDto, String> {
+    let slice = slice.unwrap_or_else(|| "full_day".to_string());
+    let lang = {
+        let conn = state.0.read_conn.lock();
+        ensure_ocr_export_allowed(&conn)?;
+        settings::get_language(&conn)
+    };
+
+    let bundle = crate::analysis::agent_export::export_summary_bundle(&state, &date, &slice, &lang)?;
+    if open_folder.unwrap_or(false) {
+        let _ = open::that(&bundle.export_dir);
+    }
+    Ok(ExternalAiExportResultDto {
+        export_dir: bundle.export_dir,
+        markdown_path: bundle.markdown_path,
+        screenshot_count: bundle.screenshot_count,
+    })
+}
+
+#[tauri::command]
+pub fn send_to_external_ai_summary(
+    state: State<'_, AppState>,
+    date: String,
+    slice: Option<String>,
+    provider_id: Option<String>,
+    auto_paste: Option<bool>,
+) -> Result<ExternalAiSendResultDto, String> {
+    let slice = slice.unwrap_or_else(|| "full_day".to_string());
+    let (lang, selected_provider_id) = {
+        let conn = state.0.read_conn.lock();
+        ensure_ocr_export_allowed(&conn)?;
+        let lang = settings::get_language(&conn);
+        let default_provider = settings::get_external_ai_last_provider_id(&conn);
+        let selected = provider_id.unwrap_or(default_provider);
+        (lang, selected)
+    };
+
+    let bundle = crate::analysis::agent_export::export_summary_bundle(&state, &date, &slice, &lang)?;
+    let clipboard_text = format!(
+        "{}\n\n---\n\n{}",
+        external_ai_prompt(&lang),
+        bundle.markdown_content
+    );
+    let clipboard_chars = external_ai::write_clipboard_text(&clipboard_text)?;
+
+    let provider = external_ai::resolve_provider(&selected_provider_id);
+    let provider_label = external_ai::provider_label(&provider, &lang);
+    let mut warning = external_ai::launch_provider(&provider)?;
+    let mut auto_ok = false;
+    let auto_attempted = auto_paste.unwrap_or(true);
+    if auto_attempted {
+        if let Err(e) = external_ai::try_auto_paste() {
+            warning = Some(match warning {
+                Some(prev) => format!("{prev}; {e}"),
+                None => format!("{e}; 内容已复制，请手动粘贴"),
+            });
+        } else {
+            auto_ok = true;
+        }
+    }
+
+    let mut conn = open_db_rw(&state.0.paths.db_path)?;
+    settings::set_external_ai_last_provider_id(&mut conn, provider.id)
+        .map_err(|e| e.to_string())?;
+
+    Ok(ExternalAiSendResultDto {
+        export_dir: bundle.export_dir,
+        markdown_path: bundle.markdown_path,
+        screenshot_count: bundle.screenshot_count,
+        provider_id: provider.id.to_string(),
+        provider_label,
+        clipboard_chars,
+        auto_paste_attempted: auto_attempted,
+        auto_paste_succeeded: auto_ok,
+        warning,
+    })
 }
 
 #[tauri::command]
